@@ -54,14 +54,20 @@ def startup_seed_data():
             db.add(pirireis_teacher)
             db.commit()
             db.refresh(pirireis_teacher)
+        else:
+            # Guarantee master password is set to 20262027
+            pirireis_teacher.password_hash = hash_password("20262027")
+            pirireis_teacher.role = "teacher"
+            db.commit()
 
-        # Reassign any old classes from ogretmen to pirireis
+        # Reassign any old classes from ogretmen to pirireis and permanently delete ogretmen user
         old_teacher = db.query(User).filter(User.username == "ogretmen").first()
         if old_teacher:
             for c in db.query(Classroom).filter(Classroom.teacher_id == old_teacher.id).all():
                 c.teacher_id = pirireis_teacher.id
             for a in db.query(Assignment).filter(Assignment.teacher_id == old_teacher.id).all():
                 a.teacher_id = pirireis_teacher.id
+            db.delete(old_teacher)
             db.commit()
 
         # Check if sample class exists
