@@ -3,7 +3,7 @@ import {
   FileText, Upload, CheckCircle2, Clock, Download, Award, 
   MessageSquare, AlertCircle, BookOpen, Sparkles, Send, FileCheck
 } from 'lucide-react';
-import { assignmentService, submissionService } from '../services/api';
+import { assignmentService, submissionService, getFileUrl } from '../services/api';
 
 export default function StudentDashboard({ user }) {
   const [assignments, setAssignments] = useState([]);
@@ -177,7 +177,7 @@ export default function StudentDashboard({ user }) {
                     {assignment.attachment_path && (
                       <div className="mt-3">
                         <a
-                          href={assignment.attachment_path}
+                          href={getFileUrl(assignment.attachment_path)}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-medium bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800 transition"

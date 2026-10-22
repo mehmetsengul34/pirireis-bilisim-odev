@@ -31,6 +31,15 @@ api.interceptors.response.use(
   }
 );
 
+export const getFileUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (apiBase) {
+    return `${apiBase.replace(/\/$/, '')}${path.startsWith('/') ? path : '/' + path}`;
+  }
+  return path;
+};
+
 export const authService = {
   login: async (username, password) => {
     const response = await api.post('/auth/login', { username, password });

@@ -3,7 +3,7 @@ import {
   Users, BookOpen, Plus, CheckCircle2, Clock, FileText, Download, 
   Send, UserPlus, Trash2, Award, MessageSquare, ChevronRight, AlertCircle, X
 } from 'lucide-react';
-import { classroomService, assignmentService, submissionService } from '../services/api';
+import { classroomService, assignmentService, submissionService, getFileUrl } from '../services/api';
 
 export default function TeacherDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('assignments'); // 'assignments' | 'classrooms'
@@ -368,7 +368,7 @@ export default function TeacherDashboard({ user }) {
                     {assignment.attachment_path && (
                       <div className="mt-3">
                         <a
-                          href={assignment.attachment_path}
+                          href={getFileUrl(assignment.attachment_path)}
                           target="_blank"
                           rel="noreferrer"
                           className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-medium bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800"
@@ -834,7 +834,7 @@ export default function TeacherDashboard({ user }) {
 
                         {sub.file_path && (
                           <a
-                            href={sub.file_path}
+                            href={getFileUrl(sub.file_path)}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-semibold transition"
