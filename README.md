@@ -26,14 +26,14 @@ npm.cmd run dev
 
 ---
 
-## 🔑 Varsayılan Giriş Hesapları (Hızlı Test)
-
-Giriş ekranında yer alan tek tıkla **"Hızlı Test Girişi"** butonlarını kullanabilir veya bilgileri el ile girebilirsiniz:
+## 🔑 Varsayılan Giriş Hesapları
 
 | Rol | Kullanıcı Adı | Şifre | Açıklama |
 | :--- | :--- | :--- | :--- |
-| **Öğretmen** | `ogretmen` | `123` | Bilişim Öğretmeni Yönetim Paneli |
-| **Öğrenci** | `ogrenci` | `123` | Ali Yılmaz (11-B Bilişim, No: 1024) |
+| **Master Öğretmen** | `pirireis` | `20262027` | Ana Yönetici (Yeni öğretmenler tanımlayabilir) |
+| **Öğrenci** | `ogrenci` | `123` | Örnek Öğrenci (Ali Yılmaz - 11-B Bilişim) |
+
+> **Not:** Öğretmenler ve öğrenciler diledikleri zaman üst menüdeki **"Şifre Değiştir"** seçeneği ile şifrelerini güncelleyebilirler.
 
 ---
 

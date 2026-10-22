@@ -23,6 +23,6 @@ start http://localhost:5173
 
 echo ========================================================
 echo Sistem Başlatıldı!
-echo Öğretmen Girişi: ogretmen / 123
-echo Öğrenci Girişi:  ogrenci / 123
+echo Master Öğretmen: pirireis / 20262027
+echo Öğrenci Girişi:   ogrenci / 123
 echo ========================================================
