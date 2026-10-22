@@ -1,15 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, BookOpen, Plus, CheckCircle2, Clock, FileText, Download, 
-  Send, UserPlus, Trash2, Award, MessageSquare, ChevronRight, AlertCircle, X
+  Send, UserPlus, Trash2, Award, MessageSquare, ChevronRight, AlertCircle, X,
+  Crown, ShieldCheck
 } from 'lucide-react';
-import { classroomService, assignmentService, submissionService, getFileUrl } from '../services/api';
+import { classroomService, assignmentService, submissionService, teacherService, getFileUrl } from '../services/api';
 
 export default function TeacherDashboard({ user }) {
-  const [activeTab, setActiveTab] = useState('assignments'); // 'assignments' | 'classrooms'
+  const isMaster = user?.username?.toLowerCase() === 'pirireis';
+  const [activeTab, setActiveTab] = useState('assignments'); // 'assignments' | 'classrooms' | 'teachers'
   const [classrooms, setClassrooms] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Master Teacher States
+  const [teachers, setTeachers] = useState([]);
+  const [loadingTeachers, setLoadingTeachers] = useState(false);
+  const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [teacherFullName, setTeacherFullName] = useState('');
+  const [teacherUsername, setTeacherUsername] = useState('');
+  const [teacherPassword, setTeacherPassword] = useState('');
 
   // Modal States
   const [showClassModal, setShowClassModal] = useState(false);
@@ -58,9 +68,65 @@ export default function TeacherDashboard({ user }) {
     }
   };
 
+  const fetchTeachers = async () => {
+    if (!isMaster) return;
+    setLoadingTeachers(true);
+    try {
+      const teacherList = await teacherService.list();
+      setTeachers(teacherList);
+    } catch (err) {
+      console.error('Öğretmenler yüklenirken hata:', err);
+    } finally {
+      setLoadingTeachers(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    if (isMaster) {
+      fetchTeachers();
+    }
   }, []);
+
+  // Handle Create Teacher (Master Only)
+  const handleCreateTeacher = async (e) => {
+    e.preventDefault();
+    if (!teacherFullName.trim() || !teacherUsername.trim() || !teacherPassword.trim()) {
+      alert('Lütfen ad soyad, kullanıcı adı ve şifre alanlarını eksiksiz doldurunuz.');
+      return;
+    }
+    try {
+      await teacherService.create({
+        full_name: teacherFullName.trim(),
+        username: teacherUsername.trim(),
+        password: teacherPassword.trim()
+      });
+      setShowTeacherModal(false);
+      setTeacherFullName('');
+      setTeacherUsername('');
+      setTeacherPassword('');
+      await fetchTeachers();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Öğretmen eklenirken hata oluştu.');
+    }
+  };
+
+  // Handle Delete Teacher (Master Only)
+  const handleDeleteTeacher = async (teacherId, teacherName, username) => {
+    if (username?.toLowerCase() === 'pirireis') {
+      alert('Ana yönetici hesabı (pirireis) silinemez.');
+      return;
+    }
+    if (!confirm(`"${teacherName}" isimli öğretmen hesabını ve sınıflarını silmek istediğinize emin misiniz?`)) {
+      return;
+    }
+    try {
+      await teacherService.delete(teacherId);
+      await fetchTeachers();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Öğretmen silinirken hata oluştu.');
+    }
+  };
 
   // Handle Class Creation
   const handleCreateClass = async (e) => {
@@ -273,6 +339,15 @@ export default function TeacherDashboard({ user }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {isMaster && (
+              <button
+                onClick={() => setShowTeacherModal(true)}
+                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-amber-500/20"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Yeni Öğretmen Ekle</span>
+              </button>
+            )}
             <button
               onClick={() => setShowClassModal(true)}
               className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-bold text-slate-200 transition flex items-center gap-2 shadow-sm"
@@ -315,6 +390,19 @@ export default function TeacherDashboard({ user }) {
           <BookOpen className="w-4 h-4" />
           <span>Sınıflar & Öğrenciler ({classrooms.length})</span>
         </button>
+        {isMaster && (
+          <button
+            onClick={() => setActiveTab('teachers')}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition ${
+              activeTab === 'teachers'
+                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Crown className="w-4 h-4 text-amber-400" />
+            <span>Öğretmen Yönetimi ({teachers.length})</span>
+          </button>
+        )}
       </div>
 
       {/* Tab 1: Assignments */}
@@ -466,6 +554,109 @@ export default function TeacherDashboard({ user }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Tab 3: Teachers Management (Master Teacher Only) */}
+      {isMaster && activeTab === 'teachers' && (
+        <div className="space-y-6">
+          <div className="bg-slate-900/60 border border-amber-500/20 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Crown className="w-5 h-5 text-amber-400" />
+                Öğretmen Kadrosu & Yetkilendirme
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Yalnızca Master Öğretmen (pirireis) yeni öğretmen hesapları oluşturabilir veya silebilir. Tanımlanan öğretmenler sisteme giriş yaparak kendi sınıflarını ve öğrencilerini tanımlayabilir.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowTeacherModal(true)}
+              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-amber-500/20 shrink-0 self-start sm:self-auto"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>Yeni Öğretmen Ekle</span>
+            </button>
+          </div>
+
+          {loadingTeachers ? (
+            <div className="p-12 text-center text-slate-500">Öğretmenler yükleniyor...</div>
+          ) : teachers.length === 0 ? (
+            <div className="text-center py-16 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
+              <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <h3 className="text-lg font-bold text-slate-300">Henüz Eklenmiş Öğretmen Yok</h3>
+              <p className="text-xs text-slate-500 mt-1 mb-5">
+                Bölümünüzdeki diğer öğretmenleri sisteme dahil etmek için yeni öğretmen hesabı açabilirsiniz.
+              </p>
+              <button
+                onClick={() => setShowTeacherModal(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-slate-950 font-bold rounded-xl text-xs hover:bg-amber-400 transition"
+              >
+                <Plus className="w-4 h-4" />
+                <span>İlk Öğretmeni Ekle</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {teachers.map((t) => {
+                const isItemMaster = t.username.toLowerCase() === 'pirireis';
+                return (
+                  <div
+                    key={t.id}
+                    className={`bg-slate-900/80 border ${
+                      isItemMaster ? 'border-amber-500/40 shadow-amber-500/5' : 'border-slate-800/80 hover:border-slate-700'
+                    } rounded-2xl p-5 shadow-lg flex flex-col justify-between transition group`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <span className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 ${
+                          isItemMaster
+                            ? 'bg-amber-500/20 border border-amber-500/30 text-amber-300'
+                            : 'bg-slate-800 border border-slate-700 text-slate-300'
+                        }`}>
+                          {isItemMaster ? (
+                            <>
+                              <Crown className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Master Yönetici</span>
+                            </>
+                          ) : (
+                            <>
+                              <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                              <span>Bilişim Öğretmeni</span>
+                            </>
+                          )}
+                        </span>
+
+                        {!isItemMaster && (
+                          <button
+                            onClick={() => handleDeleteTeacher(t.id, t.full_name, t.username)}
+                            title="Öğretmeni Sil"
+                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      <h4 className="text-base font-bold text-slate-100 group-hover:text-amber-400 transition">
+                        {t.full_name}
+                      </h4>
+                      <p className="text-xs text-slate-400 font-mono mt-1">
+                        @{t.username}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
+                      <span>Kayıt ID: #{t.id}</span>
+                      <span className="text-[11px] text-slate-400">
+                        {isItemMaster ? 'Tüm Yetkiler' : 'Sınıf & Öğrenci Tanımlama'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
@@ -929,6 +1120,97 @@ export default function TeacherDashboard({ user }) {
                 })
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Yeni Öğretmen Tanımla (Master Only) */}
+      {isMaster && showTeacherModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Yeni Öğretmen Ekle</h3>
+                  <p className="text-xs text-slate-400">Sisteme yeni bir bilişim öğretmeni hesabı tanımlayın</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowTeacherModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTeacher} className="mt-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Öğretmen Adı Soyadı
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Örn: Ahmet Demir"
+                  value={teacherFullName}
+                  onChange={(e) => setTeacherFullName(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Kullanıcı Adı (Giriş için)
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Örn: ahmetdemir"
+                  value={teacherUsername}
+                  onChange={(e) => setTeacherUsername(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+                />
+                <span className="text-[11px] text-slate-500 mt-1 block">
+                  Küçük harf ve Türkçe karakter içermeyen isimler önerilir.
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  Başlangıç Şifresi
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={teacherPassword}
+                  onChange={(e) => setTeacherPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+                />
+                <span className="text-[11px] text-slate-500 mt-1 block">
+                  Öğretmen sisteme giriş yaptıktan sonra şifresini değiştirebilir.
+                </span>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowTeacherModal(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition shadow-lg shadow-amber-500/20"
+                >
+                  Öğretmeni Kaydet
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

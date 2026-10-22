@@ -42,27 +42,36 @@ app.include_router(submissions.router)
 def startup_seed_data():
     db = SessionLocal()
     try:
-        # Check if teacher exists
-        teacher = db.query(User).filter(User.username == "ogretmen").first()
-        if not teacher:
-            teacher = User(
-                username="ogretmen",
-                password_hash=hash_password("123"),
-                full_name="Bilişim Öğretmeni",
+        # Check / Create pirireis admin teacher
+        pirireis_teacher = db.query(User).filter(User.username == "pirireis").first()
+        if not pirireis_teacher:
+            pirireis_teacher = User(
+                username="pirireis",
+                password_hash=hash_password("20262027"),
+                full_name="Piri Reis Bilişim Yöneticisi",
                 role="teacher"
             )
-            db.add(teacher)
+            db.add(pirireis_teacher)
             db.commit()
-            db.refresh(teacher)
+            db.refresh(pirireis_teacher)
+
+        # Reassign any old classes from ogretmen to pirireis
+        old_teacher = db.query(User).filter(User.username == "ogretmen").first()
+        if old_teacher:
+            for c in db.query(Classroom).filter(Classroom.teacher_id == old_teacher.id).all():
+                c.teacher_id = pirireis_teacher.id
+            for a in db.query(Assignment).filter(Assignment.teacher_id == old_teacher.id).all():
+                a.teacher_id = pirireis_teacher.id
+            db.commit()
 
         # Check if sample class exists
-        sample_class = db.query(Classroom).filter(Classroom.teacher_id == teacher.id).first()
+        sample_class = db.query(Classroom).filter(Classroom.teacher_id == pirireis_teacher.id).first()
         if not sample_class:
             sample_class = Classroom(
                 name="11-B Bilişim - Web Tasarım ve Programlama",
                 grade_level="11. Sınıf",
                 description="HTML5, CSS3, JavaScript, Python ve Veritabanı uygulamaları",
-                teacher_id=teacher.id
+                teacher_id=pirireis_teacher.id
             )
             db.add(sample_class)
             db.commit()

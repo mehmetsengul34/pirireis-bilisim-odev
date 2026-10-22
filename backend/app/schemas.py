@@ -23,6 +23,15 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     user: UserOut
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+class CreateTeacherRequest(BaseModel):
+    username: str
+    password: str
+    full_name: str
+
 class CreateStudentRequest(BaseModel):
     username: str
     password: str

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, User, ShieldCheck, GraduationCap, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
+import { Lock, User, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
 import Logo from '../components/Logo';
 import { authService } from '../services/api';
 
@@ -26,17 +26,6 @@ export default function LoginView({ onLoginSuccess }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickLogin = (userType) => {
-    if (userType === 'teacher') {
-      setUsername('ogretmen');
-      setPassword('123');
-    } else {
-      setUsername('ogrenci');
-      setPassword('123');
-    }
-    setError('');
   };
 
   return (
@@ -128,31 +117,6 @@ export default function LoginView({ onLoginSuccess }) {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Login Helpers */}
-          <div className="mt-6 pt-5 border-t border-slate-800">
-            <span className="block text-center text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-3">
-              Hızlı Test Girişi
-            </span>
-            <div className="grid grid-cols-2 gap-2.5">
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('teacher')}
-                className="p-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl flex items-center justify-center gap-2 text-xs font-medium text-amber-300 transition"
-              >
-                <ShieldCheck className="w-4 h-4 text-amber-400" />
-                <span>Öğretmen (123)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('student')}
-                className="p-2.5 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-xl flex items-center justify-center gap-2 text-xs font-medium text-cyan-300 transition"
-              >
-                <GraduationCap className="w-4 h-4 text-cyan-400" />
-                <span>Öğrenci (123)</span>
-              </button>
-            </div>
-          </div>
         </div>
 
         {/* Footer info */}

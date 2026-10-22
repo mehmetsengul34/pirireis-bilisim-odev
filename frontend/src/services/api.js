@@ -66,6 +66,28 @@ export const authService = {
   fetchMe: async () => {
     const response = await api.get('/auth/me');
     return response.data;
+  },
+  changePassword: async (currentPassword, newPassword) => {
+    const response = await api.post('/auth/change-password', {
+      current_password: currentPassword,
+      new_password: newPassword
+    });
+    return response.data;
+  }
+};
+
+export const teacherService = {
+  list: async () => {
+    const response = await api.get('/auth/teachers');
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/auth/teachers', data);
+    return response.data;
+  },
+  delete: async (teacherId) => {
+    const response = await api.delete(`/auth/teachers/${teacherId}`);
+    return response.data;
   }
 };
 

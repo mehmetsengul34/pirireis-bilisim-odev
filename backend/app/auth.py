@@ -66,3 +66,11 @@ def require_student(current_user: User = Depends(get_current_user)) -> User:
             detail="Bu işlem yalnızca öğrenciler içindir."
         )
     return current_user
+
+def require_admin_teacher(current_user: User = Depends(require_teacher)) -> User:
+    if current_user.username.lower() != "pirireis":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Bu işlem yalnızca yönetici öğretmen (pirireis) yetkisindedir."
+        )
+    return current_user
