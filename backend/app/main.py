@@ -110,7 +110,7 @@ def startup_seed_data():
         if not sample_assignment:
             sample_assignment = Assignment(
                 classroom_id=sample_class.id,
-                teacher_id=teacher.id,
+                teacher_id=pirireis_teacher.id,
                 title="Hafta 1: Responsive Portfolyo Web Sitesi",
                 description="Flexbox ve Grid kullanarak mobil uyumlu, temiz kodlanmış bir kişisel portfolyo sayfası hazırlayınız. Kodlarınızı zip olarak yükleyiniz.",
                 due_date=None
