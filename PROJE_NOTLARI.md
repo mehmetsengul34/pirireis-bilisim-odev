@@ -28,8 +28,12 @@
 
 ---
 
-## 📋 Yarın Yapılacaklar
+## 📋 Tamamlanan İşlemler ve Doğrulama
 
-1. Render.com üzerinde `pirireis-api` servisi için **Manual Deploy > Deploy latest commit** tetiklenecek.
-2. `pirireis` / `20262027` ile canlıda giriş doğrulanacak.
-3. İhtiyaca göre yeni modüllerle devam edilecek.
+1. Render.com üzerinde `pirireis-api` servisi otomatik olarak en güncel commit (`8b8842e`) ile deploy oldu.
+2. Startup seed işlemi başarıyla tamamlandı:
+   - `ogretmen` hesabı canlı sunucudan tamamen temizlendi (artık 401 Unauthorized veriyor).
+   - `pirireis` / `20262027` master yönetici hesabı canlı sunucuda aktif ve doğrulandı.
+   - `ogrenci` / `123` öğrenci hesabı canlı sunucuda aktif ve doğrulandı.
+   - Master öğretmen yetkilendirmesi (`/api/auth/teachers`) canlı ortamda çalışıyor.
+
