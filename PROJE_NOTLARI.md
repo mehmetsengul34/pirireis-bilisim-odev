@@ -1,15 +1,24 @@
 # ⚓ Piri Reis Bilişim Ödev ve Takip Portalı — Proje Durumu ve Devam Notları
 
-> **Tarih:** 26 Ekim 2026  
+> **Tarih:** 27 Ekim 2026  
 > **GitHub Deposu:** `mehmetsengul34/pirireis-bilisim-odev` (Branch: `main`)  
 > **Canlı Yayın (Vercel):** https://pirireis-bilisim-odev.vercel.app | https://ogretmenlerodasi.info  
 > **API Sunucusu (Render):** https://pirireis-api.onrender.com
 
 ---
 
-## 📌 Son Yapılan Geliştirmeler (26 Ekim 2026)
+## 📌 Son Yapılan Geliştirmeler (26-27 Ekim 2026)
 
-### 1. Veri Kaybı Sorununun Tespiti ve Kalıcı Çözümü (Verilerin Silinme Sebebi):
+### 1. e-Okul PDF Dosyası Çoklu Sütun Ayrıştırma (Gelişmiş Algoritma):
+- e-Okul'dan alınan dikey/sütunlu sınıf listeleri (1. Sütun: Sıra No, 2. Sütun: Okul No, 3. Sütun: Adı, 4. Sütun: Soyadı, 5. Sütun: Cinsiyeti) dinamik token bloklama algoritması ile eksiksiz ayrıştırıldı.
+- Çok kelimeli isimler (Örn: *Mehmet Ali Demir*) ve cinsiyet sütunu olan/olmayan tüm tablo yapıları desteklendi.
+- Kullanıcı adları okul numarası ve ad bitişik formatta (Örn: `101ahmet`, `120irem`), şifreler standart `1234` olarak oluşturuldu.
+- Tekrar yükleme durumlarında mükerrer kayıt engellendi ve mevcut öğrenciler güncellendi.
+
+### 2. Okul Amblemi ve Favicon:
+- Torbalı Piri Reis MTAL resmi okul amblemi favicon ve logo bileşenlerine entegre edildi.
+
+### 3. Veri Kaybı Sorununun Tespiti ve Kalıcı Çözümü (Verilerin Silinme Sebebi):
 - **Sorunun Nedeni:**  
   Render.com ücretsiz (free) katmanında çalışan web servisleri 15 dakika boyunca istek almadığında uyku moduna (spin-down) geçer. Render'ın ücretsiz konteyner diskleri **geçicidir (ephemeral)**. Konteyner her uyandığında veya yeniden başladığında yerel diskteki `lms.db` SQLite veritabanı sıfırlanıyor ve sadece başlangıçtaki varsayılan tohum veriler kalıyordu. Ayrıca backend kodunda Master kullanıcının tüm sınıfları listelemesinde öğretmen filtresi kısıtı vardı.
 - **Uygulanan Çözüm:**  
