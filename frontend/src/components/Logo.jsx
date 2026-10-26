@@ -5,7 +5,7 @@ export default function Logo({ className = "w-10 h-10", showText = true, subtitl
     <div className="flex items-center gap-3">
       <div className={`relative flex-shrink-0 flex items-center justify-center ${className}`}>
         <img 
-          src="/logo.svg" 
+          src="/logo.png" 
           alt="Torbalı Piri Reis MTAL Bilişim" 
           className="w-full h-full object-contain"
         />
