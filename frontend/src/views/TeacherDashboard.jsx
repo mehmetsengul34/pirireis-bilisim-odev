@@ -291,13 +291,14 @@ export default function TeacherDashboard({ user }) {
   // Handle Assignment Creation
   const handleCreateAssignment = async (e) => {
     e.preventDefault();
-    if (!assignTitle.trim() || !assignClassId) {
+    const targetClassId = assignClassId || (classrooms[0]?.id?.toString() || '');
+    if (!assignTitle.trim() || !targetClassId) {
       alert('Lütfen sınıf ve ödev başlığı giriniz.');
       return;
     }
 
     const formData = new FormData();
-    formData.append('classroom_id', assignClassId);
+    formData.append('classroom_id', targetClassId);
     formData.append('title', assignTitle.trim());
     formData.append('description', assignDesc.trim());
     if (assignDueDate) formData.append('due_date', assignDueDate);
@@ -312,7 +313,8 @@ export default function TeacherDashboard({ user }) {
       setAssignFile(null);
       fetchData();
     } catch (err) {
-      alert('Ödev oluşturulurken hata oluştu.');
+      const errMsg = err.response?.data?.detail || 'Ödev oluşturulurken hata oluştu.';
+      alert(errMsg);
     }
   };
 
@@ -1113,7 +1115,7 @@ export default function TeacherDashboard({ user }) {
               <div>
                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Hedef Sınıf</label>
                 <select
-                  value={assignClassId}
+                  value={assignClassId || (classrooms[0]?.id?.toString() || '')}
                   onChange={(e) => setAssignClassId(e.target.value)}
                   className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-400"
                 >

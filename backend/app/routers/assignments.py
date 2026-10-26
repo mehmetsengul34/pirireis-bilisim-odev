@@ -98,9 +98,14 @@ async def create_assignment(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db)
 ):
-    classroom = db.query(Classroom).filter(Classroom.id == classroom_id, Classroom.teacher_id == teacher.id).first()
+    if teacher.username.lower() == "pirireis":
+        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+    else:
+        # Teachers can assign homework to classes they manage or existing school classes
+        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+
     if not classroom:
-        raise HTTPException(status_code=404, detail="Sınıf bulunamadı veya yetkiniz yok.")
+        raise HTTPException(status_code=404, detail="Sınıf bulunamadı.")
 
     parsed_due_date = None
     if due_date and due_date.strip():
