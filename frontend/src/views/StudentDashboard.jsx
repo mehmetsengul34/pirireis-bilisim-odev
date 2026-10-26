@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, Upload, CheckCircle2, Clock, Download, Award, 
-  MessageSquare, AlertCircle, BookOpen, Sparkles, Send, FileCheck
+  MessageSquare, BookOpen, FileCheck
 } from 'lucide-react';
 import { assignmentService, submissionService, getFileUrl } from '../services/api';
 
@@ -57,7 +57,7 @@ export default function StudentDashboard({ user }) {
 
       await submissionService.submit(formData);
 
-      setSuccessMessage(prev => ({ ...prev, [assignId]: 'Ödeviniz başarıyla yüklendi ve öğretmene iletildi!' }));
+      setSuccessMessage(prev => ({ ...prev, [assignId]: 'Ödeviniz başarıyla yüklendi ve iletildi!' }));
       setTimeout(() => {
         setSuccessMessage(prev => ({ ...prev, [assignId]: '' }));
       }, 4000);
@@ -72,33 +72,33 @@ export default function StudentDashboard({ user }) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Student Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white border border-zinc-200 rounded-2xl p-6 sm:p-7 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold mb-3">
-              <Sparkles className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-700 text-xs font-medium mb-2 border border-zinc-200">
+              <BookOpen className="w-3.5 h-3.5 text-zinc-500" />
               <span>Öğrenci Portalı</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">
               Merhaba, {user.full_name}
             </h1>
-            <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-              Bilişim Teknolojileri derslerinize ait ödevleri inceleyin, yaptığınız çalışmaları sisteme yükleyin, öğretmeninizin verdiği puanı ve geri bildirimleri anında görün.
+            <p className="text-zinc-500 text-xs sm:text-sm mt-1 max-w-2xl">
+              Bilişim derslerinize ait ödevleri inceleyin, çalışmalarınızı yükleyin ve öğretmeninizin değerlendirmesini takip edin.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 text-center min-w-[140px]">
-              <span className="text-xs text-slate-500 block">Öğrenci No</span>
-              <span className="text-base font-bold text-cyan-400 font-mono">
+          <div className="flex items-center gap-2.5">
+            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-center min-w-[120px]">
+              <span className="text-[11px] text-zinc-500 block">Öğrenci No</span>
+              <span className="text-sm font-semibold text-zinc-900 font-mono">
                 {user.student_number || user.username}
               </span>
             </div>
-            <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 text-center min-w-[140px]">
-              <span className="text-xs text-slate-500 block">Aktif Ödev Sayısı</span>
-              <span className="text-base font-bold text-amber-400">
+            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-center min-w-[120px]">
+              <span className="text-[11px] text-zinc-500 block">Aktif Ödev</span>
+              <span className="text-sm font-semibold text-zinc-900">
                 {assignments.length} Ödev
               </span>
             </div>
@@ -107,29 +107,29 @@ export default function StudentDashboard({ user }) {
       </div>
 
       {/* Assignments Section */}
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-cyan-400" />
+          <h2 className="text-sm font-semibold text-zinc-900 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-zinc-600" />
             <span>Ders Ödevleri ve Görevler</span>
           </h2>
-          <span className="text-xs text-slate-500">
-            Toplam {assignments.length} ödev listeleniyor
+          <span className="text-xs text-zinc-400">
+            Toplam {assignments.length} ödev
           </span>
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-xs text-slate-500">Ödevler yükleniyor...</div>
+          <div className="text-center py-16 text-xs text-zinc-400">Ödevler yükleniyor...</div>
         ) : assignments.length === 0 ? (
-          <div className="text-center py-16 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
-            <CheckCircle2 className="w-12 h-12 text-emerald-500/50 mx-auto mb-3" />
-            <h3 className="text-lg font-bold text-slate-300">Bekleyen Ödeviniz Yok</h3>
-            <p className="text-xs text-slate-500 mt-1">
-              Öğretmeniniz yeni bir ödev verdiğinde burada listelenecektir.
+          <div className="text-center py-16 bg-white border border-zinc-200 rounded-2xl p-8">
+            <CheckCircle2 className="w-10 h-10 text-zinc-400 mx-auto mb-3" />
+            <h3 className="text-sm font-semibold text-zinc-900">Bekleyen Ödeviniz Yok</h3>
+            <p className="text-xs text-zinc-500 mt-1">
+              Öğretmeniniz yeni bir ödev verdiğinde burada görüntülenecektir.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {assignments.map((assignment) => {
               const mySub = assignment.my_submission;
               const hasSubmitted = !!mySub;
@@ -138,51 +138,51 @@ export default function StudentDashboard({ user }) {
               return (
                 <div
                   key={assignment.id}
-                  className="bg-slate-900/90 border border-slate-800 hover:border-slate-700/80 rounded-3xl p-6 shadow-xl flex flex-col justify-between space-y-6 transition"
+                  className="bg-white border border-zinc-200 hover:border-zinc-300 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-5 transition"
                 >
                   {/* Top Header */}
                   <div>
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="px-3 py-1 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-semibold">
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                      <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 text-[11px] font-medium border border-zinc-200">
                         {assignment.classroom_name}
                       </span>
 
                       {/* Status Badge */}
                       {isGraded ? (
-                        <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 text-xs font-bold flex items-center gap-1.5 shadow-sm">
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium flex items-center gap-1">
                           <Award className="w-3.5 h-3.5" />
-                          <span>Puanlandı: {mySub.grade} / 100</span>
+                          <span>Puan: {mySub.grade} / 100</span>
                         </span>
                       ) : hasSubmitted ? (
-                        <span className="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs font-semibold flex items-center gap-1.5">
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium flex items-center gap-1">
                           <Clock className="w-3.5 h-3.5" />
-                          <span>Öğretmen İncelemesi Bekleniyor</span>
+                          <span>İnceleme Bekleniyor</span>
                         </span>
                       ) : (
-                        <span className="px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-slate-400 text-xs font-medium">
+                        <span className="px-2.5 py-0.5 rounded-full bg-zinc-100 border border-zinc-200 text-zinc-600 text-xs font-medium">
                           Teslim Edilmedi
                         </span>
                       )}
                     </div>
 
-                    <h3 className="text-lg font-bold text-slate-100 mb-2">
+                    <h3 className="text-base font-semibold text-zinc-900 mb-1.5">
                       {assignment.title}
                     </h3>
 
-                    <p className="text-xs text-slate-300 leading-relaxed bg-slate-950/40 p-3.5 rounded-xl border border-slate-800/80">
+                    <p className="text-xs text-zinc-600 leading-relaxed bg-zinc-50 p-3 rounded-xl border border-zinc-200">
                       {assignment.description || 'Bu ödev için özel bir açıklama girilmemiş.'}
                     </p>
 
                     {/* Teacher's Attachment */}
                     {assignment.attachment_path && (
-                      <div className="mt-3">
+                      <div className="mt-2.5">
                         <a
                           href={getFileUrl(assignment.attachment_path)}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-medium bg-slate-950/80 px-3 py-2 rounded-xl border border-slate-800 transition"
+                          className="inline-flex items-center gap-1.5 text-xs text-zinc-700 hover:text-zinc-900 font-medium bg-zinc-50 px-2.5 py-1.5 rounded-lg border border-zinc-200 transition"
                         >
-                          <Download className="w-4 h-4" />
+                          <Download className="w-3.5 h-3.5 text-zinc-500" />
                           <span>Öğretmenin Eklediği Belgeyi İndir ({assignment.attachment_filename})</span>
                         </a>
                       </div>
@@ -191,23 +191,23 @@ export default function StudentDashboard({ user }) {
 
                   {/* Teacher Feedback Card (If Graded!) */}
                   {isGraded && (
-                    <div className="bg-gradient-to-br from-emerald-950/30 via-slate-900 to-slate-950 border border-emerald-500/30 rounded-2xl p-4 space-y-2">
+                    <div className="bg-emerald-50/50 border border-emerald-200 rounded-xl p-3.5 space-y-2">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-                          <Award className="w-4 h-4" />
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
+                          <Award className="w-3.5 h-3.5 text-emerald-700" />
                           <span>Öğretmen Değerlendirmesi</span>
                         </div>
-                        <span className="text-lg font-black text-emerald-400 font-mono">
-                          {mySub.grade} <span className="text-xs text-slate-400 font-sans">/ 100</span>
+                        <span className="text-base font-bold text-emerald-800 font-mono">
+                          {mySub.grade} <span className="text-xs text-emerald-600 font-sans">/ 100</span>
                         </span>
                       </div>
 
-                      <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-800">
-                        <span className="text-[11px] font-semibold text-slate-400 block mb-1 flex items-center gap-1">
-                          <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
-                          <span>Öğretmen Görüşü / Notu:</span>
+                      <div className="bg-white rounded-lg p-2.5 border border-emerald-200/60">
+                        <span className="text-[11px] font-medium text-zinc-500 block mb-0.5 flex items-center gap-1">
+                          <MessageSquare className="w-3 h-3 text-zinc-400" />
+                          <span>Geri Bildirim:</span>
                         </span>
-                        <p className="text-xs text-slate-200 italic leading-relaxed">
+                        <p className="text-xs text-zinc-800 italic leading-relaxed">
                           "{mySub.feedback || 'Öğretmen ek bir görüş belirtmedi, tebrikler!'}"
                         </p>
                       </div>
@@ -215,15 +215,15 @@ export default function StudentDashboard({ user }) {
                   )}
 
                   {/* Submission Info or Upload Form */}
-                  <div className="border-t border-slate-800 pt-4">
+                  <div className="border-t border-zinc-100 pt-3.5">
                     {hasSubmitted && (
-                      <div className="mb-4 p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+                      <div className="mb-3 p-2.5 bg-zinc-50 rounded-xl border border-zinc-200 flex items-center justify-between text-xs">
                         <div>
-                          <span className="font-semibold text-emerald-400 flex items-center gap-1">
-                            <FileCheck className="w-4 h-4" />
+                          <span className="font-medium text-emerald-700 flex items-center gap-1">
+                            <FileCheck className="w-3.5 h-3.5" />
                             <span>Ödeviniz Teslim Edildi</span>
                           </span>
-                          <span className="text-[11px] text-slate-400 block mt-0.5">
+                          <span className="text-[11px] text-zinc-400 block mt-0.5">
                             Tarih: {new Date(mySub.submitted_at).toLocaleString('tr-TR')}
                           </span>
                         </div>
@@ -233,18 +233,18 @@ export default function StudentDashboard({ user }) {
                             href={mySub.file_path}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-cyan-400 hover:text-cyan-300 font-medium flex items-center gap-1"
+                            className="text-zinc-700 hover:text-zinc-900 font-medium flex items-center gap-1"
                           >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>Yüklediğim Dosya</span>
+                            <Download className="w-3.5 h-3.5 text-zinc-500" />
+                            <span>Dosyam</span>
                           </a>
                         )}
                       </div>
                     )}
 
                     {/* Homework Upload Box */}
-                    <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800/80 space-y-3">
-                      <span className="text-xs font-bold text-slate-200 block">
+                    <div className="bg-zinc-50 p-3.5 rounded-xl border border-zinc-200 space-y-2.5">
+                      <span className="text-xs font-semibold text-zinc-800 block">
                         {hasSubmitted ? 'Ödevinizi Güncellemek / Yeniden Yüklemek İster misiniz?' : 'Ödevinizi Sisteme Yükleyin:'}
                       </span>
 
@@ -252,7 +252,7 @@ export default function StudentDashboard({ user }) {
                         <input
                           type="file"
                           onChange={(e) => handleFileChange(assignment.id, e.target.files[0])}
-                          className="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-cyan-500/10 file:text-cyan-300 hover:file:bg-cyan-500/20 cursor-pointer"
+                          className="w-full text-xs text-zinc-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-zinc-200 file:text-zinc-800 hover:file:bg-zinc-300 cursor-pointer"
                         />
                       </div>
 
@@ -262,13 +262,13 @@ export default function StudentDashboard({ user }) {
                           placeholder="Öğretmene iletmek istediğiniz not (opsiyonel)..."
                           value={studentNotes[assignment.id] || ''}
                           onChange={(e) => handleNoteChange(assignment.id, e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-900 border border-slate-700/80 rounded-xl text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                          className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
                         />
                       </div>
 
                       {successMessage[assignment.id] && (
-                        <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-700 flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           <span>{successMessage[assignment.id]}</span>
                         </div>
                       )}
@@ -276,14 +276,14 @@ export default function StudentDashboard({ user }) {
                       <button
                         onClick={() => handleSubmitHomework(assignment.id)}
                         disabled={submitting[assignment.id]}
-                        className="w-full py-2.5 px-4 bg-gradient-to-r from-cyan-500 to-sky-600 hover:from-cyan-400 hover:to-sky-500 text-slate-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50"
+                        className="w-full py-2 px-3.5 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
                       >
                         {submitting[assignment.id] ? (
                           <span>Yükleniyor...</span>
                         ) : (
                           <>
-                            <Upload className="w-4 h-4" />
-                            <span>{hasSubmitted ? 'Ödevi Güncelle & Tekrar Gönder' : 'Ödevi Yükle ve Teslim Et'}</span>
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{hasSubmitted ? 'Ödevi Güncelle' : 'Ödevi Gönder'}</span>
                           </>
                         )}
                       </button>

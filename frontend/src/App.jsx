@@ -24,7 +24,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col text-slate-100">
+    <div className="min-h-screen bg-[#fafafa] flex flex-col text-zinc-900">
       <Navbar user={user} />
       <main className="flex-1 pb-16">
         {user.role === 'teacher' ? (

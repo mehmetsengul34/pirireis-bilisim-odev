@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, BookOpen, Plus, CheckCircle2, Clock, FileText, Download, 
-  Send, UserPlus, Trash2, Award, MessageSquare, ChevronRight, AlertCircle, X,
+  Send, UserPlus, Trash2, Award, ChevronRight, X,
   Crown, ShieldCheck
 } from 'lucide-react';
 import { classroomService, assignmentService, submissionService, teacherService, getFileUrl } from '../services/api';
@@ -105,24 +105,24 @@ export default function TeacherDashboard({ user }) {
       setTeacherFullName('');
       setTeacherUsername('');
       setTeacherPassword('');
-      await fetchTeachers();
+      fetchTeachers();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Öğretmen eklenirken hata oluştu.');
+      alert(err.response?.data?.detail || 'Öğretmen oluşturulurken bir hata oluştu.');
     }
   };
 
   // Handle Delete Teacher (Master Only)
-  const handleDeleteTeacher = async (teacherId, teacherName, username) => {
-    if (username?.toLowerCase() === 'pirireis') {
-      alert('Ana yönetici hesabı (pirireis) silinemez.');
+  const handleDeleteTeacher = async (teacherId, teacherName, teacherUsernameItem) => {
+    if (teacherUsernameItem?.toLowerCase() === 'pirireis') {
+      alert('Master öğretmen hesabı silinemez.');
       return;
     }
-    if (!confirm(`"${teacherName}" isimli öğretmen hesabını ve sınıflarını silmek istediğinize emin misiniz?`)) {
+    if (!confirm(`"${teacherName}" isimli öğretmeni silmek istediğinize emin misiniz?`)) {
       return;
     }
     try {
       await teacherService.delete(teacherId);
-      await fetchTeachers();
+      fetchTeachers();
     } catch (err) {
       alert(err.response?.data?.detail || 'Öğretmen silinirken hata oluştu.');
     }
@@ -132,6 +132,7 @@ export default function TeacherDashboard({ user }) {
   const handleCreateClass = async (e) => {
     e.preventDefault();
     if (!newClassName.trim()) return;
+
     try {
       await classroomService.create({
         name: newClassName.trim(),
@@ -143,7 +144,7 @@ export default function TeacherDashboard({ user }) {
       setNewClassDesc('');
       fetchData();
     } catch (err) {
-      alert('Sınıf oluşturulurken hata oluştu.');
+      alert(err.response?.data?.detail || 'Sınıf oluşturulurken hata oluştu.');
     }
   };
 
@@ -162,13 +163,14 @@ export default function TeacherDashboard({ user }) {
     }
   };
 
-  // Handle Add Student
+  // Handle Add Student to Class
   const handleAddStudent = async (e) => {
     e.preventDefault();
-    if (!studentUsername.trim() || !studentPassword.trim() || !studentFullName.trim()) {
-      alert('Lütfen öğrenci adı, kullanıcı adı ve şifresini eksiksiz giriniz.');
+    if (!studentFullName.trim() || !studentUsername.trim() || !studentPassword.trim()) {
+      alert('Lütfen tüm zorunlu alanları doldurunuz.');
       return;
     }
+
     try {
       await classroomService.addStudent(selectedClassId, {
         full_name: studentFullName.trim(),
@@ -176,25 +178,29 @@ export default function TeacherDashboard({ user }) {
         password: studentPassword.trim(),
         student_number: studentNumber.trim()
       });
+
+      // Clear form
       setStudentFullName('');
       setStudentUsername('');
       setStudentPassword('');
       setStudentNumber('');
-      const updated = await classroomService.getStudents(selectedClassId);
-      setClassStudents(updated);
-      fetchData();
+
+      // Refresh student list
+      const students = await classroomService.getStudents(selectedClassId);
+      setClassStudents(students);
+      fetchData(); // to update counts
     } catch (err) {
-      alert(err.response?.data?.detail || 'Öğrenci eklenirken hata oluştu.');
+      alert(err.response?.data?.detail || 'Öğrenci eklenirken bir hata oluştu.');
     }
   };
 
-  // Handle Remove Student
+  // Handle Remove Student from Class
   const handleRemoveStudent = async (studentId) => {
-    if (!confirm('Öğrenciyi sınıftan çıkarmak istediğinize emin misiniz?')) return;
+    if (!confirm('Bu öğrenciyi sınıftan çıkarmak istediğinize emin misiniz?')) return;
     try {
       await classroomService.removeStudent(selectedClassId, studentId);
-      const updated = await classroomService.getStudents(selectedClassId);
-      setClassStudents(updated);
+      const students = await classroomService.getStudents(selectedClassId);
+      setClassStudents(students);
       fetchData();
     } catch (err) {
       alert('Öğrenci çıkarılırken hata oluştu.');
@@ -310,7 +316,7 @@ export default function TeacherDashboard({ user }) {
       }, 3000);
       fetchData();
     } catch (err) {
-      alert('Puan kaydedilirken hata oluştu.');
+      alert('Puan kaydedilemedi.');
       setGradingState(prev => ({
         ...prev,
         [submissionId]: { ...prev[submissionId], saving: false }
@@ -321,86 +327,86 @@ export default function TeacherDashboard({ user }) {
   const selectedClass = classrooms.find(c => c.id === selectedClassId);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/60 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white border border-zinc-200 rounded-2xl p-6 sm:p-7 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold mb-3">
-              <Award className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 text-zinc-700 text-xs font-medium mb-2 border border-zinc-200">
+              <Award className="w-3.5 h-3.5 text-zinc-500" />
               <span>Öğretmen Yönetim Paneli</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 tracking-tight">
               Hoş Geldiniz, {user.full_name}
             </h1>
-            <p className="text-slate-400 text-sm mt-1 max-w-2xl">
-              Sınıflarınızı yönetin, öğrencilere yeni hesaplar ve ödevler tanımlayın, teslim edilen ödevleri puanlayıp geri bildirimde bulunun.
+            <p className="text-zinc-500 text-xs sm:text-sm mt-1 max-w-2xl">
+              Sınıflarınızı yönetin, öğrencilere ödev tanımlayın ve teslim edilen çalışmaları puanlayın.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             {isMaster && (
               <button
                 onClick={() => setShowTeacherModal(true)}
-                className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-amber-500/20"
+                className="px-3.5 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5"
               >
-                <UserPlus className="w-4 h-4" />
+                <UserPlus className="w-4 h-4 text-zinc-600" />
                 <span>Yeni Öğretmen Ekle</span>
               </button>
             )}
             <button
               onClick={() => setShowClassModal(true)}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-bold text-slate-200 transition flex items-center gap-2 shadow-sm"
+              className="px-3.5 py-2 bg-white hover:bg-zinc-50 text-zinc-800 border border-zinc-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5 shadow-sm"
             >
-              <Plus className="w-4 h-4 text-cyan-400" />
+              <Plus className="w-4 h-4 text-zinc-600" />
               <span>Yeni Sınıf Aç</span>
             </button>
             <button
               onClick={() => setShowAssignmentModal(true)}
-              className="px-4 py-2.5 bg-gradient-to-r from-cyan-500 to-sky-600 hover:from-cyan-400 hover:to-sky-500 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-cyan-500/20"
+              className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5 shadow-sm"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
               <span>Yeni Ödev Gönder</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+      {/* Navigation Tabs (Minimalist Segmented Controls) */}
+      <div className="flex items-center gap-1.5 p-1 bg-zinc-100/90 rounded-xl w-fit border border-zinc-200">
         <button
           onClick={() => setActiveTab('assignments')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition ${
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
             activeTab === 'assignments'
-              ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              ? 'bg-white text-zinc-900 shadow-sm font-semibold'
+              : 'text-zinc-600 hover:text-zinc-900'
           }`}
         >
-          <FileText className="w-4 h-4" />
-          <span>Verilen Ödevler & Teslimler ({assignments.length})</span>
+          <FileText className="w-3.5 h-3.5" />
+          <span>Verilen Ödevler ({assignments.length})</span>
         </button>
         <button
           onClick={() => setActiveTab('classrooms')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition ${
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
             activeTab === 'classrooms'
-              ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+              ? 'bg-white text-zinc-900 shadow-sm font-semibold'
+              : 'text-zinc-600 hover:text-zinc-900'
           }`}
         >
-          <BookOpen className="w-4 h-4" />
+          <BookOpen className="w-3.5 h-3.5" />
           <span>Sınıflar & Öğrenciler ({classrooms.length})</span>
         </button>
         {isMaster && (
           <button
             onClick={() => setActiveTab('teachers')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition ${
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
               activeTab === 'teachers'
-                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                ? 'bg-white text-zinc-900 shadow-sm font-semibold'
+                : 'text-zinc-600 hover:text-zinc-900'
             }`}
           >
-            <Crown className="w-4 h-4 text-amber-400" />
-            <span>Öğretmen Yönetimi ({teachers.length})</span>
+            <Crown className="w-3.5 h-3.5" />
+            <span>Öğretmenler ({teachers.length})</span>
           </button>
         )}
       </div>
@@ -409,47 +415,47 @@ export default function TeacherDashboard({ user }) {
       {activeTab === 'assignments' && (
         <div className="space-y-4">
           {loading ? (
-            <div className="p-12 text-center text-slate-500">Ödevler yükleniyor...</div>
+            <div className="p-12 text-center text-xs text-zinc-400">Ödevler yükleniyor...</div>
           ) : assignments.length === 0 ? (
-            <div className="text-center py-16 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
-              <FileText className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-slate-300">Henüz Gönderilen Ödev Yok</h3>
-              <p className="text-xs text-slate-500 mt-1 mb-5">
-                Öğrencilerinize proje, uygulama veya araştırma ödevi göndermek için yukarıdaki butonu kullanın.
+            <div className="text-center py-16 bg-white border border-zinc-200 rounded-2xl p-8">
+              <FileText className="w-10 h-10 text-zinc-400 mx-auto mb-3" />
+              <h3 className="text-sm font-semibold text-zinc-900">Henüz Gönderilen Ödev Yok</h3>
+              <p className="text-xs text-zinc-500 mt-1 mb-4">
+                Öğrencilerinize uygulama, araştırma veya proje ödevi göndermek için butonu kullanın.
               </p>
               <button
                 onClick={() => setShowAssignmentModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500 text-slate-950 font-bold rounded-xl text-xs hover:bg-cyan-400 transition"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 text-white font-medium rounded-xl text-xs hover:bg-zinc-800 transition shadow-sm"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>İlk Ödevi Oluştur</span>
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {assignments.map((assignment) => (
                 <div
                   key={assignment.id}
-                  className="bg-slate-900/80 border border-slate-800/80 hover:border-slate-700 rounded-2xl p-5 shadow-lg flex flex-col justify-between transition group"
+                  className="bg-white border border-zinc-200 hover:border-zinc-300 rounded-2xl p-5 shadow-sm flex flex-col justify-between transition group"
                 >
                   <div>
-                    <div className="flex items-center justify-between gap-2 mb-3">
-                      <span className="px-2.5 py-1 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-400 text-[11px] font-semibold">
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                      <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 text-[11px] font-medium border border-zinc-200">
                         {assignment.classroom_name}
                       </span>
                       {assignment.due_date && (
-                        <span className="flex items-center gap-1 text-[11px] text-slate-400">
-                          <Clock className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="flex items-center gap-1 text-[11px] text-zinc-500">
+                          <Clock className="w-3 h-3 text-zinc-400" />
                           <span>{new Date(assignment.due_date).toLocaleDateString('tr-TR')}</span>
                         </span>
                       )}
                     </div>
 
-                    <h3 className="text-base font-bold text-slate-100 group-hover:text-cyan-300 transition line-clamp-2">
+                    <h3 className="text-sm font-semibold text-zinc-900 line-clamp-2">
                       {assignment.title}
                     </h3>
 
-                    <p className="text-xs text-slate-400 mt-2 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-zinc-500 mt-1.5 line-clamp-3 leading-relaxed">
                       {assignment.description || 'Açıklama belirtilmemiş.'}
                     </p>
 
@@ -459,40 +465,36 @@ export default function TeacherDashboard({ user }) {
                           href={getFileUrl(assignment.attachment_path)}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 font-medium bg-slate-950/60 px-2.5 py-1.5 rounded-lg border border-slate-800"
+                          className="inline-flex items-center gap-1.5 text-xs text-zinc-700 hover:text-zinc-900 font-medium bg-zinc-50 px-2.5 py-1.5 rounded-lg border border-zinc-200 transition"
                         >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Ek Dosya: {assignment.attachment_filename}</span>
+                          <Download className="w-3.5 h-3.5 text-zinc-500" />
+                          <span>Ek: {assignment.attachment_filename}</span>
                         </a>
                       </div>
                     )}
                   </div>
 
-                  <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between">
-                    <div className="flex items-center gap-3 text-xs text-slate-400">
-                      <div>
-                        <span className="font-bold text-slate-200">{assignment.submission_count}</span> Teslim
-                      </div>
-                      <div className="text-slate-600">•</div>
-                      <div>
-                        <span className="font-bold text-emerald-400">{assignment.graded_count}</span> Puanlandı
-                      </div>
+                  <div className="mt-5 pt-3.5 border-t border-zinc-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs text-zinc-500">
+                      <span><strong className="text-zinc-900">{assignment.submission_count}</strong> Teslim</span>
+                      <span>•</span>
+                      <span><strong className="text-emerald-600">{assignment.graded_count}</strong> Puanlandı</span>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleDeleteAssignment(assignment.id, assignment.title)}
                         title="Ödevi Sil"
-                        className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl border border-transparent hover:border-red-500/20 transition"
+                        className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleOpenSubmissions(assignment)}
-                        className="px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                        className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-medium transition flex items-center gap-1"
                       >
-                        <span>İncele & Puanla</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        <span>İncele</span>
+                        <ChevronRight className="w-3 h-3" />
                       </button>
                     </div>
                   </div>
@@ -506,48 +508,47 @@ export default function TeacherDashboard({ user }) {
       {/* Tab 2: Classrooms */}
       {activeTab === 'classrooms' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {classrooms.map((cls) => (
               <div
                 key={cls.id}
-                className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between"
+                className="bg-white border border-zinc-200 hover:border-zinc-300 rounded-2xl p-5 shadow-sm flex flex-col justify-between transition"
               >
                 <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-semibold">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 border border-zinc-200 text-xs font-medium">
                       {cls.grade_level || 'Bilişim'}
                     </span>
-                    <span className="text-xs text-slate-500 flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" />
+                    <span className="text-xs text-zinc-500 flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5 text-zinc-400" />
                       {cls.student_count} Öğrenci
                     </span>
                   </div>
 
-                  <h3 className="text-lg font-bold text-white mb-1.5">{cls.name}</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
+                  <h3 className="text-base font-semibold text-zinc-900 mb-1">{cls.name}</h3>
+                  <p className="text-xs text-zinc-500 leading-relaxed mb-4">
                     {cls.description || 'Açıklama girilmemiş.'}
                   </p>
                 </div>
 
-                <div className="pt-4 border-t border-slate-800 flex items-center justify-between">
-                  <span className="text-xs text-slate-500">
+                <div className="pt-3.5 border-t border-zinc-100 flex items-center justify-between">
+                  <span className="text-xs text-zinc-500">
                     {cls.assignment_count} Aktif Ödev
                   </span>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => handleDeleteClass(cls.id, cls.name)}
                       title="Sınıfı Sil"
-                      className="px-2.5 py-1.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl border border-transparent hover:border-red-500/20 transition flex items-center gap-1.5 text-xs font-medium"
+                      className="px-2 py-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition text-xs font-medium"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Sil</span>
+                      Sil
                     </button>
                     <button
                       onClick={() => handleOpenStudentModal(cls.id)}
-                      className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                      className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-lg text-xs font-medium flex items-center gap-1 transition"
                     >
-                      <UserPlus className="w-3.5 h-3.5 text-cyan-400" />
-                      <span>Öğrencileri Yönet</span>
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Öğrenciler</span>
                     </button>
                   </div>
                 </div>
@@ -559,70 +560,68 @@ export default function TeacherDashboard({ user }) {
 
       {/* Tab 3: Teachers Management (Master Teacher Only) */}
       {isMaster && activeTab === 'teachers' && (
-        <div className="space-y-6">
-          <div className="bg-slate-900/60 border border-amber-500/20 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-4">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Crown className="w-5 h-5 text-amber-400" />
+              <h3 className="text-sm font-semibold text-zinc-900 flex items-center gap-2">
+                <Crown className="w-4 h-4 text-zinc-700" />
                 Öğretmen Kadrosu & Yetkilendirme
               </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Yalnızca Master Öğretmen (pirireis) yeni öğretmen hesapları oluşturabilir veya silebilir. Tanımlanan öğretmenler sisteme giriş yaparak kendi sınıflarını ve öğrencilerini tanımlayabilir.
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Master Öğretmen olarak yeni bilişim öğretmenleri ekleyebilir veya kaldırabilirsiniz.
               </p>
             </div>
             <button
               onClick={() => setShowTeacherModal(true)}
-              className="px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-amber-500/20 shrink-0 self-start sm:self-auto"
+              className="px-3.5 py-2 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-medium transition flex items-center gap-1.5 shrink-0 self-start sm:self-auto shadow-sm"
             >
-              <UserPlus className="w-4 h-4" />
+              <UserPlus className="w-3.5 h-3.5" />
               <span>Yeni Öğretmen Ekle</span>
             </button>
           </div>
 
           {loadingTeachers ? (
-            <div className="p-12 text-center text-slate-500">Öğretmenler yükleniyor...</div>
+            <div className="p-12 text-center text-xs text-zinc-400">Öğretmenler yükleniyor...</div>
           ) : teachers.length === 0 ? (
-            <div className="text-center py-16 bg-slate-900/40 border border-slate-800 rounded-3xl p-8">
-              <Users className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-              <h3 className="text-lg font-bold text-slate-300">Henüz Eklenmiş Öğretmen Yok</h3>
-              <p className="text-xs text-slate-500 mt-1 mb-5">
+            <div className="text-center py-16 bg-white border border-zinc-200 rounded-2xl p-8">
+              <Users className="w-10 h-10 text-zinc-400 mx-auto mb-3" />
+              <h3 className="text-sm font-semibold text-zinc-900">Henüz Eklenmiş Öğretmen Yok</h3>
+              <p className="text-xs text-zinc-500 mt-1 mb-4">
                 Bölümünüzdeki diğer öğretmenleri sisteme dahil etmek için yeni öğretmen hesabı açabilirsiniz.
               </p>
               <button
                 onClick={() => setShowTeacherModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-slate-950 font-bold rounded-xl text-xs hover:bg-amber-400 transition"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-900 text-white font-medium rounded-xl text-xs hover:bg-zinc-800 transition"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>İlk Öğretmeni Ekle</span>
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {teachers.map((t) => {
                 const isItemMaster = t.username.toLowerCase() === 'pirireis';
                 return (
                   <div
                     key={t.id}
-                    className={`bg-slate-900/80 border ${
-                      isItemMaster ? 'border-amber-500/40 shadow-amber-500/5' : 'border-slate-800/80 hover:border-slate-700'
-                    } rounded-2xl p-5 shadow-lg flex flex-col justify-between transition group`}
+                    className="bg-white border border-zinc-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between transition"
                   >
                     <div>
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <span className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 ${
+                      <div className="flex items-center justify-between gap-2 mb-2.5">
+                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 ${
                           isItemMaster
-                            ? 'bg-amber-500/20 border border-amber-500/30 text-amber-300'
-                            : 'bg-slate-800 border border-slate-700 text-slate-300'
+                            ? 'bg-zinc-900 text-white'
+                            : 'bg-zinc-100 text-zinc-700 border border-zinc-200'
                         }`}>
                           {isItemMaster ? (
                             <>
-                              <Crown className="w-3.5 h-3.5 text-amber-400" />
+                              <Crown className="w-3 h-3 text-amber-300" />
                               <span>Master Yönetici</span>
                             </>
                           ) : (
                             <>
-                              <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                              <span>Bilişim Öğretmeni</span>
+                              <ShieldCheck className="w-3 h-3 text-zinc-500" />
+                              <span>Öğretmen</span>
                             </>
                           )}
                         </span>
@@ -631,25 +630,25 @@ export default function TeacherDashboard({ user }) {
                           <button
                             onClick={() => handleDeleteTeacher(t.id, t.full_name, t.username)}
                             title="Öğretmeni Sil"
-                            className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                            className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
                       </div>
 
-                      <h4 className="text-base font-bold text-slate-100 group-hover:text-amber-400 transition">
+                      <h4 className="text-sm font-semibold text-zinc-900">
                         {t.full_name}
                       </h4>
-                      <p className="text-xs text-slate-400 font-mono mt-1">
+                      <p className="text-xs text-zinc-500 font-mono mt-0.5">
                         @{t.username}
                       </p>
                     </div>
 
-                    <div className="mt-5 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500">
-                      <span>Kayıt ID: #{t.id}</span>
-                      <span className="text-[11px] text-slate-400">
-                        {isItemMaster ? 'Tüm Yetkiler' : 'Sınıf & Öğrenci Tanımlama'}
+                    <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between text-xs text-zinc-500">
+                      <span>ID: #{t.id}</span>
+                      <span className="text-[11px] text-zinc-400">
+                        {isItemMaster ? 'Tam Yetki' : 'Sınıf & Öğrenci Yönetimi'}
                       </span>
                     </div>
                   </div>
@@ -662,38 +661,38 @@ export default function TeacherDashboard({ user }) {
 
       {/* Modal: Yeni Sınıf Aç */}
       {showClassModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-6 w-full max-w-md shadow-xl relative">
             <button
               onClick={() => setShowClassModal(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white"
+              className="absolute top-5 right-5 text-zinc-400 hover:text-zinc-700"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
-            <h2 className="text-lg font-bold text-white mb-1">Yeni Sınıf Oluştur</h2>
-            <p className="text-xs text-slate-400 mb-5">
+            <h2 className="text-base font-semibold text-zinc-900 mb-1">Yeni Sınıf Oluştur</h2>
+            <p className="text-xs text-zinc-500 mb-4">
               Bilişim Teknolojileri alanına ait yeni bir ders veya sınıf açın.
             </p>
 
-            <form onSubmit={handleCreateClass} className="space-y-4">
+            <form onSubmit={handleCreateClass} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Sınıf / Şube Adı</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Sınıf / Şube Adı</label>
                 <input
                   type="text"
                   required
                   placeholder="Örn: 11-B Web Programlama"
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Sınıf Seviyesi</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Sınıf Seviyesi</label>
                 <select
                   value={newClassGrade}
                   onChange={(e) => setNewClassGrade(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 >
                   <option value="9. Sınıf">9. Sınıf (Temel Bilişim)</option>
                   <option value="10. Sınıf">10. Sınıf</option>
@@ -703,27 +702,27 @@ export default function TeacherDashboard({ user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Açıklama (Opsiyonel)</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Açıklama (Opsiyonel)</label>
                 <textarea
                   rows="3"
                   placeholder="Ders hakkında kısa bilgi..."
                   value={newClassDesc}
                   onChange={(e) => setNewClassDesc(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 ></textarea>
               </div>
 
-              <div className="flex justify-end gap-3 pt-3">
+              <div className="flex justify-end gap-2.5 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowClassModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium"
+                  className="px-3.5 py-2 text-zinc-600 hover:bg-zinc-100 rounded-xl text-xs font-medium transition"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition"
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-xl text-xs transition shadow-sm"
                 >
                   Sınıfı Kaydet
                 </button>
@@ -735,131 +734,131 @@ export default function TeacherDashboard({ user }) {
 
       {/* Modal: Öğrencileri Yönet & Yeni Öğrenci Ekle */}
       {showStudentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-6 w-full max-w-2xl shadow-xl relative max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
               <div>
-                <h2 className="text-lg font-bold text-white">
+                <h2 className="text-base font-semibold text-zinc-900">
                   {selectedClass?.name} — Öğrenci Yönetimi
                 </h2>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-zinc-500">
                   Öğrencilere kullanıcı adı ve şifre tanımlayarak bu sınıfa kaydedin.
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
                     handleDeleteClass(selectedClassId, selectedClass?.name);
                     setShowStudentModal(false);
                   }}
-                  className="px-3 py-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                  className="px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl text-xs font-medium flex items-center gap-1 transition"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Sınıfı Sil</span>
                 </button>
                 <button
                   onClick={() => setShowStudentModal(false)}
-                  className="text-slate-400 hover:text-white"
+                  className="p-1 text-zinc-400 hover:text-zinc-700 rounded-lg"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-5 overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 overflow-y-auto">
               {/* Form: Add Student */}
-              <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl">
-                <h3 className="text-sm font-bold text-cyan-400 mb-3 flex items-center gap-1.5">
-                  <UserPlus className="w-4 h-4" />
+              <div className="bg-zinc-50 border border-zinc-200 p-4 rounded-xl">
+                <h3 className="text-xs font-semibold text-zinc-900 mb-3 flex items-center gap-1.5">
+                  <UserPlus className="w-3.5 h-3.5" />
                   <span>Yeni Öğrenci Hesabı Aç</span>
                 </h3>
-                <form onSubmit={handleAddStudent} className="space-y-3">
+                <form onSubmit={handleAddStudent} className="space-y-2.5">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Ad Soyad</label>
+                    <label className="block text-[11px] font-medium text-zinc-700 mb-1">Ad Soyad</label>
                     <input
                       type="text"
                       required
                       placeholder="Örn: Caner Deniz"
                       value={studentFullName}
                       onChange={(e) => setStudentFullName(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Okul / Öğrenci No</label>
+                    <label className="block text-[11px] font-medium text-zinc-700 mb-1">Okul / Öğrenci No</label>
                     <input
                       type="text"
                       placeholder="Örn: 1045"
                       value={studentNumber}
                       onChange={(e) => setStudentNumber(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Kullanıcı Adı (Giriş İçin)</label>
+                    <label className="block text-[11px] font-medium text-zinc-700 mb-1">Kullanıcı Adı (Giriş İçin)</label>
                     <input
                       type="text"
                       required
                       placeholder="Örn: caner1045"
                       value={studentUsername}
                       onChange={(e) => setStudentUsername(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">Giriş Şifresi</label>
+                    <label className="block text-[11px] font-medium text-zinc-700 mb-1">Giriş Şifresi</label>
                     <input
                       type="text"
                       required
                       placeholder="Örn: 123456"
                       value={studentPassword}
                       onChange={(e) => setStudentPassword(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                      className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
                     />
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full mt-2 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition"
+                    className="w-full mt-2 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-lg text-xs transition shadow-sm"
                   >
-                    Öğrenciyi Ekle & Şifreyi Kaydet
+                    Öğrenciyi Ekle
                   </button>
                 </form>
               </div>
 
               {/* Student List */}
               <div className="flex flex-col">
-                <h3 className="text-sm font-bold text-slate-200 mb-3 flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-zinc-900 mb-3 flex items-center justify-between">
                   <span>Kayıtlı Öğrenciler ({classStudents.length})</span>
                 </h3>
 
                 {loadingStudents ? (
-                  <div className="text-center py-8 text-xs text-slate-500">Öğrenciler yükleniyor...</div>
+                  <div className="text-center py-8 text-xs text-zinc-400">Öğrenciler yükleniyor...</div>
                 ) : classStudents.length === 0 ? (
-                  <div className="text-center py-10 text-xs text-slate-500 bg-slate-950/40 rounded-xl border border-slate-800">
+                  <div className="text-center py-10 text-xs text-zinc-400 bg-zinc-50 rounded-xl border border-zinc-200">
                     Bu sınıfa henüz öğrenci eklenmemiş.
                   </div>
                 ) : (
-                  <div className="space-y-2 overflow-y-auto max-h-72 pr-1">
+                  <div className="space-y-1.5 overflow-y-auto max-h-72 pr-1">
                     {classStudents.map((st) => (
                       <div
                         key={st.id}
-                        className="p-3 bg-slate-950/80 border border-slate-800/80 rounded-xl flex items-center justify-between"
+                        className="p-2.5 bg-zinc-50 border border-zinc-200 rounded-xl flex items-center justify-between"
                       >
                         <div>
-                          <div className="text-xs font-bold text-slate-100">{st.full_name}</div>
-                          <div className="text-[11px] text-slate-400">
-                            Kullanıcı Adı: <span className="text-cyan-400 font-mono">{st.username}</span>
+                          <div className="text-xs font-medium text-zinc-900">{st.full_name}</div>
+                          <div className="text-[11px] text-zinc-500">
+                            Kullanıcı: <span className="font-mono text-zinc-800">{st.username}</span>
                             {st.student_number && ` • No: ${st.student_number}`}
                           </div>
                         </div>
                         <button
                           onClick={() => handleRemoveStudent(st.id)}
                           title="Sınıftan Çıkar"
-                          className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                          className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ))}
@@ -873,27 +872,27 @@ export default function TeacherDashboard({ user }) {
 
       {/* Modal: Yeni Ödev Gönder */}
       {showAssignmentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-6 w-full max-w-lg shadow-xl relative">
             <button
               onClick={() => setShowAssignmentModal(false)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white"
+              className="absolute top-5 right-5 text-zinc-400 hover:text-zinc-700"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
-            <h2 className="text-lg font-bold text-white mb-1">Yeni Ödev Gönder</h2>
-            <p className="text-xs text-slate-400 mb-5">
-              Seçtiğiniz sınıftaki öğrencilere yönerge ve teslim tarihi ile ödev atayın.
+            <h2 className="text-base font-semibold text-zinc-900 mb-1">Yeni Ödev Gönder</h2>
+            <p className="text-xs text-zinc-500 mb-4">
+              Seçtiğiniz sınıftaki öğrencilere ödev ve teslim tarihi atayın.
             </p>
 
-            <form onSubmit={handleCreateAssignment} className="space-y-4">
+            <form onSubmit={handleCreateAssignment} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Hedef Sınıf</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Hedef Sınıf</label>
                 <select
                   required
                   value={assignClassId}
                   onChange={(e) => setAssignClassId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 >
                   {classrooms.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -904,59 +903,59 @@ export default function TeacherDashboard({ user }) {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Ödev Başlığı</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Ödev Başlığı</label>
                 <input
                   type="text"
                   required
                   placeholder="Örn: CSS Grid İle Responsive Sayfa Tasarımı"
                   value={assignTitle}
                   onChange={(e) => setAssignTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Ödev Açıklaması ve Yönergeler</label>
+                <label className="block text-xs font-medium text-zinc-700 mb-1">Ödev Açıklaması ve Yönergeler</label>
                 <textarea
                   rows="4"
                   placeholder="Öğrencilerin yapması gerekenler, kurallar, teslim kriterleri..."
                   value={assignDesc}
                   onChange={(e) => setAssignDesc(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 ></textarea>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Son Teslim Tarihi</label>
+                  <label className="block text-xs font-medium text-zinc-700 mb-1">Son Teslim Tarihi</label>
                   <input
                     type="datetime-local"
                     value={assignDueDate}
                     onChange={(e) => setAssignDueDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                    className="w-full px-3 py-1.5 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Ek Dosya (PDF / Kod / ZIP)</label>
+                  <label className="block text-xs font-medium text-zinc-700 mb-1">Ek Dosya (İsteğe Bağlı)</label>
                   <input
                     type="file"
                     onChange={(e) => setAssignFile(e.target.files[0])}
-                    className="w-full text-xs text-slate-400 file:mr-2 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-800 file:text-cyan-400 hover:file:bg-slate-700"
+                    className="w-full text-xs text-zinc-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-zinc-100 file:text-zinc-800 hover:file:bg-zinc-200 cursor-pointer"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex justify-end gap-2.5 pt-3">
                 <button
                   type="button"
                   onClick={() => setShowAssignmentModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium"
+                  className="px-3.5 py-2 text-zinc-600 hover:bg-zinc-100 rounded-xl text-xs font-medium transition"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition"
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-xl text-xs transition shadow-sm"
                 >
                   Ödevi Yayınla
                 </button>
@@ -966,36 +965,36 @@ export default function TeacherDashboard({ user }) {
         </div>
       )}
 
-      {/* Modal: Ödev Teslimlerini İnceleme & Puanlama & Görüş Bildirme */}
+      {/* Modal: Ödev Teslimlerini İnceleme & Puanlama */}
       {reviewAssignment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-4xl shadow-2xl relative max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white border border-zinc-200 rounded-2xl p-6 w-full max-w-3xl shadow-xl relative max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
               <div>
-                <span className="text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                <span className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
                   {reviewAssignment.classroom_name}
                 </span>
-                <h2 className="text-lg font-bold text-white">
+                <h2 className="text-base font-semibold text-zinc-900">
                   {reviewAssignment.title} — Teslimatlar ve Değerlendirme
                 </h2>
               </div>
               <button
                 onClick={() => setReviewAssignment(null)}
-                className="text-slate-400 hover:text-white"
+                className="p-1 text-zinc-400 hover:text-zinc-700 rounded-lg"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto py-5 space-y-4">
+            <div className="flex-1 overflow-y-auto py-4 space-y-3">
               {loadingSubmissions ? (
-                <div className="text-center py-12 text-xs text-slate-500">Teslimler yükleniyor...</div>
+                <div className="text-center py-12 text-xs text-zinc-400">Teslimler yükleniyor...</div>
               ) : submissions.length === 0 ? (
-                <div className="text-center py-16 bg-slate-950/40 rounded-2xl border border-slate-800 p-8">
-                  <Clock className="w-10 h-10 text-amber-500/50 mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-slate-300">Henüz Bu Ödevi Teslim Eden Öğrenci Yok</p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Öğrenciler portallarından dosya yükleyip teslim ettikçe burada listelenecektir.
+                <div className="text-center py-14 bg-zinc-50 rounded-xl border border-zinc-200 p-6">
+                  <Clock className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
+                  <p className="text-xs font-medium text-zinc-700">Henüz Bu Ödevi Teslim Eden Öğrenci Yok</p>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    Öğrenciler dosya yükledikçe burada listelenecektir.
                   </p>
                 </div>
               ) : (
@@ -1004,21 +1003,21 @@ export default function TeacherDashboard({ user }) {
                   return (
                     <div
                       key={sub.id}
-                      className="bg-slate-950/70 border border-slate-800 rounded-2xl p-5 space-y-4"
+                      className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3"
                     >
                       {/* Top Student Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/60 pb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200/60 pb-2.5">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-100 text-sm">{sub.student_name}</span>
-                            <span className="text-xs text-slate-400 font-mono">(@{sub.student_username})</span>
+                            <span className="font-semibold text-zinc-900 text-xs">{sub.student_name}</span>
+                            <span className="text-xs text-zinc-500 font-mono">(@{sub.student_username})</span>
                             {sub.student_number && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                              <span className="text-[11px] px-1.5 py-0.2 rounded bg-zinc-200 text-zinc-700">
                                 No: {sub.student_number}
                               </span>
                             )}
                           </div>
-                          <span className="text-[11px] text-slate-500 mt-0.5 block">
+                          <span className="text-[11px] text-zinc-400 mt-0.5 block">
                             Teslim Zamanı: {new Date(sub.submitted_at).toLocaleString('tr-TR')}
                           </span>
                         </div>
@@ -1028,41 +1027,41 @@ export default function TeacherDashboard({ user }) {
                             href={getFileUrl(sub.file_path)}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded-xl text-xs font-semibold transition"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-zinc-100 text-zinc-800 border border-zinc-200 rounded-lg text-xs font-medium transition"
                           >
-                            <Download className="w-4 h-4" />
-                            <span>Ödev Dosyasını İndir ({sub.file_name || 'Dosya'})</span>
+                            <Download className="w-3.5 h-3.5 text-zinc-500" />
+                            <span>Dosyayı İndir ({sub.file_name || 'Ek'})</span>
                           </a>
                         )}
                       </div>
 
                       {/* Student's Note */}
                       {sub.student_note && (
-                        <div className="bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
-                          <span className="text-[11px] font-semibold text-slate-400 block mb-0.5">
+                        <div className="bg-white p-2.5 rounded-lg border border-zinc-200">
+                          <span className="text-[11px] font-medium text-zinc-500 block mb-0.5">
                             Öğrencinin Notu:
                           </span>
-                          <p className="text-xs text-slate-200">{sub.student_note}</p>
+                          <p className="text-xs text-zinc-800">{sub.student_note}</p>
                         </div>
                       )}
 
                       {/* Teacher Grading and Feedback Section */}
-                      <div className="bg-slate-900/90 border border-slate-800 p-4 rounded-xl space-y-3">
-                        <div className="flex items-center gap-2 text-xs font-bold text-amber-400">
-                          <Award className="w-4 h-4" />
-                          <span>Öğretmen Değerlendirmesi ve Notu</span>
+                      <div className="bg-white border border-zinc-200 p-3.5 rounded-lg space-y-2.5">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-800">
+                          <Award className="w-3.5 h-3.5 text-zinc-500" />
+                          <span>Puan ve Öğretmen Görüşü</span>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-start">
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 items-start">
                           <div>
-                            <label className="block text-[11px] font-medium text-slate-400 mb-1">
+                            <label className="block text-[11px] font-medium text-zinc-600 mb-1">
                               Puan (0 - 100)
                             </label>
                             <input
                               type="number"
                               min="0"
                               max="100"
-                              placeholder="Örn: 90"
+                              placeholder="90"
                               value={state.grade}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -1071,17 +1070,17 @@ export default function TeacherDashboard({ user }) {
                                   [sub.id]: { ...prev[sub.id], grade: val }
                                 }));
                               }}
-                              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-cyan-300 font-bold focus:outline-none focus:border-cyan-500"
+                              className="w-full px-2.5 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs text-zinc-900 font-semibold focus:outline-none focus:border-zinc-900"
                             />
                           </div>
 
                           <div className="sm:col-span-3">
-                            <label className="block text-[11px] font-medium text-slate-400 mb-1">
-                              Öğretmen Görüşü / Geri Bildirim
+                            <label className="block text-[11px] font-medium text-zinc-600 mb-1">
+                              Öğretmen Yorumu / Geri Bildirim
                             </label>
                             <textarea
                               rows="2"
-                              placeholder="Öğrencinin çalışması hakkında yorumunuz, eksikler veya tebrik notu..."
+                              placeholder="Yorumunuz veya tebrik notunuz..."
                               value={state.feedback}
                               onChange={(e) => {
                                 const val = e.target.value;
@@ -1090,27 +1089,27 @@ export default function TeacherDashboard({ user }) {
                                   [sub.id]: { ...prev[sub.id], feedback: val }
                                 }));
                               }}
-                              className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                              className="w-full px-2.5 py-1.5 bg-white border border-zinc-200 rounded-lg text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900"
                             ></textarea>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between pt-2">
-                          <span className="text-[11px] text-slate-500">
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[11px] text-zinc-400">
                             {sub.graded_at ? `Son güncelleme: ${new Date(sub.graded_at).toLocaleString('tr-TR')}` : 'Henüz puanlanmadı'}
                           </span>
                           <div className="flex items-center gap-2">
                             {state.success && (
-                              <span className="text-xs text-emerald-400 font-semibold flex items-center gap-1">
-                                <CheckCircle2 className="w-4 h-4" /> Kaydedildi!
+                              <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Kaydedildi
                               </span>
                             )}
                             <button
                               onClick={() => handleSaveGrade(sub.id)}
                               disabled={state.saving}
-                              className="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition disabled:opacity-50"
+                              className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-lg text-xs transition disabled:opacity-50 shadow-sm"
                             >
-                              {state.saving ? 'Kaydediliyor...' : 'Puanı ve Görüşü Kaydet'}
+                              {state.saving ? 'Kaydediliyor...' : 'Puanı Kaydet'}
                             </button>
                           </div>
                         </div>
@@ -1126,29 +1125,29 @@ export default function TeacherDashboard({ user }) {
 
       {/* Modal: Yeni Öğretmen Tanımla (Master Only) */}
       {isMaster && showTeacherModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                  <UserPlus className="w-5 h-5" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="relative w-full max-w-md bg-white border border-zinc-200 rounded-2xl p-6 shadow-xl">
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-zinc-100 text-zinc-800">
+                  <UserPlus className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-white">Yeni Öğretmen Ekle</h3>
-                  <p className="text-xs text-slate-400">Sisteme yeni bir bilişim öğretmeni hesabı tanımlayın</p>
+                  <h3 className="text-sm font-semibold text-zinc-900">Yeni Öğretmen Ekle</h3>
+                  <p className="text-xs text-zinc-500">Bilişim öğretmeni hesabı tanımlayın</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowTeacherModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition"
+                className="p-1 text-zinc-400 hover:text-zinc-700 rounded-lg transition"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTeacher} className="mt-5 space-y-4">
+            <form onSubmit={handleCreateTeacher} className="mt-4 space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-zinc-700 mb-1">
                   Öğretmen Adı Soyadı
                 </label>
                 <input
@@ -1157,12 +1156,12 @@ export default function TeacherDashboard({ user }) {
                   placeholder="Örn: Ahmet Demir"
                   value={teacherFullName}
                   onChange={(e) => setTeacherFullName(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-zinc-700 mb-1">
                   Kullanıcı Adı (Giriş için)
                 </label>
                 <input
@@ -1171,15 +1170,12 @@ export default function TeacherDashboard({ user }) {
                   placeholder="Örn: ahmetdemir"
                   value={teacherUsername}
                   onChange={(e) => setTeacherUsername(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 />
-                <span className="text-[11px] text-slate-500 mt-1 block">
-                  Küçük harf ve Türkçe karakter içermeyen isimler önerilir.
-                </span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                <label className="block text-xs font-medium text-zinc-700 mb-1">
                   Başlangıç Şifresi
                 </label>
                 <input
@@ -1188,24 +1184,21 @@ export default function TeacherDashboard({ user }) {
                   placeholder="••••••••"
                   value={teacherPassword}
                   onChange={(e) => setTeacherPassword(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-slate-950/80 border border-slate-700/80 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900"
                 />
-                <span className="text-[11px] text-slate-500 mt-1 block">
-                  Öğretmen sisteme giriş yaptıktan sonra şifresini değiştirebilir.
-                </span>
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-3">
+              <div className="pt-2 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
                   onClick={() => setShowTeacherModal(false)}
-                  className="px-4 py-2.5 text-xs font-bold text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-xl transition"
+                  className="px-3.5 py-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 rounded-xl transition"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition shadow-lg shadow-amber-500/20"
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-white font-medium rounded-xl text-xs transition shadow-sm"
                 >
                   Öğretmeni Kaydet
                 </button>
