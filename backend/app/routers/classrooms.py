@@ -16,98 +16,150 @@ def normalize_tr(text: str) -> str:
     tr_map = str.maketrans("çğıöşüÇĞİÖŞÜ", "cgiosuCGIOSU")
     return text.translate(tr_map).lower()
 
-def generate_student_username(student_number: str, full_name: str) -> str:
+def clean_tr_name(name: str) -> str:
+    parts = name.strip().split()
+    formatted = []
+    for p in parts:
+        p = p.strip(".,-_")
+        if not p:
+            continue
+        first = p[0].replace('i', 'İ').replace('ı', 'I').upper()
+        rest = p[1:].replace('I', 'ı').replace('İ', 'i').lower()
+        formatted.append(first + rest)
+    return " ".join(formatted)
+
+def generate_student_username(student_number: str, first_name: str) -> str:
     clean_num = str(student_number).strip()
-    name_parts = full_name.strip().split()
-    if len(name_parts) >= 2:
-        first_names = "".join(name_parts[:-1]) # everything except surname
-    elif len(name_parts) == 1:
-        first_names = name_parts[0]
-    else:
-        first_names = "ogrenci"
-    first_clean = re.sub(r'[^a-zA-Z0-9]', '', normalize_tr(first_names))
+    first_clean = re.sub(r'[^a-zA-Z0-9]', '', normalize_tr(first_name))
+    if not first_clean:
+        first_clean = "ogrenci"
     return f"{clean_num}{first_clean}"
 
 def parse_students_from_pdf(pdf_bytes: bytes) -> List[dict]:
     reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
-    students = []
-    seen_numbers = set()
-
-    ignore_phrases = [
-        "milli egitim", "bakanligi", "sinif listesi", "sube listesi",
-        "ogrenci no", "adi soyadi", "cinsiyet", "imza", "sayfa",
-        "ogretim yili", "ders", "ogretmen", "t.c.", "torbali", "mesleki",
-        "anadolu lisesi", "toplam", "okul no"
-    ]
-
+    all_lines = []
     for page in reader.pages:
         text = page.extract_text() or ""
-        lines = text.split("\n")
+        for line in text.splitlines():
+            l_str = line.strip()
+            if l_str:
+                all_lines.append(l_str)
 
-        for line in lines:
-            line_str = line.strip()
-            if not line_str:
-                continue
+    students = []
+    seen_numbers = set()
+    idx = 0
+    footer_keywords = ["mudur", "ogretmen", "imza", "tarih", "toplam", "sayfa", "sube listesi", "sinif listesi"]
 
-            lower_line = normalize_tr(line_str)
-            if any(phrase in lower_line for phrase in ignore_phrases) and not re.search(r'\b\d{1,6}\b', line_str):
-                continue
+    while idx < len(all_lines):
+        line = all_lines[idx]
+        clean_line = re.sub(r'[|\t]+', ' ', line).strip()
 
-            # Remove 11-digit TC Kimlik if present
-            line_str = re.sub(r'\b\d{11}\b', ' ', line_str)
-
-            # Match Pattern 1: Optional row number, School No (1-6 digits), Name, optional gender (K/E)
-            m = re.search(
-                r'(?:^\s*\d{1,3}\s+)?(\b\d{1,6}\b)\s*[-–.]?\s*([A-Za-zÇĞİÖŞÜçğıöşü\s\'.]+?)(?:\s+[EKek])?$',
-                line_str.strip()
-            )
-
-            # Match Pattern 2: Name first, then School No at the end
-            if not m:
-                m2 = re.search(
-                    r'(?:^\s*\d{1,3}\s+)?([A-Za-zÇĞİÖŞÜçğıöşü\s\'.]+?)\s*[-–.]?\s*(\b\d{1,6}\b)(?:\s+[EKek])?$',
-                    line_str.strip()
-                )
-                if m2:
-                    name_cand = m2.group(1).strip()
-                    num_cand = m2.group(2).strip()
-                    if len(name_cand.split()) >= 2:
-                        num = num_cand
-                        name = name_cand
-                        m = True
-                else:
-                    m = None
-
-            if m and not isinstance(m, bool):
-                num = m.group(1).strip()
-                name = m.group(2).strip()
-            elif isinstance(m, bool) and m:
-                pass
-            else:
-                continue
-
-            name = re.sub(r'[\d_]', '', name).strip()
-            name_parts = name.split()
-
-            if len(name_parts) >= 2 and len(name) >= 3 and num not in seen_numbers:
-                if any(w in normalize_tr(name) for w in ["mudur", "ogretmen", "imza", "tarih", "toplam"]):
-                    continue
-
+        # 1. Check Horizontal single-line pattern: e.g. "1 101 Ahmet Yılmaz E" or "101 Ahmet Yılmaz"
+        m = re.match(
+            r'^(?:(\d{1,4})\s+)?(\d{1,8})\s+([A-Za-zÇĞİÖŞÜçğıöşü\s\'.]+?)\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)(?:\s+[EKek])?$',
+            clean_line
+        )
+        if m:
+            num = m.group(2).strip()
+            fn = m.group(3).strip()
+            sn = m.group(4).strip()
+            norm_fn = normalize_tr(fn)
+            if num not in seen_numbers and len(fn) >= 2 and not any(k in norm_fn for k in footer_keywords):
                 seen_numbers.add(num)
-                # Proper Turkish title case formatting
-                formatted_parts = []
-                for p in name_parts:
-                    p_lower = p.lower()
-                    formatted_parts.append(p.title() if p.isupper() else p.capitalize())
-                full_name_clean = " ".join(formatted_parts)
-
-                uname = generate_student_username(num, full_name_clean)
                 students.append({
                     "student_number": num,
-                    "full_name": full_name_clean,
-                    "username": uname,
+                    "full_name": clean_tr_name(f"{fn} {sn}"),
+                    "username": generate_student_username(num, fn),
                     "password": "1234"
                 })
+            idx += 1
+            continue
+
+        # 2. Check Vertical Pattern with S.No: all_lines[idx] is S.No (int), all_lines[idx+1] is Okul No (int)
+        if all_lines[idx].isdigit() and idx + 1 < len(all_lines) and all_lines[idx+1].isdigit():
+            sno_cand = all_lines[idx]
+            num_cand = all_lines[idx+1]
+            if len(num_cand) <= 8:
+                k = idx + 2
+                name_tokens = []
+                while k < len(all_lines):
+                    tk = all_lines[k].strip()
+                    norm_tk = normalize_tr(tk)
+                    if any(f in norm_tk for f in footer_keywords):
+                        break
+                    if tk.isdigit():
+                        break
+                    name_tokens.append(tk)
+                    k += 1
+
+                if len(name_tokens) >= 2:
+                    # Check if last token is gender
+                    last_upper = name_tokens[-1].upper()
+                    if last_upper in ["E", "K", "KIZ", "ERKEK"] or (len(name_tokens[-1]) == 1 and not name_tokens[-1].isdigit()):
+                        name_tokens.pop()
+
+                    if len(name_tokens) >= 2:
+                        fn = " ".join(name_tokens[:-1])
+                        sn = name_tokens[-1]
+                    elif len(name_tokens) == 1:
+                        fn = name_tokens[0]
+                        sn = ""
+                    else:
+                        fn = ""
+                        sn = ""
+
+                    norm_fn = normalize_tr(fn)
+                    if num_cand not in seen_numbers and len(fn) >= 2 and not any(k in norm_fn for k in footer_keywords):
+                        seen_numbers.add(num_cand)
+                        students.append({
+                            "student_number": num_cand,
+                            "full_name": clean_tr_name(f"{fn} {sn}"),
+                            "username": generate_student_username(num_cand, fn),
+                            "password": "1234"
+                        })
+                    idx = k
+                    continue
+
+        # 3. Check Vertical Pattern without S.No: all_lines[idx] is Okul No (int), followed by non-digits
+        if all_lines[idx].isdigit() and len(all_lines[idx]) <= 8:
+            num_cand = all_lines[idx]
+            k = idx + 1
+            name_tokens = []
+            while k < len(all_lines):
+                tk = all_lines[k].strip()
+                norm_tk = normalize_tr(tk)
+                if any(f in norm_tk for f in footer_keywords):
+                    break
+                if tk.isdigit():
+                    break
+                name_tokens.append(tk)
+                k += 1
+
+            if len(name_tokens) >= 2:
+                last_upper = name_tokens[-1].upper()
+                if last_upper in ["E", "K", "KIZ", "ERKEK"] or (len(name_tokens[-1]) == 1 and not name_tokens[-1].isdigit()):
+                    name_tokens.pop()
+
+                if len(name_tokens) >= 2:
+                    fn = " ".join(name_tokens[:-1])
+                    sn = name_tokens[-1]
+                else:
+                    fn = name_tokens[0]
+                    sn = ""
+
+                norm_fn = normalize_tr(fn)
+                if num_cand not in seen_numbers and len(fn) >= 2 and not any(k in norm_fn for k in footer_keywords):
+                    seen_numbers.add(num_cand)
+                    students.append({
+                        "student_number": num_cand,
+                        "full_name": clean_tr_name(f"{fn} {sn}"),
+                        "username": generate_student_username(num_cand, fn),
+                        "password": "1234"
+                    })
+                idx = k
+                continue
+
+        idx += 1
 
     return students
 
@@ -285,8 +337,13 @@ async def upload_students_pdf(
         num = st["student_number"]
         fname = st["full_name"]
 
-        # Check existing user
-        user = db.query(User).filter(User.username == uname).first()
+        # Check existing student: first by student_number, then by username
+        user = None
+        if num:
+            user = db.query(User).filter(User.student_number == num, User.role == "student").first()
+        if not user:
+            user = db.query(User).filter(User.username == uname).first()
+
         if not user:
             # Create student user with standard password 1234
             user = User(
@@ -300,10 +357,14 @@ async def upload_students_pdf(
             db.commit()
             db.refresh(user)
         else:
-            # Update student info if needed
+            # Update student info and keep standard format
             if not user.student_number:
                 user.student_number = num
             user.full_name = fname
+            if user.username != uname:
+                existing_uname_user = db.query(User).filter(User.username == uname).first()
+                if not existing_uname_user:
+                    user.username = uname
             db.commit()
 
         # Check classroom enrollment
