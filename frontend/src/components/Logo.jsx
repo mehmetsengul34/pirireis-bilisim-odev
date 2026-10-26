@@ -13,10 +13,10 @@ export default function Logo({ className = "w-10 h-10", showText = true, subtitl
 
       {showText && (
         <div className="flex flex-col">
-          <span className="font-bold text-zinc-900 text-sm tracking-tight leading-snug">
+          <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm tracking-tight leading-snug">
             Torbalı Piri Reis MTAL
           </span>
-          <span className="text-xs text-zinc-500 font-medium leading-none mt-0.5">
+          <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium leading-none mt-0.5">
             {subtitle}
           </span>
         </div>

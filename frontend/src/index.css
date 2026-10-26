@@ -4,11 +4,11 @@
 
 @layer base {
   body {
-    @apply bg-[#fafafa] text-zinc-900 antialiased font-sans;
+    @apply bg-[#fafafa] dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 antialiased font-sans transition-colors duration-200;
   }
 }
 
-/* Subtle Minimalist Scrollbar */
+/* Minimalist Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -22,4 +22,11 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #a1a1aa;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
 }

@@ -4,11 +4,14 @@ import LoginView from './views/LoginView';
 import TeacherDashboard from './views/TeacherDashboard';
 import StudentDashboard from './views/StudentDashboard';
 import { authService } from './services/api';
+import { initTheme } from './utils/theme';
 
 export default function App() {
   const [user, setUser] = useState(authService.getCurrentUser());
 
   useEffect(() => {
+    initTheme();
+
     const handleAuthChange = () => {
       setUser(authService.getCurrentUser());
     };
@@ -24,7 +27,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafafa] flex flex-col text-zinc-900">
+    <div className="min-h-screen bg-[#fafafa] dark:bg-zinc-950 flex flex-col text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
       <Navbar user={user} />
       <main className="flex-1 pb-16">
         {user.role === 'teacher' ? (

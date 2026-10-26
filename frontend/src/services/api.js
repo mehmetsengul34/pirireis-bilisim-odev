@@ -111,6 +111,16 @@ export const classroomService = {
     });
     return response.data;
   },
+  uploadStudentsPdf: async (classroomId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/classrooms/${classroomId}/students/upload-pdf`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
   removeStudent: async (classroomId, studentId) => {
     const response = await api.delete(`/classrooms/${classroomId}/students/${studentId}`);
     return response.data;
