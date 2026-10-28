@@ -1,15 +1,20 @@
+import io
 import json
+import re
 from datetime import datetime
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
+import pypdf
 
 from app.database import get_db
-from app.models import User, Classroom, ClassroomStudent, Exam, ExamQuestion, ExamSubmission, ExamAnswer, Notification, QuestionBank
+from app.models import User, Classroom, ClassroomStudent, Exam, ExamQuestion, ExamSubmission, ExamAnswer, Notification, QuestionBank, AIQuestionTrainingDoc
 from app.schemas import (
     ExamOut, ExamDetailOut, ExamCreateRequest, GenerateQuestionsRequest,
     ExamSubmitRequest, ExamSubmissionOut, ExamAnalyticsOut, QuestionAnalytic,
-    TopicAnalytic, StudentRanking, ExamQuestionStudentOut, ExamQuestionOut, ExamAnswerOut, QuestionBankItem, QuestionBankListResponse, CreateExamFromBankRequest
+    TopicAnalytic, StudentRanking, ExamQuestionStudentOut, ExamQuestionOut, ExamAnswerOut, 
+    QuestionBankItem, QuestionBankListResponse, CreateExamFromBankRequest,
+    AITrainingDocItem, AITrainingDocListResponse
 )
 from app.auth import get_current_user, require_teacher
 from app.services.ai_exam_service import YKS_CURRICULUM, generate_questions_smart, sanitize_math_and_turkish
@@ -120,6 +125,29 @@ async def generate_questions_endpoint(
 ):
     """Yapay Zeka (Gemini AI / Müfredat Motoru) ile yeni nesil sorular üretir."""
     try:
+        # Öğretmenin yüklediği eğitim PDF'lerinden çıkarılmış üslup ve soru kalıplarını çek
+        training_guidelines = None
+        try:
+            training_docs = db.query(AIQuestionTrainingDoc).filter(
+                AIQuestionTrainingDoc.is_active == True,
+                (AIQuestionTrainingDoc.subject == req.subject) | (AIQuestionTrainingDoc.subject == "Genel")
+            ).all()
+            if training_docs:
+                style_notes = []
+                for doc in training_docs[:4]:
+                    if doc.analyzed_patterns:
+                        try:
+                            p = json.loads(doc.analyzed_patterns)
+                            stems = p.get("detected_stem_types", [])
+                            if stems:
+                                style_notes.append(f"- '{doc.filename}' ({doc.subject}) modelinden: Soru kökü üslupları: {', '.join(stems)}")
+                        except Exception:
+                            pass
+                if style_notes:
+                    training_guidelines = "\n".join(style_notes)
+        except Exception as tr_err:
+            print(f"[AI Training] Eğitim dokümanı okunurken hata: {tr_err}")
+
         questions = await generate_questions_smart(
             exam_type=req.exam_type,
             subject=req.subject,
@@ -128,7 +156,8 @@ async def generate_questions_endpoint(
             question_count=req.question_count,
             include_diagrams=req.include_diagrams,
             custom_prompt=req.custom_prompt,
-            api_key=req.gemini_api_key
+            api_key=req.gemini_api_key,
+            training_guidelines=training_guidelines
         )
         try:
             save_questions_to_bank(db, questions, req.exam_type, req.subject, req.topic, current_user.id)
@@ -488,6 +517,118 @@ def bulk_delete_bank_questions(
     db.query(QuestionBank).filter(QuestionBank.id.in_(question_ids)).delete(synchronize_session=False)
     db.commit()
     return {"message": f"{len(question_ids)} soru başarıyla silindi."}
+
+
+# ================= AI MODEL TRAINING (PDF UPLOAD) ENDPOINTS =================
+
+@router.post("/training/upload-pdf")
+async def upload_training_pdf(
+    file: UploadFile = File(...),
+    subject: str = Form("Matematik"),
+    exam_type: str = Form("TYT"),
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """
+    Öğretmenin sisteme yüklediği örnek soru PDF'lerini analiz eder.
+    Metinleri ve soru kalıplarını AI için stil rehberi olarak kaydeder.
+    Bu sorular ASLA öğrencilere doğrudan sorulmaz; tamamen AI'ın yeni, özgün
+    sorular üretmesi için stil ve pedagojik eğitim verisi olarak kullanılır.
+    """
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Lütfen geçerli bir PDF dosyası yükleyiniz.")
+
+    try:
+        content = await file.read()
+        pdf_file = io.BytesIO(content)
+        reader = pypdf.PdfReader(pdf_file)
+        
+        page_count = len(reader.pages)
+        if page_count == 0:
+            raise HTTPException(status_code=400, detail="PDF boş veya okunamadı.")
+        
+        extracted_pages = []
+        for i, page in enumerate(reader.pages):
+            txt = page.extract_text() or ""
+            if txt.strip():
+                extracted_pages.append(txt.strip())
+
+        full_text = "\n\n--- SAYFA AYRACI ---\n\n".join(extracted_pages)
+        if len(full_text.strip()) < 40:
+            raise HTTPException(status_code=400, detail="PDF'ten metin çıkarılamadı veya taranmış resim PDF'i.")
+
+        # Soru kökleri tespiti
+        stem_matches = re.findall(r'(buna göre[^\.\?\!\n]*[\?\!]|ifadelerinden hangileri[^\.\?\!\n]*[\?\!]|kesinlikle[^\.\?\!\n]*[\?\!]|kaçtır[\?]|nedir[\?]|oranı kaçtır[\?]|kaç birimdir[\?])', full_text, re.IGNORECASE)
+        question_numbers = re.findall(r'(?:^|\n)\s*([0-9]{1,2})\s*[\.\)]\s*(?=[A-ZÇĞİÖŞÜ])', full_text)
+        est_count = max(len(stem_matches), len(question_numbers), 1)
+
+        # Analiz özeti
+        clean_stems = list(dict.fromkeys([m.strip()[:40] for m in stem_matches]))[:8]
+        analysis_summary = {
+            "page_count": page_count,
+            "est_questions": est_count,
+            "detected_stem_types": clean_stems if clean_stems else ["ÖSYM Standart soru kökü", "Kazanım değerlendirme"],
+            "has_math_formulas": bool(re.search(r'[\\^_+=\-/*√π≤≥≠]', full_text)),
+            "purpose": "Eğitim amaçlı soru tarzı rehberi (Tekrar sorulmaz)"
+        }
+
+        training_doc = AIQuestionTrainingDoc(
+            teacher_id=current_user.id,
+            filename=file.filename,
+            subject=subject or "Genel",
+            exam_type=exam_type or "TYT",
+            page_count=page_count,
+            extracted_text=full_text,
+            analyzed_patterns=json.dumps(analysis_summary, ensure_ascii=False),
+            sample_question_count=est_count,
+            is_active=True,
+            created_at=datetime.utcnow()
+        )
+        db.add(training_doc)
+        db.commit()
+        db.refresh(training_doc)
+
+        return {
+            "id": training_doc.id,
+            "filename": training_doc.filename,
+            "subject": training_doc.subject,
+            "exam_type": training_doc.exam_type,
+            "page_count": training_doc.page_count,
+            "sample_question_count": training_doc.sample_question_count,
+            "analysis": analysis_summary,
+            "message": f"'{file.filename}' başarıyla yüklendi. Yapay zeka {subject} branşındaki bu soru tarzını öğrendi ve artık bu doğrultuda özgün sorular üretecek."
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF analizi sırasında hata: {str(e)}")
+
+@router.get("/training/documents", response_model=AITrainingDocListResponse)
+def get_training_documents(
+    subject: Optional[str] = None,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Yüklenen tüm AI eğitim PDF dokümanlarını listeler."""
+    query = db.query(AIQuestionTrainingDoc).filter(AIQuestionTrainingDoc.is_active == True)
+    if subject and subject != "Tümü":
+        query = query.filter(AIQuestionTrainingDoc.subject == subject)
+    docs = query.order_by(AIQuestionTrainingDoc.created_at.desc()).all()
+    return AITrainingDocListResponse(total=len(docs), documents=docs)
+
+@router.delete("/training/documents/{doc_id}")
+def delete_training_document(
+    doc_id: int,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Eğitim dokümanını sistemden kaldırır."""
+    doc = db.query(AIQuestionTrainingDoc).filter(AIQuestionTrainingDoc.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Eğitim dokümanı bulunamadı.")
+    doc.is_active = False
+    db.commit()
+    return {"message": "Eğitim dokümanı başarıyla kaldırıldı."}
 
 
 @router.get("/{exam_id}", response_model=ExamDetailOut)

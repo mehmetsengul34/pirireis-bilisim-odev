@@ -364,3 +364,23 @@ class CreateExamFromBankRequest(BaseModel):
     duration_minutes: int = 40
     due_date: Optional[datetime] = None
     question_ids: List[int]
+
+# ================= AI TRAINING SCHEMAS =================
+
+class AITrainingDocItem(BaseModel):
+    id: int
+    filename: str
+    subject: str
+    exam_type: str
+    page_count: int
+    sample_question_count: int
+    analyzed_patterns: Optional[str] = None
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AITrainingDocListResponse(BaseModel):
+    total: int
+    documents: List[AITrainingDocItem]

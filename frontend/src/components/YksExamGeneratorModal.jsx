@@ -266,6 +266,7 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
         gemini_api_key: geminiApiKey || null
       });
 
+      const requestedCount = parseInt(questionCount, 10);
       const normalized = (resp.questions || []).map((q, idx) => {
         const correct = (q.correct_option || q.correct_answer || 'A').toUpperCase();
         return {
@@ -275,6 +276,16 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
           correct_answer: correct
         };
       });
+
+      if (normalized.length === 0) {
+        alert('Seçtiğiniz konuda yeterli benzersiz soru üretilemedi. Lütfen konuyu veya soru sayısını değiştiriniz.');
+        return;
+      }
+
+      if (normalized.length < requestedCount) {
+        alert(`Bilgilendirme: Seçtiğiniz konuda tekrar eden veya birbirine çok yakın soruların yer almaması için ${normalized.length} adet tamamen özgün soru üretildi.`);
+      }
+
       setGeneratedQuestions(normalized);
       setStep(2);
     } catch (err) {

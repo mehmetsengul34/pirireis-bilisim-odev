@@ -247,6 +247,21 @@ export const examService = {
   bulkDeleteFromBank: async (questionIds) => {
     const response = await api.post('/exams/question-bank/bulk-delete', { question_ids: questionIds });
     return response.data;
+  },
+  uploadTrainingPdf: async (formData) => {
+    const response = await api.post('/exams/training/upload-pdf', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  getTrainingDocuments: async (subject = null) => {
+    const params = subject && subject !== 'Tümü' ? { subject } : {};
+    const response = await api.get('/exams/training/documents', { params });
+    return response.data;
+  },
+  deleteTrainingDocument: async (docId) => {
+    const response = await api.delete(`/exams/training/documents/${docId}`);
+    return response.data;
   }
 };
 

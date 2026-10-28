@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, BookOpen, Plus, BarChart3, Users, Clock, Award, 
   Trash2, Eye, Send, CheckCircle2, ChevronRight, Layers, AlertCircle,
-  Printer, CheckSquare, Square, Filter, Search, Dices, RefreshCw, X
+  Printer, CheckSquare, Square, Filter, Search, Dices, RefreshCw, X,
+  GraduationCap, UploadCloud, FileCheck, FileText
 } from 'lucide-react';
 import { examService, notificationService } from '../services/api';
 import YksExamGeneratorModal from '../components/YksExamGeneratorModal';
@@ -11,7 +12,7 @@ import PrintableExamModal from '../components/PrintableExamModal';
 import MathRenderer from '../components/MathRenderer';
 
 export default function TeacherYksManager({ classrooms = [], user }) {
-  // Navigation View: 'exams' | 'bank'
+  // Navigation View: 'exams' | 'bank' | 'training'
   const [activeView, setActiveView] = useState('exams');
 
   // Exams State
@@ -44,6 +45,14 @@ export default function TeacherYksManager({ classrooms = [], user }) {
   const [assignClassId, setAssignClassId] = useState(classrooms[0]?.id?.toString() || '');
   const [assignDuration, setAssignDuration] = useState(40);
   const [assigningExam, setAssigningExam] = useState(false);
+
+  // AI Training State (PDF Upload)
+  const [trainingDocs, setTrainingDocs] = useState([]);
+  const [loadingTraining, setLoadingTraining] = useState(false);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [trainSubject, setTrainSubject] = useState('Matematik');
+  const [trainExamType, setTrainExamType] = useState('TYT');
+  const [trainFile, setTrainFile] = useState(null);
 
   // Fetch Exams
   const fetchExams = async () => {
@@ -83,17 +92,67 @@ export default function TeacherYksManager({ classrooms = [], user }) {
   };
 
 
+  // Fetch AI Training Documents
+  const fetchTrainingDocs = async () => {
+    setLoadingTraining(true);
+    try {
+      const res = await examService.getTrainingDocuments();
+      setTrainingDocs(res.documents || []);
+    } catch (err) {
+      console.error('Eğitim dokümanları yüklenirken hata:', err);
+    } finally {
+      setLoadingTraining(false);
+    }
+  };
+
   useEffect(() => {
     fetchExams();
     fetchBankQuestions();
+    fetchTrainingDocs();
   }, [selectedClassFilter]);
-
 
   useEffect(() => {
     if (activeView === 'bank') {
       fetchBankQuestions();
+    } else if (activeView === 'training') {
+      fetchTrainingDocs();
     }
   }, [activeView, filterBankExamType, filterBankSubject, filterBankDifficulty]);
+
+  const handleUploadTrainingPdf = async (e) => {
+    e.preventDefault();
+    if (!trainFile) {
+      alert('Lütfen geçerli bir PDF dosyası seçiniz.');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', trainFile);
+    formData.append('subject', trainSubject);
+    formData.append('exam_type', trainExamType);
+
+    setUploadingPdf(true);
+    try {
+      const res = await examService.uploadTrainingPdf(formData);
+      alert(res.message || 'PDF başarıyla analiz edildi ve yapay zeka bu soru tarzıyla eğitildi!');
+      setTrainFile(null);
+      fetchTrainingDocs();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'PDF yükleme/analiz sırasında bir hata oluştu.');
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
+
+  const handleDeleteTrainingDoc = async (docId, filename) => {
+    if (!window.confirm(`'${filename}' eğitim dokümanını silmek istediğinize emin misiniz?`)) return;
+    try {
+      await examService.deleteTrainingDocument(docId);
+      setTrainingDocs(prev => prev.filter(d => d.id !== docId));
+      alert('Eğitim dokümanı kaldırıldı.');
+    } catch (err) {
+      alert('Doküman silinirken hata oluştu.');
+    }
+  };
 
   const handleDeleteExam = async (examId, title) => {
     if (!window.confirm(`'${title}' başlıklı sınavı ve bu sınava ait tüm öğrenci sonuçlarını silmek istediğinize emin misiniz?`)) {
@@ -165,6 +224,9 @@ export default function TeacherYksManager({ classrooms = [], user }) {
 
   const handleRandomSelect = (count) => {
     if (bankQuestions.length === 0) return;
+    if (bankQuestions.length < count) {
+      alert(`Seçtiğiniz filtrede yeterli benzersiz soru sayısı bulunmuyor (Mevcut: ${bankQuestions.length} soru). Tekrar eden soru olmaması için yalnızca mevcut ${bankQuestions.length} benzersiz soru seçildi.`);
+    }
     const shuffled = [...bankQuestions].sort(() => 0.5 - Math.random());
     const picked = shuffled.slice(0, count).map(q => q.id);
     setSelectedQuestionIds(picked);
@@ -323,6 +385,23 @@ export default function TeacherYksManager({ classrooms = [], user }) {
           {totalBankQuestions > 0 && (
             <span className="px-1.5 py-0.2 rounded-full bg-emerald-500 text-white text-[10px] font-mono">
               {totalBankQuestions}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveView('training')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition ${
+            activeView === 'training'
+              ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          <span>🎓 AI Soru Tarzı Eğitimi (PDF)</span>
+          {trainingDocs.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-indigo-500 text-white text-[10px] font-mono">
+              {trainingDocs.length}
             </span>
           )}
         </button>
@@ -769,6 +848,218 @@ export default function TeacherYksManager({ classrooms = [], user }) {
         </div>
       )}
 
+      {/* ================= VIEW 3: AI QUESTION TRAINING (PDF) ================= */}
+      {activeView === 'training' && (
+        <div className="space-y-6">
+          {/* Info Banner */}
+          <div className="p-6 bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-zinc-900 border border-indigo-500/30 rounded-3xl space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <span>Yapay Zeka Soru Tarzı Eğitimi (PDF İle Eğit)</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold border border-emerald-500/30">
+                    Öğretici Mod
+                  </span>
+                </h3>
+                <p className="text-xs text-indigo-200/80">
+                  Her branş için örnek soru PDF dosyaları yükleyerek yapay zekayı okulunuzun ve branşınızın soru tarzına göre eğitebilirsiniz.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-black/40 rounded-2xl border border-white/5 text-xs text-zinc-300 space-y-1.5 leading-relaxed">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong>Pedagojik Tarz Analizi:</strong> Yüklediğiniz PDF'lerdeki soru kökleri ("buna göre...", "kesinlikle doğrudur?", "oranı kaçtır?"), dil üslubu ve çeldirici kurguları otomatik analiz edilir.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span><strong>Tamamen Eğitim Amaçlıdır:</strong> Yüklenen sorular kesinlikle öğrencilere doğrudan sorulmaz veya soru bankasına kopyalanmaz. Yapay zeka bu soru tarzına alışır ve sınav oluştururken bu doğrultuda <strong>%100 yepyeni ve özgün sorular</strong> üretir.</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Upload Form Card */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-sm space-y-5">
+            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+              <UploadCloud className="w-4 h-4 text-indigo-600" />
+              <span>Yeni Eğitim PDF'i Yükle & Modeli Eğit</span>
+            </h4>
+
+            <form onSubmit={handleUploadTrainingPdf} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-1.5">
+                  Branş / Ders:
+                </label>
+                <select
+                  value={trainSubject}
+                  onChange={(e) => setTrainSubject(e.target.value)}
+                  className="w-full text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3.5 py-2.5 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Türkçe', 'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü'].map(sub => (
+                    <option key={sub} value={sub}>{sub}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-1.5">
+                  Sınav Türü:
+                </label>
+                <select
+                  value={trainExamType}
+                  onChange={(e) => setTrainExamType(e.target.value)}
+                  className="w-full text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3.5 py-2.5 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="TYT">TYT (Temel Yeterlilik Testi)</option>
+                  <option value="AYT">AYT (Alan Yeterlilik Testi)</option>
+                  <option value="Genel">Genel / Tüm Kademeler</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-1.5">
+                  Örnek Soru PDF Dosyası:
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  required
+                  onChange={(e) => setTrainFile(e.target.files[0] || null)}
+                  className="w-full text-xs text-zinc-500 dark:text-zinc-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-50 dark:file:bg-indigo-950/60 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-100 cursor-pointer"
+                />
+              </div>
+
+              <div className="sm:col-span-3 flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={uploadingPdf || !trainFile}
+                  className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2"
+                >
+                  {uploadingPdf ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>PDF Analiz Ediliyor ve Model Eğitiliyor...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Yapay Zekayı Bu PDF İle Eğit</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* List of Trained Documents */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <FileCheck className="w-4 h-4 text-emerald-600" />
+                <span>Yapay Zekanın Eğitildiği Soru PDF'leri ({trainingDocs.length})</span>
+              </h4>
+              <button
+                onClick={fetchTrainingDocs}
+                className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1 hover:underline"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Listeyi Yenile</span>
+              </button>
+            </div>
+
+            {loadingTraining ? (
+              <div className="text-center py-12">
+                <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                <span className="text-xs text-zinc-400">Eğitim dokümanları yükleniyor...</span>
+              </div>
+            ) : trainingDocs.length === 0 ? (
+              <div className="text-center py-12 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 space-y-2">
+                <GraduationCap className="w-10 h-10 text-zinc-400 mx-auto" />
+                <p className="font-bold text-sm text-zinc-700 dark:text-zinc-300">Henüz bir eğitim PDF'i yüklenmedi.</p>
+                <p className="text-xs text-zinc-400 max-w-md mx-auto">
+                  Yukarıdaki alandan branşınıza ait örnek deneme veya soru kitapçığı PDF'i yükleyerek yapay zekanın bu soru tarzını kavramasını sağlayabilirsiniz.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {trainingDocs.map((doc) => {
+                  let analysisData = null;
+                  try {
+                    analysisData = doc.analyzed_patterns ? JSON.parse(doc.analyzed_patterns) : null;
+                  } catch (e) {}
+
+                  return (
+                    <div
+                      key={doc.id}
+                      className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-sm space-y-3 relative overflow-hidden"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                            <FileText className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h5 className="font-bold text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 truncate max-w-[220px]">
+                              {doc.filename}
+                            </h5>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                                {doc.subject}
+                              </span>
+                              <span className="text-[11px] text-zinc-400">
+                                {doc.exam_type} • {doc.page_count} Sayfa • ~{doc.sample_question_count} Soru
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleDeleteTrainingDoc(doc.id, doc.filename)}
+                          className="p-1.5 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition"
+                          title="Eğitim dokümanını sil"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {analysisData?.detected_stem_types && analysisData.detected_stem_types.length > 0 && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
+                            Öğrenilen Soru Kökleri & Üslup:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {analysisData.detected_stem_types.map((st, i) => (
+                              <span
+                                key={i}
+                                className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[10px] font-medium"
+                              >
+                                {st}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
+                        <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Yapay zeka bu tarzda soru üretir</span>
+                        </span>
+                        <span>{new Date(doc.created_at).toLocaleDateString('tr-TR')}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Generator Modal */}
       <YksExamGeneratorModal
         isOpen={showGeneratorModal}
@@ -943,7 +1234,7 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                         className={`p-2 rounded-lg border flex items-start gap-2 ${
                           q.correct_option === opt
                             ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 font-semibold text-emerald-900 dark:text-emerald-200'
-                            : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700'
+                            : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100'
                         }`}
                       >
                         <span className="font-bold">{opt}:</span>

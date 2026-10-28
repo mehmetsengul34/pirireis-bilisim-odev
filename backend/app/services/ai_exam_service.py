@@ -182,6 +182,18 @@ def sanitize_math_and_turkish(text: str, is_option: bool = False) -> str:
         f = re.sub(r'√\(([^)]+)\)', r'\\sqrt{\1}', f)
         f = f.replace("·", r"\cdot ").replace("×", r"\times ").replace("÷", r"\div ")
         f = f.replace("≤", r"\le ").replace("≥", r"\ge ").replace("≠", r"\ne ").replace("±", r"\pm ")
+        f = re.sub(r'<=', r'\\le ', f)
+        f = re.sub(r'>=', r'\\ge ', f)
+        f = re.sub(r'!=', r'\\ne ', f)
+
+        # Trigonometri ve standart fonksiyonlar
+        f = re.sub(r'(?<![a-zA-Z\\])(sin|cos|tan|cot|sec|csc|log|ln|lim|det|arcsin|arccos|arctan|deg|gcd|lcm)(?![a-zA-Z])', r'\\\1', f)
+
+        # Yunan harfleri ve sabitler
+        f = f.replace("α", r"\alpha ").replace("β", r"\beta ").replace("θ", r"\theta ").replace("π", r"\pi ").replace("Δ", r"\Delta ").replace("∞", r"\infty ").replace("λ", r"\lambda ").replace("γ", r"\gamma ").replace("ω", r"\omega ").replace("σ", r"\sigma ").replace("μ", r"\mu ")
+
+        # Geometri açı & şapka notasyonu
+        f = re.sub(r'\\hat\{([a-zA-Z]{2,})\}', r'\\widehat{\1}', f)
         return f
 
     # 1. Eğer açıkça bir şık veya çok kısa saf matematik ifadesi ise
@@ -255,7 +267,8 @@ def are_questions_too_similar(q1_text: str, q2_text: str) -> bool:
         return False
     inter = len(w1.intersection(w2))
     union = len(w1.union(w2))
-    return (inter / union) >= 0.85
+    # Kelime çakışması %60 ve üzeri olan sorular birbirine çok yakın kabul edilip elenir
+    return (inter / union) >= 0.60
 
 def make_distractors(correct_val: Any, diffs: List[int] = None) -> List[Any]:
     if isinstance(correct_val, (int, float)):
@@ -1353,7 +1366,8 @@ async def generate_questions_with_gemini(
     question_count: int,
     include_diagrams: bool = True,
     custom_prompt: Optional[str] = None,
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    training_guidelines: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
     Google Gemini Pro / Flash API ile o anda dinamik olarak %100 özgün, 
@@ -1371,7 +1385,16 @@ Ders: {subject}
 Konu: {topic}
 Zorluk: {difficulty}
 İstenen Soru Sayısı: {question_count}
-Benzersiz Oturum Kodu: {unique_session_seed}
+Benzersiz Oturum Kodu: {unique_session_seed}"""
+
+    if training_guidelines:
+        system_instruction += f"""
+
+ÖĞRETMENİN YÜKLEDİĞİ ÖRNEK SORU PDF'LERİNDEN ÖĞRENİLEN SORU TARZI VE ÜSLUP REHBERİ:
+{training_guidelines}
+ÖNEMLİ KURAL: Bu sorular tamamen tarz, zorluk ve pedagojik yaklaşım eğitimi içindir. Bu soruları ASLA birebir sorma veya kopyalama; sadece bu soru kökü kalıplarını, dil derinliğini ve zorluk düzeyini rehber alarak YEPYENİ, TAMAMEN FARKLI ve ÖZGÜN sorular türet!"""
+
+    system_instruction += f"""
 
 KATI VE DEĞİŞMEZ KURALLAR:
 1. Üreteceğin {question_count} sorunun TAMAMI birbirinden ve piyasadaki tüm klasik sorulardan KESİNLİKLE FARKLI VE ÖZGÜN OLMALIDIR.
@@ -1585,7 +1608,8 @@ async def generate_questions_smart(
     question_count: int,
     include_diagrams: bool = True,
     custom_prompt: Optional[str] = None,
-    api_key: Optional[str] = None
+    api_key: Optional[str] = None,
+    training_guidelines: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     effective_key = api_key or os.getenv("GEMINI_API_KEY")
     candidates = []
@@ -1600,7 +1624,8 @@ async def generate_questions_smart(
                 question_count=question_count,
                 include_diagrams=include_diagrams,
                 custom_prompt=custom_prompt,
-                api_key=effective_key
+                api_key=effective_key,
+                training_guidelines=training_guidelines
             )
         except Exception as e:
             print(f"[AI Exam Service] Gemini API hatası: {str(e)}. Prosedürel dinamik motora geçiliyor...")

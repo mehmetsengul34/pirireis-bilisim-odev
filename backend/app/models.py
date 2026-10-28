@@ -208,4 +208,21 @@ class QuestionBank(Base):
     created_by_teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+class AIQuestionTrainingDoc(Base):
+    __tablename__ = "ai_question_training_docs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    filename = Column(String(255), nullable=False)
+    subject = Column(String(100), index=True, nullable=False)
+    exam_type = Column(String(50), default="TYT")
+    page_count = Column(Integer, default=1)
+    extracted_text = Column(Text, nullable=False)
+    analyzed_patterns = Column(Text, nullable=True) # JSON: Soru kalıpları, üslup ve pedagojik rehber
+    sample_question_count = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    teacher = relationship("User")
+
 

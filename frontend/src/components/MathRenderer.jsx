@@ -33,20 +33,49 @@ function sanitizeFormulaForKatex(formula) {
   f = f.replace(/\^\{\s*\^\{\\circ\}\s*\}/g, '^{\\circ}');
   f = f.replace(/\^\{\s*\{\\circ\}\s*\}/g, '^{\\circ}');
 
-  // 3. Kök işaretleri
-  f = f.replace(/√([0-9a-zA-Z]+)/g, '\\sqrt{$1}');
-  f = f.replace(/√\(([^)]+)\)/g, '\\sqrt{$1}');
+  // 3. Trigonometri & Standart Fonksiyonlar (Önünde backslash olmayanları otomatik ekle)
+  const mathFuncRegex = /(?<![a-zA-Z\\])(sin|cos|tan|cot|sec|csc|log|ln|lim|det|arcsin|arccos|arctan|deg|gcd|lcm)(?![a-zA-Z])/g;
+  f = f.replace(mathFuncRegex, (_m, g1) => '\\' + g1);
 
-  // 4. Semboller
-  f = f.replace(/·/g, '\\cdot ');
-  f = f.replace(/×/g, '\\times ');
-  f = f.replace(/÷/g, '\\div ');
+  // 4. Yunan Alfabesi & KaTeX Matematiksel Semboller
+  f = f.replace(/α/g, '\\alpha ');
+  f = f.replace(/β/g, '\\beta ');
+  f = f.replace(/θ/g, '\\theta ');
+  f = f.replace(/π/g, '\\pi ');
+  f = f.replace(/Δ/g, '\\Delta ');
+  f = f.replace(/∞/g, '\\infty ');
+  f = f.replace(/λ/g, '\\lambda ');
+  f = f.replace(/γ/g, '\\gamma ');
+  f = f.replace(/ω/g, '\\omega ');
+  f = f.replace(/σ/g, '\\sigma ');
+  f = f.replace(/μ/g, '\\mu ');
+
+  // 5. Geometri Açı & Şapka Notasyonu (\hat{ABC} -> \widehat{ABC})
+  f = f.replace(/\\hat\{([a-zA-Z]{2,})\}/g, '\\widehat{$1}');
+
+  // 6. Eşitsizlik & Yön Sembolleri
+  f = f.replace(/<=/g, '\\le ');
+  f = f.replace(/>=/g, '\\ge ');
+  f = f.replace(/!=/g, '\\ne ');
   f = f.replace(/≤/g, '\\le ');
   f = f.replace(/≥/g, '\\ge ');
   f = f.replace(/≠/g, '\\ne ');
   f = f.replace(/±/g, '\\pm ');
+  f = f.replace(/->/g, '\\to ');
+  f = f.replace(/<->/g, '\\leftrightarrow ');
 
-  // 5. Eğer \text{...} içinde değilse ve Türkçe karakter içeriyorsa \text{} içine al
+  // 7. Kök işaretleri
+  f = f.replace(/√([0-9a-zA-Z]+)/g, '\\sqrt{$1}');
+  f = f.replace(/√\(([^)]+)\)/g, '\\sqrt{$1}');
+  f = f.replace(/\\sqrt\s+([0-9a-zA-Z])(?![0-9a-zA-Z{])/g, '\\sqrt{$1}');
+
+  // 8. Çarpma & Bölme Sembolleri
+  f = f.replace(/·/g, '\\cdot ');
+  f = f.replace(/×/g, '\\times ');
+  f = f.replace(/÷/g, '\\div ');
+  f = f.replace(/(?<=[0-9a-zA-Z])\s*\*\s*(?=[0-9a-zA-Z])/g, ' \\cdot ');
+
+  // 9. Eğer \text{...} içinde değilse ve Türkçe karakter içeriyorsa \text{} içine al
   const turkishRegex = /(?<!\\text\{)([a-zA-ZçğıöşüÇĞİÖŞÜ]+[çğıöşüÇĞİÖŞÜ][a-zA-ZçğıöşüÇĞİÖŞÜ]*)/g;
   const parts = [];
   let lastIndex = 0;
@@ -125,12 +154,22 @@ function normalizeMathText(rawText) {
     s = s.replace(/\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[2²](?![a-zA-Z0-9])/gi, (_m, num, unit) => `$${num}\\text{ ${unit}}^2$`);
     s = s.replace(/\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[3³](?![a-zA-Z0-9])/gi, (_m, num, unit) => `$${num}\\text{ ${unit}}^3$`);
 
-    // D. Değişken kare ve küpleri: 2x^2, x^2, x², y³
+    // D. Düz metinde kalmış kesir ve kök ifadeleri: \frac{a}{b}, \sqrt{x}
+    s = s.replace(/(\\frac\{[^{}]*\}\{[^{}]*\})/g, (_m, g1) => `$${g1}$`);
+    s = s.replace(/(\\sqrt(?:\[[0-9]+\])?\{[^{}]*\})/g, (_m, g1) => `$${g1}$`);
+
+    // E. Geometri açı kalıpları: m(\widehat{ABC}) veya \widehat{ABC}
+    s = s.replace(/\b([ms]\s*\(\s*\\(?:widehat|hat)\{[a-zA-Z]+\}\s*\))/g, (_m, g1) => `$${g1}$`);
+    s = s.replace(/(?<!\$)\\widehat\{([a-zA-Z]+)\}(?!\$)/g, (_m, g1) => `$\\widehat{${g1}}$`);
+
+    // F. Değişken kare ve küpleri: 2x^2, x^2, x², y³, (x+1)^2, x_1
+    s = s.replace(/\(([a-zA-Z0-9+\-*/]+)\)\s*\^\s*([0-9]+)\b/g, (_m, base, exp) => `$(${base})^{${exp}}$`);
     s = s.replace(/\b([0-9]*[a-zA-Z])\s*\^\s*([0-9]+)\b/g, (_m, base, exp) => `$${base}^{${exp}}$`);
     s = s.replace(/\b([0-9]*[a-zA-Z])([²³⁴])(?![a-zA-Z0-9])/g, (_m, base, p) => {
       const exp = p === '²' ? '2' : p === '³' ? '3' : '4';
       return `$${base}^{${exp}}$`;
     });
+    s = s.replace(/\b([a-zA-Z])_([0-9]+)\b/g, (_m, v, idx) => `$${v}_{${idx}}$`);
 
     return s;
   });
@@ -141,6 +180,7 @@ function normalizeMathText(rawText) {
 /**
  * Düz metin token'larında kalmış derece (°) veya üs (², ³, ^2, ^3) işaretlerini
  * HTML elemanları ile temiz ve şık render eder.
+ * text-inherit ile her zaman kapsayıcı rengini korur (asla beyaz zemin üzerinde beyaz kalmaz).
  */
 function renderPlainTextWithMathSymbols(rawStr) {
   if (!rawStr) return null;
@@ -161,19 +201,19 @@ function renderPlainTextWithMathSymbols(rawStr) {
 
     const token = match[0];
     if (token === '°') {
-      parts.push(<span key={match.index} className="inline-block font-sans text-amber-600 dark:text-amber-400 print:!text-black font-semibold px-0.5">°</span>);
+      parts.push(<span key={match.index} className="inline-block font-sans text-inherit font-semibold px-0.5 print:!text-black">°</span>);
     } else if (token === '²') {
-      parts.push(<sup key={match.index} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 print:!text-black">2</sup>);
+      parts.push(<sup key={match.index} className="text-xs font-semibold text-inherit print:!text-black">2</sup>);
     } else if (token === '³') {
-      parts.push(<sup key={match.index} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 print:!text-black">3</sup>);
+      parts.push(<sup key={match.index} className="text-xs font-semibold text-inherit print:!text-black">3</sup>);
     } else if (token === '⁴') {
-      parts.push(<sup key={match.index} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 print:!text-black">4</sup>);
+      parts.push(<sup key={match.index} className="text-xs font-semibold text-inherit print:!text-black">4</sup>);
     } else if (token.includes('^')) {
       const [base, exp] = token.split('^');
       parts.push(
-        <span key={match.index} className="inline-block print:!text-black">
+        <span key={match.index} className="inline-block text-inherit print:!text-black">
           {base && <span>{base}</span>}
-          <sup className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 print:!text-black">{exp}</sup>
+          <sup className="text-xs font-semibold text-inherit print:!text-black">{exp}</sup>
         </span>
       );
     }
@@ -297,7 +337,7 @@ export default function MathRenderer({ text, content, value, children, className
               }
             } else if (token.type === 'bold') {
               return (
-                <strong key={tokIdx} className="font-semibold text-zinc-900 dark:text-zinc-100 print:!text-black print:dark:!text-black">
+                <strong key={tokIdx} className="font-semibold text-inherit print:!text-black">
                   {renderPlainTextWithMathSymbols(token.value)}
                 </strong>
               );
