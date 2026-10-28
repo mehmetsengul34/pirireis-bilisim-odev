@@ -12,7 +12,7 @@ from app.schemas import (
     TopicAnalytic, StudentRanking, ExamQuestionStudentOut, ExamQuestionOut, ExamAnswerOut, QuestionBankItem, QuestionBankListResponse, CreateExamFromBankRequest
 )
 from app.auth import get_current_user, require_teacher
-from app.services.ai_exam_service import YKS_CURRICULUM, generate_questions_smart
+from app.services.ai_exam_service import YKS_CURRICULUM, generate_questions_smart, sanitize_math_and_turkish
 
 router = APIRouter(prefix="/api/exams", tags=["exams"])
 
@@ -29,7 +29,10 @@ def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject
         q_text = getattr(q, "question_text", None) or (q.get("question_text") if isinstance(q, dict) else None)
         if not q_text:
             continue
-        exists = db.query(QuestionBank).filter(QuestionBank.question_text == q_text).first()
+        clean_text = sanitize_math_and_turkish(q_text, is_option=False)
+        exists = db.query(QuestionBank).filter(
+            (QuestionBank.question_text == q_text) | (QuestionBank.question_text == clean_text)
+        ).first()
         if not exists:
             q_top = getattr(q, "topic", None) or (q.get("topic") if isinstance(q, dict) else default_topic) or default_topic
             q_sub = getattr(q, "subtopic", None) or (q.get("subtopic") if isinstance(q, dict) else None)
@@ -49,15 +52,15 @@ def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject
                 topic=q_top or "Genel",
                 subtopic=q_sub,
                 difficulty=q_diff or "ÖSYM / Yeni Nesil",
-                question_text=q_text,
+                question_text=clean_text,
                 visual_svg=q_svg,
-                option_a=q_a or "-",
-                option_b=q_b or "-",
-                option_c=q_c or "-",
-                option_d=q_d or "-",
-                option_e=q_e or "-",
+                option_a=sanitize_math_and_turkish(q_a, is_option=True) if q_a else "-",
+                option_b=sanitize_math_and_turkish(q_b, is_option=True) if q_b else "-",
+                option_c=sanitize_math_and_turkish(q_c, is_option=True) if q_c else "-",
+                option_d=sanitize_math_and_turkish(q_d, is_option=True) if q_d else "-",
+                option_e=sanitize_math_and_turkish(q_e, is_option=True) if q_e else "-",
                 correct_option=str(q_cor or "A").upper(),
-                explanation=q_exp,
+                explanation=sanitize_math_and_turkish(q_exp, is_option=False) if q_exp else None,
                 created_by_teacher_id=teacher_id
             )
             db.add(bank_item)
@@ -76,7 +79,8 @@ def sync_exam_questions_to_bank(db: Session):
         all_eqs = db.query(ExamQuestion).all()
         new_items = []
         for eq in all_eqs:
-            if not eq.question_text or eq.question_text in existing_texts:
+            clean_q_text = sanitize_math_and_turkish(eq.question_text, is_option=False)
+            if not clean_q_text or clean_q_text in existing_texts:
                 continue
             
             exam = db.query(Exam).filter(Exam.id == eq.exam_id).first()
@@ -86,19 +90,19 @@ def sync_exam_questions_to_bank(db: Session):
                 topic=(eq.topic or (exam.topic if exam else "Genel") or "Genel"),
                 subtopic=eq.subtopic,
                 difficulty=(exam.difficulty if exam and exam.difficulty else "ÖSYM / Yeni Nesil"),
-                question_text=eq.question_text,
+                question_text=clean_q_text,
                 visual_svg=eq.visual_svg,
-                option_a=eq.option_a or "-",
-                option_b=eq.option_b or "-",
-                option_c=eq.option_c or "-",
-                option_d=eq.option_d or "-",
-                option_e=eq.option_e or "-",
+                option_a=sanitize_math_and_turkish(eq.option_a, is_option=True) if eq.option_a else "-",
+                option_b=sanitize_math_and_turkish(eq.option_b, is_option=True) if eq.option_b else "-",
+                option_c=sanitize_math_and_turkish(eq.option_c, is_option=True) if eq.option_c else "-",
+                option_d=sanitize_math_and_turkish(eq.option_d, is_option=True) if eq.option_d else "-",
+                option_e=sanitize_math_and_turkish(eq.option_e, is_option=True) if eq.option_e else "-",
                 correct_option=str(eq.correct_option or "A").upper(),
-                explanation=eq.explanation,
+                explanation=sanitize_math_and_turkish(eq.explanation, is_option=False) if eq.explanation else None,
                 created_by_teacher_id=(exam.teacher_id if exam else None),
                 created_at=(exam.created_at if exam and exam.created_at else datetime.utcnow())
             ))
-            existing_texts.add(eq.question_text)
+            existing_texts.add(clean_q_text)
             
         if new_items:
             db.add_all(new_items)

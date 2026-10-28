@@ -227,13 +227,13 @@ export default function PrintableExamModal({
 
                     {/* Visual SVG if exists */}
                     {q.visual_svg && (
-                      <div className="my-2 p-2 bg-white flex justify-center overflow-hidden">
-                        <div className="max-w-[260px] w-full" dangerouslySetInnerHTML={{ __html: q.visual_svg }} />
+                      <div className="my-2 p-2 bg-white dark:bg-zinc-800 print:!bg-white flex justify-center overflow-hidden rounded-lg">
+                        <div className="max-w-[280px] w-full" dangerouslySetInnerHTML={{ __html: q.visual_svg }} />
                       </div>
                     )}
 
                     {/* Soru Metni */}
-                    <div className="text-xs sm:text-[13px] leading-relaxed mb-3 text-black">
+                    <div className="text-xs sm:text-[13px] leading-relaxed mb-3 text-black dark:text-zinc-100 print:!text-black font-sans">
                       <MathRenderer text={q.question_text} content={q.question_text} />
                     </div>
 
@@ -243,10 +243,10 @@ export default function PrintableExamModal({
                         const optText = q[`option_${opt.toLowerCase()}`];
                         return (
                           <div key={opt} className="flex items-start gap-2">
-                            <span className="font-bold text-xs shrink-0 w-5">
+                            <span className="font-bold text-xs shrink-0 w-5 text-zinc-900 dark:text-zinc-100 print:!text-black">
                               {opt})
                             </span>
-                            <div className="min-w-0 text-zinc-900 leading-snug">
+                            <div className="min-w-0 text-zinc-900 dark:text-zinc-100 print:!text-black leading-snug">
                               <MathRenderer text={optText || ''} content={optText || ''} />
                             </div>
                           </div>

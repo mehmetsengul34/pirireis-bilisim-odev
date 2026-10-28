@@ -163,44 +163,78 @@ def sanitize_math_and_turkish(text: str, is_option: bool = False) -> str:
     text = re.sub(r'\\\\(?=[a-zA-Z])', r'\\', text)
 
     trimmed = text.strip()
-    
-    # 1. Eğer açıkça bir şık ise veya çok kısa salt matematik ifadesi ise:
-    # (Örn: '93^\circ', '74\pi', '\sqrt{3}/2', 'x^2 - 4x + 4', '30°', 'x²', 'x³')
-    if is_option or (len(trimmed) < 45 and not any(p in trimmed for p in ['?', '!', ':', 'dir.', 'tir.', 'dır.', 'tır.'])):
+
+    # Formül içi LaTeX temizliği ve derece/üs standardizasyonu
+    def clean_math_inner(formula: str) -> str:
+        f = formula.strip()
+        f = f.replace("²", "^{2}").replace("³", "^{3}").replace("⁴", "^{4}").replace("⁰", "^{0}").replace("¹", "^{1}")
+        # Bozuk ve iç içe geçmiş dereceleri tek standarda indir:
+        f = re.sub(r'\^+\{*\s*\^+\{*\s*\\circ\}*\}*', r'^{\\circ}', f)
+        f = re.sub(r'\^+\{*\s*°\}*', r'^{\\circ}', f)
+        f = f.replace("°", "^{\\circ}")
+        f = re.sub(r'\^+\{*\s*\\circ\}*', r'^{\\circ}', f)
+        f = re.sub(r'(?<=[0-9a-zA-Z])\s*\\circ(?![a-zA-Z])', r'^{\\circ}', f)
+        f = re.sub(r'(?<=[0-9])\s*\^0\b', r'^{\\circ}', f)
+        f = re.sub(r'\^\{\s*\^\{\\circ\}\s*\}', r'^{\\circ}', f)
+        f = re.sub(r'\^\{\s*\{\\circ\}\s*\}', r'^{\\circ}', f)
+        # Kök ve operatörler
+        f = re.sub(r'√([0-9a-zA-Z]+)', r'\\sqrt{\1}', f)
+        f = re.sub(r'√\(([^)]+)\)', r'\\sqrt{\1}', f)
+        f = f.replace("·", r"\cdot ").replace("×", r"\times ").replace("÷", r"\div ")
+        f = f.replace("≤", r"\le ").replace("≥", r"\ge ").replace("≠", r"\ne ").replace("±", r"\pm ")
+        return f
+
+    # 1. Eğer açıkça bir şık veya çok kısa saf matematik ifadesi ise
+    if is_option or (len(trimmed) < 50 and not any(p in trimmed for p in ['?', '!', ':', 'dir.', 'tir.', 'dır.', 'tır.'])):
         has_math = bool(re.search(r'[\\\^_²³°√π±≤≥≠÷×]|\b(cm|m|mm|km)\^[23]\b|\b[a-zA-Z]\^[0-9]', trimmed, re.IGNORECASE))
-        words = re.findall(r'[a-zA-ZçğıöşüÇĞİÖŞÜ]{3,}', trimmed)
+        words = re.findall(r'[a-zA-ZçğıöşüÇĞİÖŞÜ]{4,}', trimmed)
         if not (trimmed.startswith("$") and trimmed.endswith("$")) and has_math and len(words) <= 1:
-            trimmed = f"${trimmed}$"
-            text = trimmed
+            return f"${clean_math_inner(trimmed)}$"
 
-    # 2. $...$ blokları içindeki formül temizliği
-    def fix_math_block(match):
-        inner = match.group(1).strip()
-        inner = inner.replace("²", "^{2}").replace("³", "^{3}").replace("⁴", "^{4}").replace("⁰", "^{0}")
-        inner = inner.replace("°", "^{\\circ}")
-        inner = re.sub(r'\^\\circ(?!\w)', r'^{\\circ}', inner)
-        inner = re.sub(r'\^0\b', r'^{\\circ}', inner)
-        inner = re.sub(r'\^\{\^\{\\circ\}\}', r'^{\\circ}', inner)
-        inner = re.sub(r'√([0-9a-zA-Z]+)', r'\\sqrt{\1}', inner)
-        inner = re.sub(r'(?<=[a-zA-Z0-9])\s*([+\-*/=><])\s*(?=[a-zA-Z0-9])', r' \1 ', inner)
-        inner = re.sub(r'\s+', ' ', inner)
-        return f"${inner}$"
+    # 2. Metni formül blokları ($$...$$ ve $...$) ile formül dışı düz metin olarak böl
+    token_pattern = re.compile(r'(\$\$[\s\S]*?\$\$|\$[^\$]+?\$)')
+    parts = []
+    last_end = 0
 
-    text = re.sub(r'\$([^\$]+)\$', fix_math_block, text)
+    for match in token_pattern.finditer(text):
+        start, end = match.span()
+        if start > last_end:
+            parts.append(('text', text[last_end:start]))
+        token = match.group(0)
+        if token.startswith('$$') and token.endswith('$$'):
+            parts.append(('display_math', token[2:-2]))
+        else:
+            parts.append(('inline_math', token[1:-1]))
+        last_end = end
 
-    # 3. $ dışında kalmış derece, pi, birim kare/küp kalıplarını $...$ ile sar:
-    text = re.sub(r'(?<!\$)\b([0-9]+)\s*\^\\circ\b(?!\$)', r'$\1^{\\circ}$', text)
-    text = re.sub(r'(?<!\$)\b([0-9]+)\s*\^\{\\circ\}\b(?!\$)', r'$\1^{\\circ}$', text)
-    text = re.sub(r'(?<!\$)\b([0-9]+)\s*\\circ\b(?!\$)', r'$\1^{\\circ}$', text)
-    text = re.sub(r'(?<!\$)\b([0-9]+)\s*°(?!\$)', r'$\1^{\\circ}$', text)
-    text = re.sub(r'(?<!\$)\b([0-9]+)\s*\\pi\b(?!\$)', r'$\1\\pi$', text)
-    text = re.sub(r'(?<!\$)\b(cm|m|mm|km|dm)\s*\^2\b(?!\$)', r'$\text{\1}^2$', text, flags=re.IGNORECASE)
-    text = re.sub(r'(?<!\$)\b(cm|m|mm|km|dm)\s*\^3\b(?!\$)', r'$\text{\1}^3$', text, flags=re.IGNORECASE)
-    text = re.sub(r'(?<!\$)\b(cm|m|mm|km|dm)²\b(?!\$)', r'$\text{\1}^2$', text, flags=re.IGNORECASE)
-    text = re.sub(r'(?<!\$)\b(cm|m|mm|km|dm)³\b(?!\$)', r'$\text{\1}^3$', text, flags=re.IGNORECASE)
-    text = re.sub(r'(?<![\$\w])([a-zA-Z])\s*\^\s*([0-9]+)(?![\$\w])', r'$\1^{\2}$', text)
+    if last_end < len(text):
+        parts.append(('text', text[last_end:]))
 
-    return text.strip()
+    # 3. Her parçayı güvenle işle (formül içindeki dolar işaretlerine ASLA dokunulmaz)
+    result = []
+    exp_map = {'²': '2', '³': '3', '⁴': '4'}
+    for p_type, val in parts:
+        if p_type == 'inline_math':
+            result.append(f"${clean_math_inner(val)}$")
+        elif p_type == 'display_math':
+            result.append(f"$${clean_math_inner(val)}$$")
+        else:
+            t = val
+            # Formül dışı derece kalıpları
+            t = re.sub(r'\b([0-9]+)\s*\^+\{*\s*\\circ\}*', r'$\1^{\\circ}$', t)
+            t = re.sub(r'\b([0-9]+)\s*°', r'$\1^{\\circ}$', t)
+            t = re.sub(r'\b([0-9]+)\s*\\circ\b', r'$\1^{\\circ}$', t)
+            # Formül dışı pi sayısı
+            t = re.sub(r'\b([0-9]+)\s*\\pi\b', r'$\1\\pi$', t)
+            # Formül dışı alan ve hacim birimleri
+            t = re.sub(r'\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[2²](?![a-zA-Z0-9])', r'$\1\\text{ \2}^2$', t, flags=re.IGNORECASE)
+            t = re.sub(r'\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[3³](?![a-zA-Z0-9])', r'$\1\\text{ \2}^3$', t, flags=re.IGNORECASE)
+            # Formül dışı değişken kare ve küpleri
+            t = re.sub(r'\b([0-9]*[a-zA-Z])\s*\^\s*([0-9]+)\b', r'$\1^{\2}$', t)
+            t = re.sub(r'\b([0-9]*[a-zA-Z])([²³⁴])(?![a-zA-Z0-9])', lambda m: f"${m.group(1)}^{{{exp_map.get(m.group(2), '2')}}}$", t)
+            result.append(t)
+
+    return ''.join(result).strip()
 
 # ================= BENZERSİZLİK VE METİN KARŞILAŞTIRMA =================
 

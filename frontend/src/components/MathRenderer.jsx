@@ -10,20 +10,43 @@ function sanitizeFormulaForKatex(formula) {
   if (!formula) return '';
   let f = formula;
 
-  // 1. Unicode üsleri, dereceyi ve sembolleri KaTeX LaTeX formatına dönüştür
+  // 1. Unicode üsleri KaTeX LaTeX formatına dönüştür
   f = f.replace(/²/g, '^{2}');
   f = f.replace(/³/g, '^{3}');
   f = f.replace(/⁴/g, '^{4}');
   f = f.replace(/⁵/g, '^{5}');
   f = f.replace(/⁰/g, '^{0}');
   f = f.replace(/¹/g, '^{1}');
-  f = f.replace(/°/g, '^{\\circ}');
-  f = f.replace(/\^\\circ(?!\w)/g, '^{\\circ}');
-  f = f.replace(/\\circ(?!\w)/g, '^{\\circ}');
-  f = f.replace(/\^0\b/g, '^{\\circ}'); // 30^0 -> 30^{\circ}
-  f = f.replace(/√([0-9a-zA-Z]+)/g, '\\sqrt{$1}');
+  f = f.replace(/⁻¹/g, '^{-1}');
+  f = f.replace(/⁻²/g, '^{-2}');
 
-  // 2. Eğer \text{...} içinde değilse ve Türkçe karakter içeriyorsa \text{} içine al
+  // 2. Derece sembolü ve bozuk varyasyonlarını tek seferde temiz ve standart hale getir:
+  // Örn: 108^{^{\circ}}, 60^^\circ, 30^°, 30°, 60^\circ, 90\circ
+  f = f.replace(/\^+\{*\s*\^+\{*\s*\\circ\}*\}*/g, '^{\\circ}');
+  f = f.replace(/\^+\{*\s*°\}*/g, '^{\\circ}');
+  f = f.replace(/°/g, '^{\\circ}');
+  f = f.replace(/\^+\{*\s*\\circ\}*/g, '^{\\circ}');
+  f = f.replace(/(?<=[0-9a-zA-Z])\s*\\circ(?![a-zA-Z])/g, '^{\\circ}');
+  f = f.replace(/(?<=[0-9])\s*\^0\b/g, '^{\\circ}');
+  
+  // Çift üs kalıntısı kalmışsa temizle:
+  f = f.replace(/\^\{\s*\^\{\\circ\}\s*\}/g, '^{\\circ}');
+  f = f.replace(/\^\{\s*\{\\circ\}\s*\}/g, '^{\\circ}');
+
+  // 3. Kök işaretleri
+  f = f.replace(/√([0-9a-zA-Z]+)/g, '\\sqrt{$1}');
+  f = f.replace(/√\(([^)]+)\)/g, '\\sqrt{$1}');
+
+  // 4. Semboller
+  f = f.replace(/·/g, '\\cdot ');
+  f = f.replace(/×/g, '\\times ');
+  f = f.replace(/÷/g, '\\div ');
+  f = f.replace(/≤/g, '\\le ');
+  f = f.replace(/≥/g, '\\ge ');
+  f = f.replace(/≠/g, '\\ne ');
+  f = f.replace(/±/g, '\\pm ');
+
+  // 5. Eğer \text{...} içinde değilse ve Türkçe karakter içeriyorsa \text{} içine al
   const turkishRegex = /(?<!\\text\{)([a-zA-ZçğıöşüÇĞİÖŞÜ]+[çğıöşüÇĞİÖŞÜ][a-zA-ZçğıöşüÇĞİÖŞÜ]*)/g;
   const parts = [];
   let lastIndex = 0;
@@ -47,43 +70,72 @@ function sanitizeFormulaForKatex(formula) {
  * Matematiksel metinleri, formülleri, üs ve derece sembollerini otomatik normalize eder.
  * Ham LaTeX ifadelerini (örn. 108^\circ, 74\pi, \sqrt{3}/2, x^2) veya üslü/dereceli şıkları
  * KaTeX'in işleyebileceği $...$ bloklarına sarar.
+ * Zaten $...$ veya $$...$$ içinde olan ifadelere dokunmaz (iç içe dolar işareti oluşturmaz).
  */
 function normalizeMathText(rawText) {
   if (!rawText || typeof rawText !== 'string') return '';
   let text = rawText;
 
-  // 1. Eğer tüm metin tek bir seçenek veya kısa matematiksel ifade ise ($ işareti olmadan yazılmışsa)
-  // Örn: '93^\circ', '108^\circ', '74\pi', '\sqrt{3}/2', 'x^2 + 4', '30°', 'x²', 'x³', '12 cm^2'
   const trimmed = text.trim();
-  const hasLaTeXOrMath = /[\\^_²³°√π±≤≥≠÷×]|\b(cm|m|mm|km|dm)\^[23]\b|\b[a-zA-Z]\^[0-9]/i.test(trimmed);
-  const wordCount = (trimmed.match(/[a-zA-ZçğıöşüÇĞİÖŞÜ]{4,}/g) || []).length;
-
-  if (!trimmed.startsWith('$') && hasLaTeXOrMath && wordCount <= 2) {
-    text = '$' + trimmed + '$';
+  // Zaten tek başına $...$ veya $$...$$ ise olduğu gibi bırak
+  if (/^\$[^$]+\$$|^\$\$[\s\S]+\$\$$/.test(trimmed)) {
+    return trimmed;
   }
 
-  // 2. Metin içinde $...$ blokları dışındaki derece kalıplarını algıla ve $ içine al
-  // 108^\circ -> $108^{\circ}$
-  text = text.replace(/(?<!\$)\b([0-9]+)\s*\^\\circ\b(?!\$)/g, (_m, g1) => `$${g1}^{\\circ}$`);
-  text = text.replace(/(?<!\$)\b([0-9]+)\s*\^\{\\circ\}\b(?!\$)/g, (_m, g1) => `$${g1}^{\\circ}$`);
-  text = text.replace(/(?<!\$)\b([0-9]+)\s*\\circ\b(?!\$)/g, (_m, g1) => `$${g1}^{\\circ}$`);
-  // 30° -> $30^{\circ}$ (derece simgesi)
-  text = text.replace(/(?<!\$)\b([0-9]+)\s*°(?!\$)/g, (_m, g1) => `$${g1}^{\\circ}$`);
+  // 1. Eğer tüm metin tek bir seçenek veya kısa matematiksel ifade ise ($ işareti olmadan yazılmışsa)
+  const hasLaTeXOrMath = /[\\^_²³°√π±≤≥≠÷×]|\b(cm|m|mm|km|dm)\^[23]\b|\b[a-zA-Z0-9]\^[0-9]/i.test(trimmed);
+  const wordCount = (trimmed.match(/[a-zA-ZçğıöşüÇĞİÖŞÜ]{4,}/g) || []).length;
 
-  // 3. Pi sayısı kalıpları: 74\pi -> $74\pi$, \pi -> $\pi$
-  text = text.replace(/(?<!\$)\b([0-9]+)\s*\\pi\b(?!\$)/g, (_m, g1) => `$${g1}\\pi$`);
+  if (hasLaTeXOrMath && wordCount <= 2 && !trimmed.includes('$')) {
+    return '$' + trimmed + '$';
+  }
 
-  // 4. Alan ve hacim birimleri: cm^2 -> $\text{cm}^2$, m^3 -> $\text{m}^3$
-  text = text.replace(/(?<!\$)\b(cm|m|mm|km|dm)\s*\^2\b(?!\$)/gi, (_m, g1) => `$\\text{${g1}}^2$`);
-  text = text.replace(/(?<!\$)\b(cm|m|mm|km|dm)\s*\^3\b(?!\$)/gi, (_m, g1) => `$\\text{${g1}}^3$`);
-  text = text.replace(/(?<!\$)\b(cm|m|mm|km|dm)²\b(?!\$)/gi, (_m, g1) => `$\\text{${g1}}^2$`);
-  text = text.replace(/(?<!\$)\b(cm|m|mm|km|dm)³\b(?!\$)/gi, (_m, g1) => `$\\text{${g1}}^3$`);
+  // 2. Metin içinde var olan math bloklarını ($...$ ve $$...$$) ayır.
+  // SADECE formül DIŞINDAKİ düz metin parçalarına regex uygulayacağız!
+  const mathBlockRegex = /(\$\$[\s\S]*?\$\$|\$[^\$]+?\$)/g;
+  const segments = [];
+  let lastIndex = 0;
+  let match;
 
-  // 5. Değişken kare ve küpleri (metin içinde $ olmadan kalmışsa):
-  // örn: x^2 -> $x^2$, x^3 -> $x^3$, y^2 -> $y^2$
-  text = text.replace(/(?<![$\w])([a-zA-Z])\s*\^\s*([0-9]+)(?![$\w])/g, (_m, v, p) => `$${v}^{${p}}$`);
+  while ((match = mathBlockRegex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ isMath: false, value: text.substring(lastIndex, match.index) });
+    }
+    segments.push({ isMath: true, value: match[0] });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    segments.push({ isMath: false, value: text.substring(lastIndex) });
+  }
 
-  return text;
+  const processed = segments.map(seg => {
+    if (seg.isMath) return seg.value;
+    let s = seg.value;
+
+    // A. Formül dışı derece kalıpları: 108^\circ, 30°, 60^{\circ} -> $108^{\circ}$
+    s = s.replace(/\b([0-9]+)\s*\^+\{*\s*\\circ\}*/g, (_m, g1) => `$${g1}^{\\circ}$`);
+    s = s.replace(/\b([0-9]+)\s*°/g, (_m, g1) => `$${g1}^{\\circ}$`);
+    s = s.replace(/\b([0-9]+)\s*\\circ\b/g, (_m, g1) => `$${g1}^{\\circ}$`);
+
+    // B. Formül dışı pi sayısı
+    s = s.replace(/\b([0-9]+)\s*\\pi\b/g, (_m, g1) => `$${g1}\\pi$`);
+    s = s.replace(/(?<![a-zA-Z0-9])\\pi\b/g, '$\\pi$');
+
+    // C. Alan ve hacim birimleri: 12 cm², 5 m³, 10 cm^2
+    s = s.replace(/\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[2²](?![a-zA-Z0-9])/gi, (_m, num, unit) => `$${num}\\text{ ${unit}}^2$`);
+    s = s.replace(/\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[3³](?![a-zA-Z0-9])/gi, (_m, num, unit) => `$${num}\\text{ ${unit}}^3$`);
+
+    // D. Değişken kare ve küpleri: 2x^2, x^2, x², y³
+    s = s.replace(/\b([0-9]*[a-zA-Z])\s*\^\s*([0-9]+)\b/g, (_m, base, exp) => `$${base}^{${exp}}$`);
+    s = s.replace(/\b([0-9]*[a-zA-Z])([²³⁴])(?![a-zA-Z0-9])/g, (_m, base, p) => {
+      const exp = p === '²' ? '2' : p === '³' ? '3' : '4';
+      return `$${base}^{${exp}}$`;
+    });
+
+    return s;
+  });
+
+  return processed.join('');
 }
 
 /**
@@ -109,19 +161,19 @@ function renderPlainTextWithMathSymbols(rawStr) {
 
     const token = match[0];
     if (token === '°') {
-      parts.push(<span key={match.index} className="inline-block font-sans text-amber-600 dark:text-amber-400 font-semibold px-0.5">°</span>);
+      parts.push(<span key={match.index} className="inline-block font-sans text-amber-600 dark:text-amber-400 print:!text-black font-semibold px-0.5">°</span>);
     } else if (token === '²') {
-      parts.push(<sup key={match.index} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">2</sup>);
+      parts.push(<sup key={match.index} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 print:!text-black">2</sup>);
     } else if (token === '³') {
-      parts.push(<sup key={match.index} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">3</sup>);
+      parts.push(<sup key={match.index} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 print:!text-black">3</sup>);
     } else if (token === '⁴') {
-      parts.push(<sup key={match.index} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">4</sup>);
+      parts.push(<sup key={match.index} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 print:!text-black">4</sup>);
     } else if (token.includes('^')) {
       const [base, exp] = token.split('^');
       parts.push(
-        <span key={match.index} className="inline-block">
+        <span key={match.index} className="inline-block print:!text-black">
           {base && <span>{base}</span>}
-          <sup className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">{exp}</sup>
+          <sup className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 print:!text-black">{exp}</sup>
         </span>
       );
     }
@@ -197,7 +249,7 @@ export default function MathRenderer({ text, content, value, children, className
       }
 
       return (
-        <span key={lineIdx} className="block leading-relaxed">
+        <span key={lineIdx} className="block leading-relaxed print:!text-black">
           {tokens.map((token, tokIdx) => {
             if (token.type === 'block-math') {
               try {
@@ -210,7 +262,7 @@ export default function MathRenderer({ text, content, value, children, className
                 return (
                   <span
                     key={tokIdx}
-                    className="block my-2 text-center overflow-x-auto py-1"
+                    className="block my-2 text-center overflow-x-auto py-1 print:!text-black"
                     dangerouslySetInnerHTML={{ __html: html }}
                   />
                 );
@@ -232,7 +284,7 @@ export default function MathRenderer({ text, content, value, children, className
                 return (
                   <span
                     key={tokIdx}
-                    className="inline-block px-0.5 align-middle"
+                    className="inline-block px-0.5 align-middle print:!text-black"
                     dangerouslySetInnerHTML={{ __html: html }}
                   />
                 );
@@ -245,13 +297,13 @@ export default function MathRenderer({ text, content, value, children, className
               }
             } else if (token.type === 'bold') {
               return (
-                <strong key={tokIdx} className="font-semibold text-zinc-900 dark:text-zinc-100">
+                <strong key={tokIdx} className="font-semibold text-zinc-900 dark:text-zinc-100 print:!text-black print:dark:!text-black">
                   {renderPlainTextWithMathSymbols(token.value)}
                 </strong>
               );
             } else {
               return (
-                <span key={tokIdx}>
+                <span key={tokIdx} className="print:!text-black">
                   {renderPlainTextWithMathSymbols(token.value)}
                 </span>
               );
@@ -262,5 +314,5 @@ export default function MathRenderer({ text, content, value, children, className
     });
   }, [rawText]);
 
-  return <div className={`math-content select-text ${className}`}>{renderedContent}</div>;
+  return <div className={`math-content select-text print:!text-black ${className}`}>{renderedContent}</div>;
 }
