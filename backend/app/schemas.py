@@ -249,7 +249,15 @@ class QuestionAnalytic(BaseModel):
     question_number: int
     question_id: int
     topic: Optional[str] = None
+    question_text: Optional[str] = None
+    visual_svg: Optional[str] = None
+    option_a: Optional[str] = None
+    option_b: Optional[str] = None
+    option_c: Optional[str] = None
+    option_d: Optional[str] = None
+    option_e: Optional[str] = None
     correct_option: str
+    explanation: Optional[str] = None
     correct_count: int
     incorrect_count: int
     blank_count: int
@@ -317,3 +325,42 @@ class NotificationOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ================= QUESTION BANK SCHEMAS =================
+
+class QuestionBankItem(BaseModel):
+    id: int
+    exam_type: str
+    subject: str
+    topic: str
+    subtopic: Optional[str] = None
+    difficulty: str
+    question_text: str
+    visual_svg: Optional[str] = None
+    option_a: str
+    option_b: str
+    option_c: str
+    option_d: str
+    option_e: str
+    correct_option: str
+    explanation: Optional[str] = None
+    created_by_teacher_id: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class QuestionBankListResponse(BaseModel):
+    total: int
+    questions: List[QuestionBankItem]
+    subjects: List[str]
+
+class CreateExamFromBankRequest(BaseModel):
+    title: str
+    classroom_id: Optional[int] = None
+    exam_type: str = "TYT"
+    subject: str = "Genel"
+    duration_minutes: int = 40
+    due_date: Optional[datetime] = None
+    question_ids: List[int]

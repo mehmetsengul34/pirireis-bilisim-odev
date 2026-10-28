@@ -231,6 +231,22 @@ export const examService = {
   delete: async (examId) => {
     const response = await api.delete(`/exams/${examId}`);
     return response.data;
+  },
+  getQuestionBank: async (params = {}) => {
+    const response = await api.get('/exams/question-bank', { params });
+    return response.data;
+  },
+  createExamFromBank: async (data) => {
+    const response = await api.post('/exams/question-bank/create-exam', data);
+    return response.data;
+  },
+  deleteFromBank: async (questionId) => {
+    const response = await api.delete(`/exams/question-bank/${questionId}`);
+    return response.data;
+  },
+  bulkDeleteFromBank: async (questionIds) => {
+    const response = await api.post('/exams/question-bank/bulk-delete', { question_ids: questionIds });
+    return response.data;
   }
 };
 

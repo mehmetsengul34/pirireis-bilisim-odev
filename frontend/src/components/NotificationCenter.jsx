@@ -11,6 +11,7 @@ export default function NotificationCenter({ user, onNavigate }) {
   const [loading, setLoading] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
   const [classrooms, setClassrooms] = useState([]);
+  const [expandedId, setExpandedId] = useState(null);
 
   // Send notification form states
   const [targetClassId, setTargetClassId] = useState('');
@@ -136,7 +137,7 @@ export default function NotificationCenter({ user, onNavigate }) {
 
       {/* Notifications Drawer Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[500px] transition-all">
+        <div className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:right-0 sm:top-full sm:mt-2 sm:w-96 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-[520px] transition-all">
           {/* Header */}
           <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -205,9 +206,25 @@ export default function NotificationCenter({ user, onNavigate }) {
                         {new Date(notif.created_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
-                      {notif.message}
-                    </p>
+                    <div className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                      <p className={`whitespace-pre-wrap break-words ${
+                        expandedId === notif.id || notif.message.length <= 130 ? '' : 'line-clamp-3'
+                      }`}>
+                        {notif.message}
+                      </p>
+                      {notif.message.length > 130 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedId(prev => prev === notif.id ? null : notif.id);
+                          }}
+                          className="mt-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-0.5"
+                        >
+                          {expandedId === notif.id ? 'Daha az göster' : 'Tamamını Gör'}
+                        </button>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 mt-1.5 text-[10px] text-zinc-400">
                       <span>{notif.sender_name}</span>
                       {notif.classroom_name && (

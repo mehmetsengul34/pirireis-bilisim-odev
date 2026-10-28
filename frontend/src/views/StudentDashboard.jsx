@@ -109,7 +109,7 @@ export default function StudentDashboard({ user }) {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100/90 dark:bg-zinc-900 rounded-xl w-fit border border-zinc-200 dark:border-zinc-800">
+      <div className="flex flex-nowrap sm:flex-wrap overflow-x-auto max-w-full items-center gap-1.5 p-1 bg-zinc-100/90 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 scrollbar-thin">
         <button
           onClick={() => setActiveTab('assignments')}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${

@@ -187,3 +187,25 @@ class Notification(Base):
     receiver = relationship("User", foreign_keys=[receiver_id], back_populates="received_notifications")
     classroom = relationship("Classroom", back_populates="notifications")
 
+class QuestionBank(Base):
+    __tablename__ = "question_bank"
+
+    id = Column(Integer, primary_key=True, index=True)
+    exam_type = Column(String(50), default="TYT")
+    subject = Column(String(100), index=True, nullable=False)
+    topic = Column(String(200), index=True, nullable=False)
+    subtopic = Column(String(200), nullable=True)
+    difficulty = Column(String(50), default="ÖSYM / Yeni Nesil")
+    question_text = Column(Text, nullable=False)
+    visual_svg = Column(Text, nullable=True)
+    option_a = Column(Text, nullable=False)
+    option_b = Column(Text, nullable=False)
+    option_c = Column(Text, nullable=False)
+    option_d = Column(Text, nullable=False)
+    option_e = Column(Text, nullable=False)
+    correct_option = Column(String(10), nullable=False)
+    explanation = Column(Text, nullable=True)
+    created_by_teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+

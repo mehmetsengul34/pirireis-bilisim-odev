@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User, Classroom, ClassroomStudent, Exam, ExamQuestion, ExamSubmission, ExamAnswer, Notification
+from app.models import User, Classroom, ClassroomStudent, Exam, ExamQuestion, ExamSubmission, ExamAnswer, Notification, QuestionBank
 from app.schemas import (
     ExamOut, ExamDetailOut, ExamCreateRequest, GenerateQuestionsRequest,
     ExamSubmitRequest, ExamSubmissionOut, ExamAnalyticsOut, QuestionAnalytic,
-    TopicAnalytic, StudentRanking, ExamQuestionStudentOut, ExamQuestionOut, ExamAnswerOut
+    TopicAnalytic, StudentRanking, ExamQuestionStudentOut, ExamQuestionOut, ExamAnswerOut, QuestionBankItem, QuestionBankListResponse, CreateExamFromBankRequest
 )
 from app.auth import get_current_user, require_teacher
 from app.services.ai_exam_service import YKS_CURRICULUM, generate_questions_smart
@@ -21,10 +21,56 @@ def get_curriculum():
     """YKS TYT ve AYT güncel müfredat ve konu listesini döndürür."""
     return YKS_CURRICULUM
 
+
+def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject: str, default_topic: str = "Genel", teacher_id: Optional[int] = None):
+    """Üretilen veya sınavda kullanılan soruları soru bankasına kaydeder."""
+    saved_count = 0
+    for q in questions:
+        q_text = getattr(q, "question_text", None) or (q.get("question_text") if isinstance(q, dict) else None)
+        if not q_text:
+            continue
+        exists = db.query(QuestionBank).filter(QuestionBank.question_text == q_text).first()
+        if not exists:
+            q_top = getattr(q, "topic", None) or (q.get("topic") if isinstance(q, dict) else default_topic) or default_topic
+            q_sub = getattr(q, "subtopic", None) or (q.get("subtopic") if isinstance(q, dict) else None)
+            q_diff = getattr(q, "difficulty", None) or (q.get("difficulty") if isinstance(q, dict) else "ÖSYM / Yeni Nesil")
+            q_svg = getattr(q, "visual_svg", None) or (q.get("visual_svg") if isinstance(q, dict) else None)
+            q_a = getattr(q, "option_a", None) or (q.get("option_a") if isinstance(q, dict) else "")
+            q_b = getattr(q, "option_b", None) or (q.get("option_b") if isinstance(q, dict) else "")
+            q_c = getattr(q, "option_c", None) or (q.get("option_c") if isinstance(q, dict) else "")
+            q_d = getattr(q, "option_d", None) or (q.get("option_d") if isinstance(q, dict) else "")
+            q_e = getattr(q, "option_e", None) or (q.get("option_e") if isinstance(q, dict) else "")
+            q_cor = getattr(q, "correct_option", None) or (q.get("correct_option") if isinstance(q, dict) else "A")
+            q_exp = getattr(q, "explanation", None) or (q.get("explanation") if isinstance(q, dict) else None)
+
+            bank_item = QuestionBank(
+                exam_type=exam_type or "TYT",
+                subject=subject or "Genel",
+                topic=q_top,
+                subtopic=q_sub,
+                difficulty=q_diff or "ÖSYM / Yeni Nesil",
+                question_text=q_text,
+                visual_svg=q_svg,
+                option_a=q_a,
+                option_b=q_b,
+                option_c=q_c,
+                option_d=q_d,
+                option_e=q_e,
+                correct_option=str(q_cor).upper(),
+                explanation=q_exp,
+                created_by_teacher_id=teacher_id
+            )
+            db.add(bank_item)
+            saved_count += 1
+    if saved_count > 0:
+        db.commit()
+    return saved_count
+
 @router.post("/generate-questions")
 async def generate_questions_endpoint(
     req: GenerateQuestionsRequest,
-    current_user: User = Depends(require_teacher)
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
 ):
     """Yapay Zeka (Gemini AI / Müfredat Motoru) ile yeni nesil sorular üretir."""
     try:
@@ -38,6 +84,10 @@ async def generate_questions_endpoint(
             custom_prompt=req.custom_prompt,
             api_key=req.gemini_api_key
         )
+        try:
+            save_questions_to_bank(db, questions, req.exam_type, req.subject, req.topic, current_user.id)
+        except Exception as db_err:
+            print(f"[UYARI] Soru bankasına kaydederken hata: {db_err}")
         return {"questions": questions}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Soru üretim hatası: {str(e)}")
@@ -76,6 +126,10 @@ def create_exam(
     db.add(exam)
     db.commit()
     db.refresh(exam)
+    try:
+        save_questions_to_bank(db, req.questions, req.exam_type, req.subject, req.topic, current_user.id)
+    except Exception as db_err:
+        print(f"[UYARI] Sınav sorularını soru bankasına aktarma hatası: {db_err}")
 
     # Soruları ekle
     for q in req.questions:
@@ -215,6 +269,177 @@ def list_exams(
         ))
 
     return results
+
+
+# ================= QUESTION BANK ENDPOINTS =================
+
+@router.get("/question-bank", response_model=QuestionBankListResponse)
+def get_question_bank(
+    exam_type: Optional[str] = None,
+    subject: Optional[str] = None,
+    topic: Optional[str] = None,
+    difficulty: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Soru bankasındaki kayıtlı soruları filtreleyerek getirir."""
+    query = db.query(QuestionBank)
+
+    if exam_type and exam_type != "Tümü":
+        query = query.filter(QuestionBank.exam_type == exam_type)
+    if subject and subject != "Tümü":
+        query = query.filter(QuestionBank.subject == subject)
+    if topic and topic != "Tümü":
+        query = query.filter(QuestionBank.topic == topic)
+    if difficulty and difficulty != "Tümü":
+        query = query.filter(QuestionBank.difficulty == difficulty)
+    if search:
+        s = f"%{search}%"
+        query = query.filter(
+            (QuestionBank.question_text.ilike(s)) |
+            (QuestionBank.topic.ilike(s)) |
+            (QuestionBank.subject.ilike(s))
+        )
+
+    total = query.count()
+    questions = query.order_by(QuestionBank.created_at.desc()).offset(offset).limit(limit).all()
+
+    # Mevcut tüm branş / ders listesini de döndür
+    all_subjects = [row[0] for row in db.query(QuestionBank.subject).distinct().all() if row[0]]
+
+    return QuestionBankListResponse(
+        total=total,
+        questions=questions,
+        subjects=sorted(list(set(all_subjects)))
+    )
+
+@router.post("/question-bank/create-exam", response_model=ExamOut)
+def create_exam_from_bank(
+    req: CreateExamFromBankRequest,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Soru bankasından seçilen sorularla yeni bir online sınıf sınavı oluşturur."""
+    if not req.question_ids:
+        raise HTTPException(status_code=400, detail="En az 1 soru seçilmelidir.")
+
+    classroom_name = None
+    if req.classroom_id:
+        cls = db.query(Classroom).filter(Classroom.id == req.classroom_id).first()
+        if not cls:
+            raise HTTPException(status_code=404, detail="Seçilen sınıf bulunamadı.")
+        classroom_name = cls.name
+
+    # Soruları soru bankasından çek
+    bank_questions = db.query(QuestionBank).filter(QuestionBank.id.in_(req.question_ids)).all()
+    if not bank_questions:
+        raise HTTPException(status_code=404, detail="Seçilen sorular bankada bulunamadı.")
+
+    # Sıralamayı req.question_ids sırasına göre yap
+    q_map = {q.id: q for q in bank_questions}
+    ordered_questions = [q_map[qid] for qid in req.question_ids if qid in q_map]
+
+    first_q = ordered_questions[0]
+    exam = Exam(
+        teacher_id=current_user.id,
+        classroom_id=req.classroom_id,
+        title=req.title,
+        description=f"Soru bankasından seçilmiş {len(ordered_questions)} soruluk {req.exam_type} {req.subject} testi.",
+        exam_type=req.exam_type or first_q.exam_type,
+        subject=req.subject or first_q.subject,
+        topic=first_q.topic,
+        difficulty=first_q.difficulty,
+        duration_minutes=req.duration_minutes,
+        due_date=req.due_date,
+        is_published=True
+    )
+    db.add(exam)
+    db.commit()
+    db.refresh(exam)
+
+    for idx, bq in enumerate(ordered_questions, start=1):
+        eq = ExamQuestion(
+            exam_id=exam.id,
+            question_number=idx,
+            question_text=bq.question_text,
+            visual_svg=bq.visual_svg,
+            option_a=bq.option_a,
+            option_b=bq.option_b,
+            option_c=bq.option_c,
+            option_d=bq.option_d,
+            option_e=bq.option_e,
+            correct_option=bq.correct_option.upper(),
+            explanation=bq.explanation,
+            topic=bq.topic,
+            subtopic=bq.subtopic
+        )
+        db.add(eq)
+
+    if req.classroom_id:
+        notification = Notification(
+            sender_id=current_user.id,
+            classroom_id=req.classroom_id,
+            title=f"Yeni YKS Testi: {exam.title}",
+            message=f"{current_user.full_name} hocanız {classroom_name} sınıfına soru bankasından '{exam.title}' başlıklı yeni bir test atadı.",
+            notification_type="exam_assigned",
+            link_path=f"/exams/{exam.id}"
+        )
+        db.add(notification)
+
+    db.commit()
+    db.refresh(exam)
+
+    return ExamOut(
+        id=exam.id,
+        teacher_id=exam.teacher_id,
+        teacher_name=current_user.full_name,
+        classroom_id=exam.classroom_id,
+        classroom_name=classroom_name,
+        title=exam.title,
+        description=exam.description,
+        exam_type=exam.exam_type,
+        subject=exam.subject,
+        topic=exam.topic,
+        difficulty=exam.difficulty,
+        duration_minutes=exam.duration_minutes,
+        due_date=exam.due_date,
+        is_published=exam.is_published,
+        created_at=exam.created_at,
+        question_count=len(ordered_questions),
+        submission_count=0
+    )
+
+@router.delete("/question-bank/{question_id}")
+def delete_bank_question(
+    question_id: int,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Soru bankasından tek bir soruyu siler."""
+    bq = db.query(QuestionBank).filter(QuestionBank.id == question_id).first()
+    if not bq:
+        raise HTTPException(status_code=404, detail="Soru bulunamadı.")
+    db.delete(bq)
+    db.commit()
+    return {"message": "Soru bankadan silindi."}
+
+@router.post("/question-bank/bulk-delete")
+def bulk_delete_bank_questions(
+    payload: dict,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Soru bankasından seçilen soruları topluca siler."""
+    question_ids = payload.get("question_ids", [])
+    if not question_ids:
+        raise HTTPException(status_code=400, detail="Silinecek soru seçilmedi.")
+    db.query(QuestionBank).filter(QuestionBank.id.in_(question_ids)).delete(synchronize_session=False)
+    db.commit()
+    return {"message": f"{len(question_ids)} soru başarıyla silindi."}
+
 
 @router.get("/{exam_id}", response_model=ExamDetailOut)
 def get_exam_detail(
@@ -511,7 +736,15 @@ def get_exam_analytics(
             question_number=q.question_number,
             question_id=q.id,
             topic=q.topic,
+            question_text=q.question_text,
+            visual_svg=q.visual_svg,
+            option_a=q.option_a,
+            option_b=q.option_b,
+            option_c=q.option_c,
+            option_d=q.option_d,
+            option_e=q.option_e,
             correct_option=q.correct_option,
+            explanation=q.explanation,
             correct_count=q_corr,
             incorrect_count=q_inc,
             blank_count=q_blank,
@@ -601,3 +834,4 @@ def delete_exam(
     db.delete(exam)
     db.commit()
     return {"message": "Sınav başarıyla silindi."}
+

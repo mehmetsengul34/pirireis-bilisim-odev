@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, Award, Users, TrendingUp, AlertTriangle, CheckCircle2, 
-  HelpCircle, ArrowDown, ArrowUp, BarChart3, ListFilter, Sparkles, Send 
+  HelpCircle, ArrowDown, ArrowUp, BarChart3, ListFilter, Sparkles, Send, ChevronDown, ChevronUp 
 } from 'lucide-react';
 import { examService, notificationService } from '../services/api';
 import MathRenderer from './MathRenderer';
@@ -11,6 +11,7 @@ export default function ExamAnalyticsModal({ examId, onClose }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('leaderboard'); // 'leaderboard' | 'topics' | 'questions'
   const [sendingAlert, setSendingAlert] = useState(false);
+  const [expandedQuestions, setExpandedQuestions] = useState({});
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -287,61 +288,171 @@ export default function ExamAnalyticsModal({ examId, onClose }) {
           {/* TAB 3: Soru & Çeldirici Raporu */}
           {activeTab === 'questions' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {analytics.question_analytics.map((q) => (
-                  <div
-                    key={q.question_id}
-                    className="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2.5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-zinc-900 dark:text-zinc-100">
-                        Soru {q.question_number} ({q.topic || 'Genel'})
-                      </span>
-                      <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-bold text-xs rounded-md">
-                        Doğru: {q.correct_option} (%{q.success_rate})
-                      </span>
-                    </div>
+              <div className="flex items-center justify-between pb-1 flex-wrap gap-2">
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                  Toplam {analytics.question_analytics.length} sorunun başarı oranları, şık dağılımları ve detaylı soru içerikleri:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allOpen = Object.keys(expandedQuestions).length === analytics.question_analytics.length;
+                    if (allOpen) {
+                      setExpandedQuestions({});
+                    } else {
+                      const all = {};
+                      analytics.question_analytics.forEach(q => { all[q.question_id] = true; });
+                      setExpandedQuestions(all);
+                    }
+                  }}
+                  className="px-3 py-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 text-xs font-semibold rounded-lg transition"
+                >
+                  {Object.keys(expandedQuestions).length === analytics.question_analytics.length ? 'Tüm Soruları Kapat' : 'Tüm Soru Metinlerini Aç'}
+                </button>
+              </div>
 
-                    {/* Option Distribution Bars */}
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-[11px] text-zinc-500 dark:text-zinc-400 block font-medium">
-                        Şık Dağılımı ve Çeldirici Analizi:
-                      </span>
-                      <div className="grid grid-cols-6 gap-1 text-center font-mono text-xs">
-                        {['A', 'B', 'C', 'D', 'E', 'Boş'].map((opt) => {
-                          const count = q.option_distribution[opt] || 0;
-                          const isCorrect = opt === q.correct_option;
-                          return (
-                            <div
-                              key={opt}
-                              className={`p-1.5 rounded-lg border ${
-                                isCorrect
-                                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold'
-                                  : count > 0
-                                  ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-400'
-                                  : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700 text-zinc-400'
-                              }`}
-                            >
-                              <div className="text-[10px] opacity-75">{opt}</div>
-                              <div className="font-bold">{count}</div>
+              <div className="space-y-4">
+                {analytics.question_analytics.map((q) => {
+                  const isExpanded = expandedQuestions[q.question_id] !== false; // default expanded
+                  return (
+                    <div
+                      key={q.question_id}
+                      className="p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-3 shadow-sm"
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">
+                            Soru {q.question_number}
+                          </span>
+                          <span className="px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-medium text-xs rounded-md">
+                            {q.topic || 'Genel'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-xs rounded-lg border border-emerald-200 dark:border-emerald-800">
+                            Doğru Cevap: {q.correct_option} (%{q.success_rate} Başarı)
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedQuestions(prev => ({ ...prev, [q.question_id]: !isExpanded }))}
+                            className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition"
+                            title={isExpanded ? 'Soruyu Gizle' : 'Soruyu Göster'}
+                          >
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Question Content (Text, SVG, Choices, Solution) */}
+                      {q.question_text && isExpanded && (
+                        <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
+                          {/* Soru Metni */}
+                          <div className="text-xs sm:text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed bg-zinc-50 dark:bg-zinc-850/50 p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                            <MathRenderer content={q.question_text} />
+                          </div>
+
+                          {/* Visual SVG if exists */}
+                          {q.visual_svg && (
+                            <div className="my-2 p-3 bg-white dark:bg-zinc-950 rounded-xl border border-zinc-200 dark:border-zinc-800 flex justify-center overflow-x-auto">
+                              <div className="max-w-md w-full" dangerouslySetInnerHTML={{ __html: q.visual_svg }} />
                             </div>
-                          );
-                        })}
+                          )}
+
+                          {/* Options */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            {['A', 'B', 'C', 'D', 'E'].map((opt) => {
+                              const optText = q[`option_${opt.toLowerCase()}`];
+                              const isCorrect = opt === q.correct_option;
+                              const pickCount = q.option_distribution ? (q.option_distribution[opt] || 0) : 0;
+                              return (
+                                <div
+                                  key={opt}
+                                  className={`p-2.5 rounded-xl border flex items-start justify-between gap-2 text-xs ${
+                                    isCorrect
+                                      ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700/60 text-emerald-900 dark:text-emerald-200 font-medium'
+                                      : 'bg-white dark:bg-zinc-850 border-zinc-200 dark:border-zinc-700/60 text-zinc-700 dark:text-zinc-300'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-2 min-w-0">
+                                    <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 font-bold text-[11px] ${
+                                      isCorrect ? 'bg-emerald-600 text-white' : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300'
+                                    }`}>
+                                      {opt}
+                                    </span>
+                                    <div className="min-w-0">
+                                      <MathRenderer content={optText || ''} />
+                                    </div>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${
+                                    isCorrect
+                                      ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200'
+                                      : pickCount > 0
+                                      ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'
+                                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'
+                                  }`}>
+                                    {pickCount} kişi
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Explanation */}
+                          {q.explanation && (
+                            <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 rounded-xl text-xs space-y-1">
+                              <span className="font-bold text-indigo-900 dark:text-indigo-300 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                                Detaylı Pedagojik Çözüm:
+                              </span>
+                              <div className="text-zinc-700 dark:text-zinc-300 leading-relaxed pl-5">
+                                <MathRenderer content={q.explanation} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Option Distribution Bars */}
+                      <div className="space-y-1.5 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                        <span className="text-[11px] text-zinc-500 dark:text-zinc-400 block font-medium">
+                          Şık Dağılımı ve Çeldirici Analizi:
+                        </span>
+                        <div className="grid grid-cols-6 gap-1.5 text-center font-mono text-xs">
+                          {['A', 'B', 'C', 'D', 'E', 'Boş'].map((opt) => {
+                            const count = q.option_distribution ? (q.option_distribution[opt] || 0) : 0;
+                            const isCorrect = opt === q.correct_option;
+                            return (
+                              <div
+                                key={opt}
+                                className={`p-1.5 rounded-lg border ${
+                                  isCorrect
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-bold'
+                                    : count > 0
+                                    ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40 text-amber-700 dark:text-amber-400'
+                                    : 'bg-zinc-50 dark:bg-zinc-800/40 border-zinc-200 dark:border-zinc-700 text-zinc-400'
+                                }`}
+                              >
+                                <div className="text-[10px] opacity-75">{opt}</div>
+                                <div className="font-bold">{count}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      <div className="text-[11px] text-zinc-400 flex justify-between pt-1 font-medium">
+                        <span>Doğru Yapan: {q.correct_count}</span>
+                        <span>Hatalı Yapan: {q.incorrect_count}</span>
+                        <span>Boş Bırakan: {q.blank_count}</span>
                       </div>
                     </div>
-
-                    <div className="text-[11px] text-zinc-400 flex justify-between pt-1">
-                      <span>Doğru Yapan: {q.correct_count}</span>
-                      <span>Hatalı Yapan: {q.incorrect_count}</span>
-                      <span>Boş Bırakan: {q.blank_count}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
-
-        </div>
+</div>
 
       </div>
     </div>
