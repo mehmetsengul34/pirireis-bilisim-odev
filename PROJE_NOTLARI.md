@@ -45,6 +45,30 @@
   - Öğrenciler anında sınıfa kaydedilir.
   - Öğretmen için oluşturulan tüm kullanıcı adı ve şifre listesini tek tıkla kopyalama seçeneği sunulur.
 
+### 4. Yapay Zeka Destekli YKS (TYT & AYT) Test ve Sınav Merkezi Entegrasyonu:
+- **Ders & Müfredat Kataloğu:**
+  - Güncel MEB/ÖSYM TYT (Türkçe, Temel Matematik, Geometri, Fizik, Kimya, Biyoloji, Tarih, Coğrafya, Felsefe, Din Kültürü) ve AYT (Matematik, Geometri, Fizik, Kimya, Biyoloji, Edebiyat vb.) müfredat ve kazanımları entegre edildi.
+  - Karma (tüm müfredat) veya konuya özel test oluşturma seçenekleri sunuldu.
+- **Yapay Zeka Soru Üretim Motoru (Gemini AI + Fallback):**
+  - Gerçek yaşam bağlamı, muhakeme ve problem çözme odaklı yeni nesil soru üretimi.
+  - Soru parametreleri: Ders, Konu, Soru Sayısı, Zorluk Derecesi, Süre, Hedef Sınıf, Özel Öğretmen Yönergesi (Prompt).
+- **Matematik ve Türkçe Karakter Güvenliği (KaTeX + Sanitizer):**
+  - Formül içlerindeki Türkçe karakterlerin bozulmasını ve KaTeX parse hatalarını önleyen çift kademeli regex filtresi ve `MathRenderer.jsx` geliştirildi.
+- **Vektörel Şekil ve Grafik Desteği (Responsive SVG):**
+  - Geometri, fizik elektrik devresi, fonksiyon ve parabol grafikleri için tema uyumlu SVG çizimleri sorularda otomatik üretilip işlendi.
+- **Öğrenci Sınav Modülü:**
+  - Geri sayım sayacı, optik form tarzı şık seçimi, soru navigasyon haritası.
+  - ÖSYM Net Hesaplama: $Net = \text{Doğru} - \frac{\text{Yanlış}}{4}$.
+  - Sınav teslim edildiğinde anında karne ve pedagojik çözümlerin gösterilmesi.
+- **Öğretmen Sınav Analiz Raporu:**
+  - Sınıf karnesi (katılım, ortalama, en yüksek, en düşük net).
+  - Öğrenci sıralama tablosu (leaderboard).
+  - Kazanım/konu başarı çubukları ve eksik kalınan konular için tek tıkla tekrar uyarısı gönderme.
+  - Soru ve çeldirici analizi (hangi şıkkın öğrencileri yanılttığı).
+- **Anlık Bildirim Merkezi (NotificationCenter):**
+  - Öğretmenlerin sınıfa veya öğrencilere tek tıkla sınav duyurusu ve motivasyon mesajı gönderebilmesi.
+  - Navbar üzerinde okunmamış rozetli bildirim zili ve çekmecesi.
+
 ---
 
 ## 🔑 Varsayılan Giriş Bilgileri

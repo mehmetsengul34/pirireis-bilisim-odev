@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, GraduationCap, ShieldCheck, KeyRound, Crown, Sun, Moon } from 'lucide-react';
 import Logo from './Logo';
+import NotificationCenter from './NotificationCenter';
 import { authService } from '../services/api';
 import ChangePasswordModal from './ChangePasswordModal';
 import { toggleTheme, getTheme } from '../utils/theme';
@@ -36,6 +37,9 @@ export default function Navbar({ user }) {
 
           {user && (
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Notification Center */}
+              <NotificationCenter user={user} />
+
               {/* Theme Toggle Button */}
               <button
                 onClick={handleToggleTheme}

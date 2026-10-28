@@ -6,15 +6,15 @@ from fastapi.staticfiles import StaticFiles
 from app.database import engine, Base, SessionLocal, BASE_DIR, get_db_info
 from app.models import User, Classroom, ClassroomStudent, Assignment
 from app.auth import hash_password
-from app.routers import auth, classrooms, assignments, submissions, system
+from app.routers import auth, classrooms, assignments, submissions, system, exams, notifications
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Torbalı Piri Reis MTAL - Bilişim Teknolojileri LMS",
-    description="Ödev ve Sınıf Yönetim Sistemi API",
-    version="1.0.0"
+    title="Torbalı Piri Reis MTAL - Bilişim Teknolojileri & YKS Test LMS",
+    description="Ödev, YKS Test ve Sınav Yönetim Sistemi API",
+    version="1.1.0"
 )
 
 # CORS Middleware
@@ -37,6 +37,8 @@ app.include_router(auth.router)
 app.include_router(classrooms.router)
 app.include_router(assignments.router)
 app.include_router(submissions.router)
+app.include_router(exams.router)
+app.include_router(notifications.router)
 app.include_router(system.router)
 
 @app.on_event("startup")

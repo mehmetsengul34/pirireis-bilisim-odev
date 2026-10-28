@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
   FileText, Upload, CheckCircle2, Clock, Download, Award, 
-  MessageSquare, BookOpen, FileCheck
+  MessageSquare, BookOpen, FileCheck, Sparkles 
 } from 'lucide-react';
 import { assignmentService, submissionService, getFileUrl } from '../services/api';
+import StudentYksManager from './StudentYksManager';
 
 export default function StudentDashboard({ user }) {
+  const [activeTab, setActiveTab] = useState('assignments'); // 'assignments' | 'yks'
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -106,7 +108,35 @@ export default function StudentDashboard({ user }) {
         </div>
       </div>
 
-      {/* Assignments Section */}
+      {/* Navigation Tabs */}
+      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100/90 dark:bg-zinc-900 rounded-xl w-fit border border-zinc-200 dark:border-zinc-800">
+        <button
+          onClick={() => setActiveTab('assignments')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+            activeTab === 'assignments'
+              ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm font-semibold'
+              : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5" />
+          <span>Ders Ödevleri ({assignments.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('yks')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+            activeTab === 'yks'
+              ? 'bg-indigo-600 text-white shadow-sm font-bold'
+              : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <span>YKS Test & Sınav Merkezi</span>
+        </button>
+      </div>
+
+      {/* Tab 1: Assignments Section */}
+      {activeTab === 'assignments' && (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
@@ -295,6 +325,12 @@ export default function StudentDashboard({ user }) {
           </div>
         )}
       </div>
+      )}
+
+      {/* Tab 2: YKS Test & Sınav Merkezi */}
+      {activeTab === 'yks' && (
+        <StudentYksManager user={user} />
+      )}
     </div>
   );
 }

@@ -3,12 +3,13 @@ import {
   Users, BookOpen, Plus, CheckCircle2, Clock, FileText, Download, 
   Send, UserPlus, Trash2, Award, ChevronRight, X,
   Crown, ShieldCheck, Upload, FileUp, Copy, Check,
-  Database, Save, RefreshCw, AlertTriangle, Server, HardDrive
+  Database, Save, RefreshCw, AlertTriangle, Server, HardDrive, Sparkles
 } from 'lucide-react';
 import { 
   classroomService, assignmentService, submissionService, 
   teacherService, systemService, getFileUrl 
 } from '../services/api';
+import TeacherYksManager from './TeacherYksManager';
 
 export default function TeacherDashboard({ user }) {
   const isMaster = user?.username?.toLowerCase() === 'pirireis';
@@ -537,6 +538,17 @@ export default function TeacherDashboard({ user }) {
           <BookOpen className="w-3.5 h-3.5" />
           <span>Sınıflar & Öğrenciler ({classrooms.length})</span>
         </button>
+        <button
+          onClick={() => setActiveTab('yks')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+            activeTab === 'yks'
+              ? 'bg-indigo-600 text-white shadow-sm font-bold'
+              : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <span>YKS Test & Sınav Merkezi</span>
+        </button>
         {isMaster && (
           <button
             onClick={() => setActiveTab('teachers')}
@@ -719,6 +731,11 @@ export default function TeacherDashboard({ user }) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Tab: YKS Test & Sınav Merkezi */}
+      {activeTab === 'yks' && (
+        <TeacherYksManager classrooms={classrooms} user={user} />
       )}
 
       {/* Tab 3: Teachers (Master Only) */}

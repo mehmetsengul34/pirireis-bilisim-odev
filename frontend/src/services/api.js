@@ -198,4 +198,59 @@ export const systemService = {
   }
 };
 
+export const examService = {
+  getCurriculum: async () => {
+    const response = await api.get('/exams/curriculum');
+    return response.data;
+  },
+  generateQuestions: async (data) => {
+    const response = await api.post('/exams/generate-questions', data);
+    return response.data;
+  },
+  create: async (data) => {
+    const response = await api.post('/exams', data);
+    return response.data;
+  },
+  list: async (classroomId = null) => {
+    const params = classroomId ? { classroom_id: classroomId } : {};
+    const response = await api.get('/exams', { params });
+    return response.data;
+  },
+  getDetail: async (examId) => {
+    const response = await api.get(`/exams/${examId}`);
+    return response.data;
+  },
+  submit: async (examId, answers) => {
+    const response = await api.post(`/exams/${examId}/submit`, { answers });
+    return response.data;
+  },
+  getAnalytics: async (examId) => {
+    const response = await api.get(`/exams/${examId}/analytics`);
+    return response.data;
+  },
+  delete: async (examId) => {
+    const response = await api.delete(`/exams/${examId}`);
+    return response.data;
+  }
+};
+
+export const notificationService = {
+  list: async () => {
+    const response = await api.get('/notifications');
+    return response.data;
+  },
+  send: async (data) => {
+    const response = await api.post('/notifications', data);
+    return response.data;
+  },
+  markAsRead: async (notificationId) => {
+    const response = await api.put(`/notifications/${notificationId}/read`);
+    return response.data;
+  },
+  markAllAsRead: async () => {
+    const response = await api.put('/notifications/read-all');
+    return response.data;
+  }
+};
+
 export default api;
