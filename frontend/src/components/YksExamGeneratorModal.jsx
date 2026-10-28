@@ -531,17 +531,31 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                   </label>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-                    Gemini API Anahtarı (İsteğe Bağlı)
-                  </label>
+                <div className="p-3.5 rounded-xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/40 dark:bg-indigo-950/20">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                      <span>🤖 Gemini Yapay Zeka API Anahtarı</span>
+                    </label>
+                    {geminiApiKey ? (
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        🟢 Canlı Pro AI Aktif
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                        ⚡ Dahili Şablon Motoru
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="password"
                     value={geminiApiKey}
                     onChange={(e) => setGeminiApiKey(e.target.value)}
-                    placeholder="AIzaSy... (Boş bırakılırsa dahili motor çalışır)"
-                    className="w-full text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2.5 text-zinc-900 dark:text-zinc-100 font-mono"
+                    placeholder="AIzaSy... (API Key girildiğinde Gemini Pro anında sıfırdan özgün soru üretir)"
+                    className="w-full text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono shadow-sm focus:ring-2 focus:ring-indigo-500"
                   />
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
+                    Google AI Studio API anahtarınızı buraya girdiğinizde her &quot;Sınav Oluştur&quot; butonuna basışta Gemini Pro canlı ve %100 özgün sorular üretir.
+                  </p>
                 </div>
               </div>
 
