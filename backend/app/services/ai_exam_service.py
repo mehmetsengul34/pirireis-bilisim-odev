@@ -1274,6 +1274,9 @@ def get_procedural_candidates_pool(exam_type: str, subject: str, topic: str = "K
 
 # ================= GEMINI AI YAPAY ZEKA SORU ÜRETİCİSİ =================
 
+import time
+import uuid
+
 async def generate_questions_with_gemini(
     exam_type: str,
     subject: str,
@@ -1284,9 +1287,101 @@ async def generate_questions_with_gemini(
     custom_prompt: Optional[str] = None,
     api_key: Optional[str] = None
 ) -> List[Dict[str, Any]]:
+    """
+    Google Gemini Pro / Flash API ile o anda dinamik olarak %100 özgün, 
+    birbirinden bağımsız yeni nesil YKS soruları üretir.
+    """
     key = api_key or os.getenv("GEMINI_API_KEY")
     if not key:
+        print("[AI Exam Service] GEMINI_API_KEY bulunamadı. Prosedürel motora yönlendiriliyor.")
         return []
+
+    unique_session_seed = f"{time.time()}_{uuid.uuid4().hex[:8]}"
+
+    system_instruction = f"""Sen Türkiye'nin en seçkin ÖSYM ve MEB YKS ({exam_type}) soru hazırlama komisyonu başkanısın.
+Ders: {subject}
+Konu: {topic}
+Zorluk: {difficulty}
+İstenen Soru Sayısı: {question_count}
+Benzersiz Oturum Kodu: {unique_session_seed}
+
+KATI VE DEĞİŞMEZ KURALLAR:
+1. Üreteceğin {question_count} sorunun TAMAMI birbirinden ve piyasadaki tüm klasik sorulardan KESİNLİKLE FARKLI VE ÖZGÜN OLMALIDIR.
+2. AYNI TESTTE ASLA BENZER KALIP VEYA AYNI SORU KULLANILAMAZ. Her soru farklı bir senaryo, farklı bir kurgu veya farklı bir alt kazanımı test etmelidir.
+3. Sorular güncel ÖSYM yeni nesil formatında olmalıdır: Gerçek hayat problemi, akıl yürütme, mantık, tablo/grafik analizi veya adım adım düşünme gerektirmelidir.
+4. Matematik ve fen formülleri için KaTeX uyumlu standart LaTeX ($ ... $ veya $$ ... $$) kullan.
+5. Türkçe karakterleri hatasız, temiz UTF-8 olarak doğrudan yaz (ç, ğ, ı, İ, ö, ş, ü).
+6. Her soru için 5 seçenek (A, B, C, D, E), doğru cevap harfi ve öğrencinin hatasını anlamasını sağlayacak detaylı bir çözüm adımı (explanation) ekle.
+7. Çıktı SADECE ve SADECE geçerli bir JSON dizisi olmalıdır. Markdown süslemesi dışında hiçbir metin yazma.
+
+Örnek JSON Şeması:
+[
+  {{
+    "question_number": 1,
+    "question_text": "Özgün soru metni...",
+    "option_a": "A seçeneği",
+    "option_b": "B seçeneği",
+    "option_c": "C seçeneği",
+    "option_d": "D seçeneği",
+    "option_e": "E seçeneği",
+    "correct_answer": "C",
+    "explanation": "Detaylı çözüm adımları...",
+    "topic": "{topic}",
+    "subtopic": "Kazanım alt başlığı",
+    "visual_svg": null
+  }}
+]"""
+
+    user_msg = (
+        f"{exam_type} - {subject} dersi, '{topic}' konusu için {difficulty} zorluk seviyesinde {question_count} adet "
+        f"tamamen birbirinden farklı, özgün yeni nesil soru üret. "
+        f"Tüm sorular o anda sıfırdan kurgulanmış olsun."
+    )
+    if custom_prompt:
+        user_msg += f" Öğretmenin özel notu: {custom_prompt}"
+
+    # Öncelikli olarak Gemini 1.5 Pro, ardından Gemini 2.0 Flash ve Gemini 1.5 Flash modelleri denenir
+    candidate_models = ["gemini-1.5-pro", "gemini-2.0-flash", "gemini-1.5-flash"]
+
+    payload = {
+        "contents": [{"parts": [{"text": f"{system_instruction}\n\nTalep: {user_msg}"}]}],
+        "generationConfig": {
+            "temperature": 0.88,
+            "topP": 0.95,
+            "responseMimeType": "application/json"
+        }
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        for model_name in candidate_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+            try:
+                print(f"[AI Exam Service] Gemini API çağrılıyor... Model: {model_name}, Soru Sayısı: {question_count}")
+                res = await client.post(url, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
+                        raw_text = candidates[0]["content"]["parts"][0]["text"].strip()
+                        # Markdown ```json temizliği
+                        if raw_text.startswith("```"):
+                            raw_text = re.sub(r"^```(?:json)?", "", raw_text)
+                            raw_text = re.sub(r"```$", "", raw_text).strip()
+                        parsed = json.loads(raw_text)
+                        if isinstance(parsed, dict) and "questions" in parsed:
+                            parsed = parsed["questions"]
+                        if isinstance(parsed, list) and len(parsed) > 0:
+                            for q in parsed:
+                                q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""))
+                                q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""))
+                            print(f"[AI Exam Service] {model_name} ile {len(parsed)} adet özgün soru başarıyla üretildi.")
+                            return parsed
+                else:
+                    print(f"[AI Exam Service] {model_name} yanıt kodu: {res.status_code}, bir sonraki model deneniyor...")
+            except Exception as e:
+                print(f"[AI Exam Service] {model_name} çağrısında hata: {e}")
+
+    return []
 
     system_instruction = f"""Sen Türkiye'nin en seçkin ÖSYM ve MEB YKS ({exam_type}) soru hazırlama komisyonu başkanısın.
 Ders: {subject}
