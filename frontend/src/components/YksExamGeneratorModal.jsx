@@ -6,11 +6,154 @@ import {
 import { examService, classroomService } from '../services/api';
 import MathRenderer from './MathRenderer';
 
+// MEB ve ÖSYM Güncel Müfredat Kataloğu (Her an hazır, sıfır gecikme)
+export const DEFAULT_YKS_CURRICULUM = {
+  TYT: {
+    'Temel Matematik': [
+      'Temel Kavramlar ve Sayı Kümeleri', 'Bölme ve Bölünebilme Kuralları', 'Asal Çarpanlar ve EBOB-EKOK',
+      'Rasyonel ve Ondalık Sayılar', 'Birinci Dereceden Denklem ve Eşitsizlikler', 'Mutlak Değer',
+      'Üslü ve Köklü İfadeler', 'Çarpanlara Ayırma', 'Oran ve Orantı',
+      'Yeni Nesil Sayı ve Kesir Problemleri', 'Yaş Problemleri', 'İşçi Problemleri',
+      'Yüzde, Kâr-Zarar ve İskonto Problemleri', 'Karışım Problemleri', 'Hız ve Hareket Problemleri',
+      'Grafik ve Tablo Yorumlama Problemleri', 'Kümeler ve Kartezyen Çarpım',
+      'Fonksiyonlar (Temel Düzey)', 'Mantık', 'Sayma, Permütasyon ve Kombinasyon',
+      'Olasılık', 'İstatistik ve Veri Analizi'
+    ],
+    'Türkçe': [
+      'Sözcükte Anlam', 'Cümlede Anlam', 'Paragrafta Anlam ve Ana Düşünce',
+      'Paragrafta Yapı ve Akışı Bozan Cümle', 'Anlatım Teknikleri ve Düşünceyi Geliştirme Yolları',
+      'Ses Bilgisi', 'Yazım Kuralları', 'Noktalama İşaretleri',
+      'Sözcükte Yapı ve Ekler', 'İsim, Sıfat, Zamir, Zarf', 'Edat, Bağlaç, Ünlem',
+      'Fiiller, Ek Fiil ve Fiilimsi', 'Cümlenin Ögeleri', 'Cümle Türleri', 'Anlatım Bozuklukları'
+    ],
+    'Geometri': [
+      'Doğruda ve Üçgende Açılar', 'Özel Üçgenler (Dik, İkizkenar, Eşkenar)', 'Üçgende Alan',
+      'Üçgende Benzerlik', 'Açıortay ve Kenarortay Bağıntıları', 'Çokgenler ve Düzgün Çokgenler',
+      'Dörtgenler ve Özel Dörtgenler (Paralelkenar, Eşkenar Dörtgen, Dikdörtgen, Kare, Yamuk)',
+      'Çemberde Açılar ve Uzunluk', 'Dairede Alan ve Çevre', 'Katı Cisimler (Prizma, Silindir, Koni, Piramit, Küre)'
+    ],
+    'Fizik': [
+      'Fizik Bilimine Giriş', 'Madde ve Özellikleri', 'Hareket ve Kuvvet', 'Newton\'ın Hareket Yasaları',
+      'İş, Güç ve Enerji', 'Isı, Sıcaklık ve Genleşme', 'Elektrostatik', 'Elektrik Akımı ve Devreler',
+      'Mıknatıs ve Manyetizma', 'Basınç ve Kaldırma Kuvveti', 'Dalgalar (Yay, Su, Ses, Deprem)',
+      'Optik (Aydınlanma, Aynalar, Kırılma, Mercekler, Prizmalar ve Renk)'
+    ],
+    'Kimya': [
+      'Kimya Bilimi ve Güvenlik', 'Atom Modelleri ve Periyodik Sistem',
+      'Kimyasal Türler Arası Etkileşimler (Zayıf ve Güçlü Bağlar)', 'Maddenin Halleri (Katı, Sıvı, Gaz, Plazma)',
+      'Doğa ve Kimya', 'Kimyanın Temel Kanunları ve Kimyasal Hesaplamalar', 'Mol Kavramı',
+      'Karışımlar ve Ayırma Teknikleri', 'Asitler, Bazlar ve Tuzlar', 'Kimya Her Yerde'
+    ],
+    'Biyoloji': [
+      'Yaşam Bilimi Biyoloji ve Canlıların Ortak Özellikleri', 'Canlıların Temel Bileşikleri (İnorganik ve Organik)',
+      'Hücre Teorisi, Hücre Zarı ve Organeller', 'Hücre Zarından Madde Geçişleri',
+      'Canlılar Dünyası ve Sınıflandırma', 'Mitoz Bölünme ve Eşeysiz Üreme',
+      'Mayoz Bölünme ve Eşeyli Üreme', 'Kalıtımın Genel Esasları ve Çaprazlamalar',
+      'Ekosistem Ekolojisi ve Madde Döngüleri', 'Güncel Çevre Sorunları ve Biyoçeşitlilik'
+    ],
+    'Tarih': [
+      'Tarih ve Zaman', 'İlk ve Orta Çağlarda Türk Dünyası', 'İslam Medeniyetinin Doğuşu ve İlk İslam Devletleri',
+      'Türklerin İslamiyet\'i Kabulü ve İlk Türk İslam Devletleri', 'Orta Çağ\'da Dünya',
+      'Beylikten Devlete Osmanlı Siyaseti (1300-1453)', 'Dünya Gücü Osmanlı Devleti (1453-1595)',
+      'Değişim Çağında Avrupa ve Osmanlı', 'Uluslararası İlişkilerde Denge Stratejisi (1774-1914)',
+      '20. Yüzyıl Başlarında Osmanlı Devleti ve Dünya', 'Milli Mücadele Dönemi (Hazırlık, Cepheler)',
+      'Atatürkçülük ve Türk İnkılabı'
+    ],
+    'Coğrafya': [
+      'Doğa ve İnsan Etkileşimi', 'Dünya\'nın Şekli ve Hareketleri', 'Coğrafi Konum ve Koordinat Sistemi',
+      'Harita Bilgisi ve Ölçekler', 'Atmosfer ve İklim Elemanları (Sıcaklık, Basınç, Rüzgar, Nem, Yağış)',
+      'Büyük İklim Tipleri ve Türkiye\'nin İklimi', 'Yerin İç Yapısı ve İç Kuvvetler',
+      'Dış Kuvvetler ve Oluşturduğu Yer Şekilleri', 'Su, Toprak ve Bitki Varlığı',
+      'Nüfusun Gelişimi, Dağılışı ve Nüfus Piramitleri', 'Göçler ve Yerleşme Tipleri',
+      'Ekonomik Faaliyetler ve Doğal Afetler'
+    ],
+    'Felsefe': [
+      'Felsefenin Anlamı ve Özellikleri', 'Bilgi Felsefesi (Epistemoloji)', 'Varlık Felsefesi (Ontoloji)',
+      'Ahlak Felsefesi (Etik)', 'Sanat Felsefesi (Estetik)', 'Din Felsefesi', 'Siyaset Felsefesi', 'Bilim Felsefesi'
+    ],
+    'Din Kültürü ve Ahlak Bilgisi': [
+      'İslam ve İnanç Esasları (Tevhid, Ahiret, Kader)', 'İbadetler (Namaz, Oruç, Zekat, Hac)',
+      'Ahlak ve Değerler', 'Din, Kültür ve Medeniyet', 'Hz. Muhammed\'in Örnek Hayatı',
+      'Vahiy ve Akıl İlişkisi'
+    ]
+  },
+  AYT: {
+    'Matematik': [
+      'Temel Matematik İleri Uygulamaları', 'İkinci Dereceden Bir Bilinmeyenli Denklemler',
+      'Karmaşık Sayılar', 'İkinci Dereceden Eşitsizlikler ve Grafikleri',
+      'Parabol (İkinci Dereceden Fonksiyonlar)', 'Polinomlar ve Polinomlarda Bölme',
+      'Fonksiyonlarda Dönüşümler ve Bileşke', 'Permütasyon, Kombinasyon, Binom Açılımı ve Olasılık',
+      'Trigonometri (Birim Çember, Toplam-Fark, Yarım Açı, Denklemler)',
+      'Logaritma Fonksiyonu ve Üstel Denklemler', 'Diziler ve Aritmetik-Geometrik Diziler',
+      'Limit ve Süreklilik', 'Türev Tanımı, Kuralları ve Teğet Denklemi',
+      'Türevin Geometrik Yorumu ve Artan-Azalanlık', 'Maksimum ve Minimum Problemleri',
+      'Belirsiz İntegral ve İntegral Alma Teknikleri', 'Belirli İntegral ve Eğri Altında Kalan Alan Hesabı'
+    ],
+    'Geometri': [
+      'Noktanın ve Doğrunun Analitik İncelenmesi', 'Dönüşümlerle Geometri (Öteleme, Dönme, Yansıma)',
+      'Çemberin Analitik İncelenmesi', 'Katı Cisimler (Prizma, Piramit, Koni, Küre Hacim ve Alan)',
+      'Çemberde Uzunluk ve Teğet Özellikleri', 'Dairede Alan ve Yay Parçası', 'Vektörler (İleri)'
+    ],
+    'Fizik': [
+      'Vektörler ve Bağıl Hareket', 'Newton\'ın Hareket Yasaları (İki Boyutta Dinamik)',
+      'Bir ve İki Boyutta Sabit İvmeli Hareket (Atışlar)', 'İş, Güç ve Mekanik Enerjinin Korunumu',
+      'İtme ve Çizgisel Momentum Korunumu', 'Tork, Denge ve Kütle Merkezi', 'Basit Makineler',
+      'Elektriksel Kuvvet, Elektrik Alan ve Potansiyel', 'Düzgün Elektrik Alan ve Sığa (Kondansatörler)',
+      'Manyetik Alan, Manyetik Kuvvet ve İndüksiyon Akımı', 'Alternatif Akım Devreleri ve Transformatörler',
+      'Düzgün Çembersel Hareket ve Viraj Problemleri', 'Basit Harmonik Hareket',
+      'Dalga Mekaniği (Kırınım, Girişim ve Doppler Olayı)',
+      'Atom Fiziğine Giriş, Bohr Atom Modeli ve Radyoaktivite',
+      'Özel Görelilik Teorisi ve Fotoelektrik Olayı', 'Compton Saçılması ve De Broglie Hipotezi',
+      'Modern Fiziğin Teknolojideki Uygulamaları (Yarı İletkenler, Süper İletkenler, Lazer)'
+    ],
+    'Kimya': [
+      'Modern Atom Teorisi ve Kuantum Sayıları', 'Gaz Yasaları ve Gerçek Gazlar',
+      'Sıvı Çözeltiler ve Derişim Birimleri (Molarite, Molalite)', 'Koligatif Özellikler',
+      'Kimyasal Tepkimelerde Enerji ve Entalpi (Hess Yasası)',
+      'Kimyasal Tepkimelerde Hız ve Çarpışma Teorisi', 'Kimyasal Denge ve Dengeye Etki Eden Faktörler (Le Chatelier)',
+      'Sulu Çözelti Dengeleri (Asit-Baz Dengesi, pH, Tampon Çözeltiler)',
+      'Çözünürlük Dengesi (Kçç ve Ortak İyon Etkisi)',
+      'Kimya ve Elektrik (İndirgenme-Yükseltgenme, Elektrokimyasal Piller, Nernst Eşitliği)',
+      'Elektroliz ve Korozyon', 'Karbon Kimyasına Giriş ve Hibritleşme-Molekül Geometrisi',
+      'Organik Kimya: Hidrokarbonlar (Alkanlar, Alkenler, Alkinler, Aromatik Bileşikler)',
+      'Organik Kimya: Fonksiyonel Gruplar (Alkoller, Eterler, Karbonil Bileşikleri, Karboksilik Asitler ve Esterler)'
+    ],
+    'Biyoloji': [
+      'Sinir Sistemi, Nöronlar ve İmpuls İletimi', 'Endokrin Sistem ve Hormonlar',
+      'Duyu Organları (Göz, Kulak, Deri, Burun, Dil)', 'Destek ve Hareket Sistemi (Kemik, Kıkırdak, Kas Kasılması)',
+      'Sindirim Sistemi ve Besinlerin Emilimi', 'Dolaşım Sistemi, Kalbin Çalışması ve Bağışıklık',
+      'Solunum Sistemi ve Gaz Alışverişi', 'Boşaltım Sistemi ve Nefronların Fonksiyonu',
+      'Üreme Sistemi ve Embriyonik Gelişim', 'Komünite ve Popülasyon Ekolojisi',
+      'Nükleik Asitler (DNA, RNA) ve Genetik Şifre', 'Replikasyon, Transkripsiyon ve Protein Sentezi',
+      'Fotosentez ve Kemosentez Reaksiyonları', 'Hücresel Solunum (Glikoliz, Krebs, ETS) ve Fermantasyon',
+      'Bitki Biyolojisi (Dokular, Organlar, Madde Taşınması, Büyüme ve Üreme)', 'Canlılar ve Çevre'
+    ],
+    'Türk Dili ve Edebiyatı': [
+      'Şiir Bilgisi, Nazım Biçimleri ve Edebi Sanatlar',
+      'İslamiyet Öncesi ve Geçiş Dönemi Türk Edebiyatı', 'Halk Edebiyatı (Anonim, Âşık, Tekke)',
+      'Divan Edebiyatı (Nazım Şekilleri, Temsilcileri)', 'Tanzimat Dönemi Türk Edebiyatı',
+      'Servet-i Fünun ve Fecr-i Âti Edebiyatı', 'Millî Edebiyat Dönemi',
+      'Cumhuriyet Dönemi Türk Edebiyatı (Şiir, Roman, Hikaye, Tiyatro)',
+      'Batı Edebiyatı Akımları (Klasisizm, Romantizm, Realizm, Sembolizm vb.)'
+    ],
+    'Tarih-1': [
+      'Tarih Bilimi ve İlk Uygarlıklar', 'İlk ve Orta Çağlarda Türk Dünyası',
+      'İslam Medeniyeti ve Türk-İslam Devletleri', 'Selçuklu ve Beylikler Dönemi',
+      'Klasik Çağ Osmanlı Toplum ve Devlet Yapısı', 'Milli Mücadele Dönemi',
+      'Atatürk İlkeleri ve İnkılap Tarihi'
+    ],
+    'Coğrafya-1': [
+      'Ekosistem ve Madde Döngüleri', 'Nüfus Politikaları ve Şehirlerin Fonksiyonları',
+      'Türkiye\'de Tarım, Hayvancılık, Madenler ve Enerji Kaynakları', 'Türkiye\'de Sanayi ve Ulaşım',
+      'Bölgesel Kalkınma Projeleri', 'Küresel ve Bölgesel Örgütler', 'Çevre ve Toplum'
+    ]
+  }
+};
+
 export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
   const [step, setStep] = useState(1); // 1: Ayarlar, 2: Soruları İnceleme & Düzenleme
-  const [curriculum, setCurriculum] = useState({});
+  const [curriculum, setCurriculum] = useState(DEFAULT_YKS_CURRICULUM);
   const [classrooms, setClassrooms] = useState([]);
-  const [loadingCurriculum, setLoadingCurriculum] = useState(false);
 
   // Form States (Step 1)
   const [title, setTitle] = useState('');
@@ -33,36 +176,46 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
   const [editingIndex, setEditingIndex] = useState(null);
   const [savingExam, setSavingExam] = useState(false);
 
-  // Fetch Curriculum & Classes
+  // Active curriculum dictionary safely resolved
+  const activeCurriculum = (curriculum && Object.keys(curriculum).length > 0) ? curriculum : DEFAULT_YKS_CURRICULUM;
+  const currentSubjects = Object.keys(activeCurriculum[examType] || DEFAULT_YKS_CURRICULUM[examType] || {});
+  const currentTopics = (activeCurriculum[examType] || DEFAULT_YKS_CURRICULUM[examType])?.[subject] || [];
+
+  // Fetch Curriculum & Classes on mount / open
   useEffect(() => {
     if (!isOpen) return;
 
     const initData = async () => {
-      setLoadingCurriculum(true);
       try {
         const [currData, classList] = await Promise.all([
-          examService.getCurriculum(),
-          classroomService.list()
+          examService.getCurriculum().catch(() => null),
+          classroomService.list().catch(() => [])
         ]);
-        setCurriculum(currData);
-        setClassrooms(classList);
-        if (classList.length > 0 && !selectedClassId) {
-          setSelectedClassId(classList[0].id.toString());
-        }
 
-        // Default subject for TYT
-        const subjects = Object.keys(currData['TYT'] || {});
-        if (subjects.length > 0) {
-          setSubject(subjects[0]);
+        if (currData && typeof currData === 'object' && Object.keys(currData).length > 0) {
+          setCurriculum(currData);
+        }
+        if (Array.isArray(classList)) {
+          setClassrooms(classList);
+          if (classList.length > 0 && !selectedClassId) {
+            setSelectedClassId(classList[0].id.toString());
+          }
         }
       } catch (err) {
-        console.error('Müfredat yüklenemedi:', err);
-      } finally {
-        setLoadingCurriculum(false);
+        console.error('Veriler yüklenirken hata:', err);
       }
     };
     initData();
   }, [isOpen]);
+
+  // Ensure subject is always valid for the selected examType
+  useEffect(() => {
+    if (currentSubjects.length > 0) {
+      if (!subject || !currentSubjects.includes(subject)) {
+        setSubject(currentSubjects[0]);
+      }
+    }
+  }, [examType, currentSubjects, subject]);
 
   // When examType or subject changes, update default title & reset topic
   useEffect(() => {
@@ -74,8 +227,14 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
 
   if (!isOpen) return null;
 
-  const currentSubjects = Object.keys(curriculum[examType] || {});
-  const currentTopics = curriculum[examType]?.[subject] || [];
+  const handleExamTypeChange = (newType) => {
+    setExamType(newType);
+    const subs = Object.keys((activeCurriculum && activeCurriculum[newType]) || DEFAULT_YKS_CURRICULUM[newType] || {});
+    if (subs.length > 0) {
+      setSubject(subs[0]);
+    }
+    setTopic('Karma');
+  };
 
   const handleGenerateQuestions = async (e) => {
     e.preventDefault();
@@ -131,7 +290,6 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
     }
     setGeneratedQuestions(prev => {
       const filtered = prev.filter((_, i) => i !== index);
-      // Renumber questions
       return filtered.map((q, idx) => ({ ...q, question_number: idx + 1 }));
     });
   };
@@ -211,11 +369,7 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                     <button
                       type="button"
                       key={t}
-                      onClick={() => {
-                        setExamType(t);
-                        const subs = Object.keys(curriculum[t] || {});
-                        if (subs.length > 0) setSubject(subs[0]);
-                      }}
+                      onClick={() => handleExamTypeChange(t)}
                       className={`py-2.5 px-4 rounded-2xl text-xs sm:text-sm font-bold border transition flex items-center justify-center gap-2 ${
                         examType === t
                           ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20'
@@ -267,12 +421,18 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
               {/* Ders & Konu Seçimi */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-                    Ders Seçimi
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center justify-between">
+                    <span>Ders Seçimi</span>
+                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-normal">
+                      ({currentSubjects.length} Ders Mevcut)
+                    </span>
                   </label>
                   <select
                     value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
+                    onChange={(e) => {
+                      setSubject(e.target.value);
+                      setTopic('Karma');
+                    }}
                     className="w-full text-xs sm:text-sm rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3.5 py-2.5 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                   >
                     {currentSubjects.map((s) => (
@@ -282,8 +442,11 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
-                    Konu Kapsamı (Güncel Müfredat)
+                  <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1 flex items-center justify-between">
+                    <span>Konu Kapsamı (Güncel Müfredat)</span>
+                    <span className="text-[10px] text-zinc-400 font-normal">
+                      ({currentTopics.length} Konu)
+                    </span>
                   </label>
                   <select
                     value={topic}

@@ -17,7 +17,7 @@ from app.services.ai_exam_service import YKS_CURRICULUM, generate_questions_smar
 router = APIRouter(prefix="/api/exams", tags=["exams"])
 
 @router.get("/curriculum")
-def get_curriculum(current_user: User = Depends(get_current_user)):
+def get_curriculum():
     """YKS TYT ve AYT güncel müfredat ve konu listesini döndürür."""
     return YKS_CURRICULUM
 
