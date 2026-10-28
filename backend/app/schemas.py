@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # User Schemas
 class LoginRequest(BaseModel):
@@ -118,10 +118,20 @@ class ExamQuestionBase(BaseModel):
     option_c: str
     option_d: str
     option_e: str
-    correct_option: str # "A", "B", "C", "D", "E"
+    correct_option: Optional[str] = None # "A", "B", "C", "D", "E"
+    correct_answer: Optional[str] = None # Geriye dönük uyumluluk
     explanation: Optional[str] = None
     topic: Optional[str] = None
     subtopic: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_correct_option(cls, data: Any):
+        if isinstance(data, dict):
+            co = data.get("correct_option") or data.get("correct_answer") or "A"
+            data["correct_option"] = str(co).upper().strip()
+            data["correct_answer"] = data["correct_option"]
+        return data
 
 class ExamQuestionCreate(ExamQuestionBase):
     pass

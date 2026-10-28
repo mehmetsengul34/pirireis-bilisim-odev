@@ -266,7 +266,16 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
         gemini_api_key: geminiApiKey || null
       });
 
-      setGeneratedQuestions(resp.questions || []);
+      const normalized = (resp.questions || []).map((q, idx) => {
+        const correct = (q.correct_option || q.correct_answer || 'A').toUpperCase();
+        return {
+          ...q,
+          question_number: q.question_number || (idx + 1),
+          correct_option: correct,
+          correct_answer: correct
+        };
+      });
+      setGeneratedQuestions(normalized);
       setStep(2);
     } catch (err) {
       alert(err.response?.data?.detail || 'Soru üretilirken bir hata oluştu.');
@@ -302,6 +311,21 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
 
     setSavingExam(true);
     try {
+      const questionsToPublish = generatedQuestions.map((q, idx) => ({
+        question_number: q.question_number || (idx + 1),
+        question_text: q.question_text || '',
+        visual_svg: q.visual_svg || null,
+        option_a: q.option_a || '',
+        option_b: q.option_b || '',
+        option_c: q.option_c || '',
+        option_d: q.option_d || '',
+        option_e: q.option_e || '',
+        correct_option: (q.correct_option || q.correct_answer || 'A').toUpperCase(),
+        explanation: q.explanation || null,
+        topic: q.topic || topic || subject,
+        subtopic: q.subtopic || null
+      }));
+
       await examService.create({
         classroom_id: selectedClassId ? parseInt(selectedClassId, 10) : null,
         title,
@@ -311,7 +335,7 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
         topic,
         difficulty,
         duration_minutes: durationMinutes ? parseInt(durationMinutes, 10) : null,
-        questions: generatedQuestions
+        questions: questionsToPublish
       });
 
       alert('YKS Testi başarıyla oluşturuldu ve öğrencilere bildirim gönderildi!');

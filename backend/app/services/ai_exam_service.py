@@ -227,6 +227,7 @@ def format_options(correct_str: str, distractors: List[str]) -> Dict[str, Any]:
             opts[f"option_{letter.lower()}"] = str(shuffled_distractors[d_ptr])
             d_ptr += 1
 
+    opts["correct_option"] = letters[correct_idx]
     opts["correct_answer"] = letters[correct_idx]
     return opts
 
@@ -1490,6 +1491,9 @@ def enforce_strict_uniqueness(
 
     for idx, q in enumerate(unique_questions, start=1):
         q["question_number"] = idx
+        co = q.get("correct_option") or q.get("correct_answer") or "A"
+        q["correct_option"] = str(co).upper()
+        q["correct_answer"] = q["correct_option"]
         if not q.get("topic") or q["topic"] == "Karma":
             q["topic"] = topic if topic != "Karma" else q.get("topic", subject)
 
