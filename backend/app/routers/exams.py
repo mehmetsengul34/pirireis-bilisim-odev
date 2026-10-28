@@ -46,17 +46,17 @@ def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject
             bank_item = QuestionBank(
                 exam_type=exam_type or "TYT",
                 subject=subject or "Genel",
-                topic=q_top,
+                topic=q_top or "Genel",
                 subtopic=q_sub,
                 difficulty=q_diff or "ÖSYM / Yeni Nesil",
                 question_text=q_text,
                 visual_svg=q_svg,
-                option_a=q_a,
-                option_b=q_b,
-                option_c=q_c,
-                option_d=q_d,
-                option_e=q_e,
-                correct_option=str(q_cor).upper(),
+                option_a=q_a or "-",
+                option_b=q_b or "-",
+                option_c=q_c or "-",
+                option_d=q_d or "-",
+                option_e=q_e or "-",
+                correct_option=str(q_cor or "A").upper(),
                 explanation=q_exp,
                 created_by_teacher_id=teacher_id
             )
@@ -65,6 +65,48 @@ def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject
     if saved_count > 0:
         db.commit()
     return saved_count
+
+
+def sync_exam_questions_to_bank(db: Session):
+    """Mevcut tüm sınav sorularını soru bankasına otomatik aktarır ve eşitler."""
+    try:
+        existing_texts = set(
+            row[0] for row in db.query(QuestionBank.question_text).all() if row[0]
+        )
+        all_eqs = db.query(ExamQuestion).all()
+        new_items = []
+        for eq in all_eqs:
+            if not eq.question_text or eq.question_text in existing_texts:
+                continue
+            
+            exam = db.query(Exam).filter(Exam.id == eq.exam_id).first()
+            new_items.append(QuestionBank(
+                exam_type=(exam.exam_type if exam and exam.exam_type else "TYT"),
+                subject=(exam.subject if exam and exam.subject else "Genel"),
+                topic=(eq.topic or (exam.topic if exam else "Genel") or "Genel"),
+                subtopic=eq.subtopic,
+                difficulty=(exam.difficulty if exam and exam.difficulty else "ÖSYM / Yeni Nesil"),
+                question_text=eq.question_text,
+                visual_svg=eq.visual_svg,
+                option_a=eq.option_a or "-",
+                option_b=eq.option_b or "-",
+                option_c=eq.option_c or "-",
+                option_d=eq.option_d or "-",
+                option_e=eq.option_e or "-",
+                correct_option=str(eq.correct_option or "A").upper(),
+                explanation=eq.explanation,
+                created_by_teacher_id=(exam.teacher_id if exam else None),
+                created_at=(exam.created_at if exam and exam.created_at else datetime.utcnow())
+            ))
+            existing_texts.add(eq.question_text)
+            
+        if new_items:
+            db.add_all(new_items)
+            db.commit()
+            print(f"[BILGI] Soru bankasına {len(new_items)} soru otomatik aktarıldı.")
+    except Exception as err:
+        db.rollback()
+        print(f"[UYARI] Soru bankası senkronizasyon hatası: {err}")
 
 @router.post("/generate-questions")
 async def generate_questions_endpoint(
@@ -286,6 +328,9 @@ def get_question_bank(
     db: Session = Depends(get_db)
 ):
     """Soru bankasındaki kayıtlı soruları filtreleyerek getirir."""
+    # Soru bankasını mevcut tüm sınav sorularıyla otomatik eşitle
+    sync_exam_questions_to_bank(db)
+
     query = db.query(QuestionBank)
 
     if exam_type and exam_type != "Tümü":

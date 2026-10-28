@@ -141,12 +141,14 @@ function renderPlainTextWithMathSymbols(rawStr) {
  * Matematik formüllerini ($...$ ve $$...$$), üs (kare, küp), derece işaretlerini
  * ve Türkçe karakterleri kusursuz ve estetik olarak render eder.
  */
-export default function MathRenderer({ text = '', className = '' }) {
+export default function MathRenderer({ text, content, value, children, className = '' }) {
+  const rawText = text ?? content ?? value ?? (typeof children === 'string' ? children : '') ?? '';
+
   const renderedContent = useMemo(() => {
-    if (!text) return null;
+    if (!rawText) return null;
 
     // Önce metni normalize et (derece, kare, küp, pi ve ham formülleri $...$ içine sar)
-    const normalized = normalizeMathText(text);
+    const normalized = normalizeMathText(rawText);
 
     // Metni satırlara ayır
     const lines = normalized.split('\n');
@@ -258,7 +260,7 @@ export default function MathRenderer({ text = '', className = '' }) {
         </span>
       );
     });
-  }, [text]);
+  }, [rawText]);
 
   return <div className={`math-content select-text ${className}`}>{renderedContent}</div>;
 }

@@ -111,6 +111,13 @@ def startup_seed_data():
                 db.add(sample_assignment)
                 db.commit()
 
+        # Otomatik Soru Bankası Senkronizasyonu
+        try:
+            from app.routers.exams import sync_exam_questions_to_bank
+            sync_exam_questions_to_bank(db)
+        except Exception as sync_err:
+            print(f"[UYARI] Başlangıç soru bankası eşitleme uyarısı: {sync_err}")
+
     finally:
         db.close()
 

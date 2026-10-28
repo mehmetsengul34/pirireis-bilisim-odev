@@ -349,7 +349,7 @@ export default function ExamAnalyticsModal({ examId, onClose }) {
                         <div className="space-y-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
                           {/* Soru Metni */}
                           <div className="text-xs sm:text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed bg-zinc-50 dark:bg-zinc-850/50 p-3.5 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                            <MathRenderer content={q.question_text} />
+                            <MathRenderer text={q.question_text} />
                           </div>
 
                           {/* Visual SVG if exists */}
@@ -381,7 +381,7 @@ export default function ExamAnalyticsModal({ examId, onClose }) {
                                       {opt}
                                     </span>
                                     <div className="min-w-0">
-                                      <MathRenderer content={optText || ''} />
+                                      <MathRenderer text={optText || ''} />
                                     </div>
                                   </div>
                                   <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${
@@ -406,7 +406,7 @@ export default function ExamAnalyticsModal({ examId, onClose }) {
                                 Detaylı Pedagojik Çözüm:
                               </span>
                               <div className="text-zinc-700 dark:text-zinc-300 leading-relaxed pl-5">
-                                <MathRenderer content={q.explanation} />
+                                <MathRenderer text={q.explanation} />
                               </div>
                             </div>
                           )}

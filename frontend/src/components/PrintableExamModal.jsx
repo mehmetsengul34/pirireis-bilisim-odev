@@ -2,11 +2,20 @@ import React, { useState } from 'react';
 import { Printer, X, FileText, CheckCircle2, Settings, HelpCircle, Columns } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 
-export default function PrintableExamModal({ questions = [], defaultSubject = 'Matematik', onClose }) {
+export default function PrintableExamModal({ 
+  questions = [], 
+  defaultSubject = 'Matematik', 
+  defaultTitle = '',
+  onClose 
+}) {
   const [schoolName, setSchoolName] = useState('Piri Reis Ticaret Mesleki ve Teknik Anadolu Lisesi');
-  const [examTitle, setExamTitle] = useState(`${defaultSubject} YKS Kazanım ve Deneme Sınavı`);
+  const [examTitle, setExamTitle] = useState(defaultTitle || `${defaultSubject} YKS Kazanım ve Deneme Sınavı`);
   const [academicYear, setAcademicYear] = useState('2025 - 2026 Eğitim Öğretim Yılı');
-  const [examDuration, setExamDuration] = useState(questions.length * 2.5 > 120 ? 120 : Math.max(30, Math.round(questions.length * 2.5)));
+  const [examDuration, setExamDuration] = useState(
+    questions.length > 0 
+      ? (questions.length * 2.5 > 120 ? 120 : Math.max(30, Math.round(questions.length * 2.5))) 
+      : 40
+  );
   
   // Toggles
   const [showOpticForm, setShowOpticForm] = useState(true);
@@ -38,7 +47,7 @@ export default function PrintableExamModal({ questions = [], defaultSubject = 'M
                 </span>
               </h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                ÖSYM & MEB sınav standartlarında 2 sütunlu kağıt baskı çıktısı oluşturuldu.
+                ÖSYM & MEB standartlarında 2 sütunlu A4 sınav kağıdı şablonu.
               </p>
             </div>
           </div>
@@ -46,7 +55,8 @@ export default function PrintableExamModal({ questions = [], defaultSubject = 'M
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2"
+              disabled={questions.length === 0}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2"
             >
               <Printer className="w-4 h-4" />
               <span>Yazdır / PDF Olarak Kaydet</span>
@@ -186,64 +196,71 @@ export default function PrintableExamModal({ questions = [], defaultSubject = 'M
             </ul>
           </div>
 
-          {/* Questions Layout */}
-          <div className={twoColumns ? 'columns-1 md:columns-2 gap-8 [column-rule:1px_solid_#e4e4e7] print:[column-rule:1px_solid_#000]' : 'space-y-6'}>
-            {questions.map((q, idx) => {
-              const qNum = idx + 1;
-              return (
-                <div 
-                  key={q.id || idx} 
-                  className="page-break-avoid break-inside-avoid mb-6 pb-4 border-b border-zinc-200 print:border-zinc-300 last:border-none"
-                >
-                  {/* Soru No & Konu */}
-                  <div className="flex items-baseline justify-between mb-2">
-                    <span className="font-black text-sm font-sans flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-full border border-black flex items-center justify-center text-xs font-bold font-sans">
-                        {qNum}
+          {questions.length === 0 ? (
+            <div className="py-12 text-center text-zinc-500 font-sans space-y-2 border-2 border-dashed border-zinc-200 rounded-xl p-8">
+              <p className="font-bold text-sm text-zinc-700">Yazdırılacak soru bulunamadı.</p>
+              <p className="text-xs text-zinc-500">Lütfen soru bankasından en az bir soru seçiniz veya herhangi bir sınav kartı üzerindeki <strong>"Yazdır"</strong> butonuna basınız.</p>
+            </div>
+          ) : (
+            /* Questions Layout */
+            <div className={twoColumns ? 'columns-1 md:columns-2 gap-8 [column-rule:1px_solid_#e4e4e7] print:[column-rule:1px_solid_#000]' : 'space-y-6'}>
+              {questions.map((q, idx) => {
+                const qNum = idx + 1;
+                return (
+                  <div 
+                    key={q.id || idx} 
+                    className="page-break-avoid break-inside-avoid mb-6 pb-4 border-b border-zinc-200 print:border-zinc-300 last:border-none"
+                  >
+                    {/* Soru No & Konu */}
+                    <div className="flex items-baseline justify-between mb-2">
+                      <span className="font-black text-sm font-sans flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full border border-black flex items-center justify-center text-xs font-bold font-sans">
+                          {qNum}
+                        </span>
                       </span>
-                    </span>
-                    {q.topic && (
-                      <span className="text-[10px] text-zinc-500 print:text-zinc-600 font-sans italic">
-                        ({q.topic})
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Visual SVG if exists */}
-                  {q.visual_svg && (
-                    <div className="my-2 p-2 bg-white flex justify-center overflow-hidden">
-                      <div className="max-w-[260px] w-full" dangerouslySetInnerHTML={{ __html: q.visual_svg }} />
+                      {q.topic && (
+                        <span className="text-[10px] text-zinc-500 print:text-zinc-600 font-sans italic">
+                          ({q.topic})
+                        </span>
+                      )}
                     </div>
-                  )}
 
-                  {/* Soru Metni */}
-                  <div className="text-xs sm:text-[13px] leading-relaxed mb-3 text-black">
-                    <MathRenderer content={q.question_text} />
-                  </div>
+                    {/* Visual SVG if exists */}
+                    {q.visual_svg && (
+                      <div className="my-2 p-2 bg-white flex justify-center overflow-hidden">
+                        <div className="max-w-[260px] w-full" dangerouslySetInnerHTML={{ __html: q.visual_svg }} />
+                      </div>
+                    )}
 
-                  {/* Options */}
-                  <div className="space-y-1.5 text-xs font-sans">
-                    {['A', 'B', 'C', 'D', 'E'].map((opt) => {
-                      const optText = q[`option_${opt.toLowerCase()}`];
-                      return (
-                        <div key={opt} className="flex items-start gap-2">
-                          <span className="font-bold text-xs shrink-0 w-5">
-                            {opt})
-                          </span>
-                          <div className="min-w-0 text-zinc-900 leading-snug">
-                            <MathRenderer content={optText || ''} />
+                    {/* Soru Metni */}
+                    <div className="text-xs sm:text-[13px] leading-relaxed mb-3 text-black">
+                      <MathRenderer text={q.question_text} content={q.question_text} />
+                    </div>
+
+                    {/* Options */}
+                    <div className="space-y-1.5 text-xs font-sans">
+                      {['A', 'B', 'C', 'D', 'E'].map((opt) => {
+                        const optText = q[`option_${opt.toLowerCase()}`];
+                        return (
+                          <div key={opt} className="flex items-start gap-2">
+                            <span className="font-bold text-xs shrink-0 w-5">
+                              {opt})
+                            </span>
+                            <div className="min-w-0 text-zinc-900 leading-snug">
+                              <MathRenderer text={optText || ''} content={optText || ''} />
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Optical Answer Form for Students */}
-          {showOpticForm && (
+          {showOpticForm && questions.length > 0 && (
             <div className="page-break-avoid break-inside-avoid mt-8 pt-6 border-t-2 border-black font-sans">
               <div className="flex items-center justify-between mb-3">
                 <span className="font-bold text-xs uppercase tracking-wide">
@@ -275,7 +292,7 @@ export default function PrintableExamModal({ questions = [], defaultSubject = 'M
           )}
 
           {/* Answer Key (Table) */}
-          {showAnswerKey && (
+          {showAnswerKey && questions.length > 0 && (
             <div className="page-break-avoid break-inside-avoid mt-8 pt-6 border-t border-dashed border-zinc-400 font-sans">
               <div className="font-bold text-xs uppercase tracking-wide mb-2 flex items-center gap-1.5 text-black">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 print:text-black" />
@@ -293,7 +310,7 @@ export default function PrintableExamModal({ questions = [], defaultSubject = 'M
           )}
 
           {/* Detailed Solutions (Optional) */}
-          {showSolutions && (
+          {showSolutions && questions.length > 0 && (
             <div className="page-break-before break-before-page mt-8 pt-6 border-t-2 border-black font-sans">
               <div className="text-sm font-black uppercase tracking-wide mb-4 text-center">
                 {schoolName} - AYRINTILI SORU VE ÇÖZÜM KİTAPÇIĞI
@@ -306,7 +323,7 @@ export default function PrintableExamModal({ questions = [], defaultSubject = 'M
                       <span>Doğru Cevap: {q.correct_option}</span>
                     </div>
                     <div className="text-zinc-700 print:text-black leading-relaxed">
-                      <MathRenderer content={q.explanation || 'Açıklama mevcut değil.'} />
+                      <MathRenderer text={q.explanation || 'Açıklama mevcut değil.'} content={q.explanation || 'Açıklama mevcut değil.'} />
                     </div>
                   </div>
                 ))}

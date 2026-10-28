@@ -38,6 +38,7 @@ export default function TeacherYksManager({ classrooms = [], user }) {
 
   // Modals for Bank
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printCustomExam, setPrintCustomExam] = useState(null);
   const [showAssignFromBankModal, setShowAssignFromBankModal] = useState(false);
   const [assignTitle, setAssignTitle] = useState('');
   const [assignClassId, setAssignClassId] = useState(classrooms[0]?.id?.toString() || '');
@@ -81,9 +82,12 @@ export default function TeacherYksManager({ classrooms = [], user }) {
     }
   };
 
+
   useEffect(() => {
     fetchExams();
+    fetchBankQuestions();
   }, [selectedClassFilter]);
+
 
   useEffect(() => {
     if (activeView === 'bank') {
@@ -100,6 +104,17 @@ export default function TeacherYksManager({ classrooms = [], user }) {
       setExams(prev => prev.filter(e => e.id !== examId));
     } catch (err) {
       alert(err.response?.data?.detail || 'Sınav silinirken hata oluştu.');
+    }
+  };
+
+  
+  const handlePrintExam = async (examId) => {
+    try {
+      const detail = await examService.getDetail(examId);
+      setPrintCustomExam(detail);
+      setShowPrintModal(true);
+    } catch (err) {
+      alert('Sınav detayları alınamadı.');
     }
   };
 
@@ -415,13 +430,22 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                       <span>Sınav Analiz Raporunu İncele</span>
                     </button>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleOpenPreview(exam.id)}
                         className="flex-1 py-1.5 px-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-300 flex items-center justify-center gap-1 transition"
                       >
                         <Eye className="w-3 h-3 text-zinc-400" />
                         <span>Sorular</span>
+                      </button>
+
+                      <button
+                        onClick={() => handlePrintExam(exam.id)}
+                        title="Bu Sınavı Kağıda Yazdır"
+                        className="py-1.5 px-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-xs font-semibold text-indigo-700 dark:text-indigo-300 flex items-center justify-center gap-1 transition"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                        <span>Yazdır</span>
                       </button>
 
                       <button
@@ -688,7 +712,7 @@ export default function TeacherYksManager({ classrooms = [], user }) {
 
                     {/* Question Content */}
                     <div className="text-xs sm:text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans bg-zinc-50 dark:bg-zinc-850/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/80 mb-3">
-                      <MathRenderer content={q.question_text} />
+                      <MathRenderer text={q.question_text} />
                     </div>
 
                     {/* Visual SVG if exists */}
@@ -718,7 +742,7 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                               {opt}
                             </span>
                             <div className="min-w-0">
-                              <MathRenderer content={optText || ''} />
+                              <MathRenderer text={optText || ''} />
                             </div>
                           </div>
                         );
@@ -733,7 +757,7 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                           Çözüm Yolu:
                         </span>
                         <div className="text-zinc-700 dark:text-zinc-300 leading-relaxed pl-4">
-                          <MathRenderer content={q.explanation} />
+                          <MathRenderer text={q.explanation} />
                         </div>
                       </div>
                     )}
@@ -770,9 +794,13 @@ export default function TeacherYksManager({ classrooms = [], user }) {
       {/* Printable Exam Modal */}
       {showPrintModal && (
         <PrintableExamModal
-          questions={questionsToPrint}
-          defaultSubject={filterBankSubject !== 'Tümü' ? filterBankSubject : (questionsToPrint[0]?.subject || 'Matematik')}
-          onClose={() => setShowPrintModal(false)}
+          questions={printCustomExam ? (printCustomExam.questions || []) : questionsToPrint}
+          defaultSubject={printCustomExam ? (printCustomExam.subject || 'Genel') : (filterBankSubject !== 'Tümü' ? filterBankSubject : (questionsToPrint[0]?.subject || 'Matematik'))}
+          defaultTitle={printCustomExam ? printCustomExam.title : `${filterBankSubject !== 'Tümü' ? filterBankSubject : 'YKS'} Deneme Sınavı`}
+          onClose={() => {
+            setShowPrintModal(false);
+            setPrintCustomExam(null);
+          }}
         />
       )}
 
@@ -872,12 +900,24 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                 </h3>
                 <span className="text-xs text-zinc-400">Toplam {previewExam.questions?.length} soru</span>
               </div>
-              <button
-                onClick={() => setPreviewExam(null)}
-                className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-xl"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setPrintCustomExam(previewExam);
+                    setShowPrintModal(true);
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Kağıda Yazdır</span>
+                </button>
+                <button
+                  onClick={() => setPreviewExam(null)}
+                  className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-xl"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-4">
@@ -890,7 +930,7 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                     </span>
                   </div>
 
-                  <MathRenderer content={q.question_text} className="text-xs sm:text-sm font-medium" />
+                  <MathRenderer text={q.question_text} className="text-xs sm:text-sm font-medium" />
 
                   {q.visual_svg && (
                     <div className="my-2 flex justify-center" dangerouslySetInnerHTML={{ __html: q.visual_svg }} />
@@ -907,14 +947,14 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                         }`}
                       >
                         <span className="font-bold">{opt}:</span>
-                        <MathRenderer content={q[`option_${opt.toLowerCase()}`]} />
+                        <MathRenderer text={q[`option_${opt.toLowerCase()}`]} />
                       </div>
                     ))}
                   </div>
 
                   {q.explanation && (
                     <div className="p-2.5 rounded-lg bg-indigo-50/60 dark:bg-indigo-950/30 text-xs text-indigo-900 dark:text-indigo-200">
-                      <strong>Çözüm:</strong> <MathRenderer content={q.explanation} />
+                      <strong>Çözüm:</strong> <MathRenderer text={q.explanation} />
                     </div>
                   )}
                 </div>
