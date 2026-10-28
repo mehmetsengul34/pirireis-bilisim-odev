@@ -156,19 +156,50 @@ YKS_CURRICULUM = {
 
 # ================= FORMÜL VE TÜRKÇE KARAKTER TEMİZLEME MOTORU =================
 
-def sanitize_math_and_turkish(text: str) -> str:
+def sanitize_math_and_turkish(text: str, is_option: bool = False) -> str:
     if not text:
         return ""
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = str(text).replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r'\\\\(?=[a-zA-Z])', r'\\', text)
 
+    trimmed = text.strip()
+    
+    # 1. Eğer açıkça bir şık ise veya çok kısa salt matematik ifadesi ise:
+    # (Örn: '93^\circ', '74\pi', '\sqrt{3}/2', 'x^2 - 4x + 4', '30°', 'x²', 'x³')
+    if is_option or (len(trimmed) < 45 and not any(p in trimmed for p in ['?', '!', ':', 'dir.', 'tir.', 'dır.', 'tır.'])):
+        has_math = bool(re.search(r'[\\\^_²³°√π±≤≥≠÷×]|\b(cm|m|mm|km)\^[23]\b|\b[a-zA-Z]\^[0-9]', trimmed, re.IGNORECASE))
+        words = re.findall(r'[a-zA-ZçğıöşüÇĞİÖŞÜ]{3,}', trimmed)
+        if not (trimmed.startswith("$") and trimmed.endswith("$")) and has_math and len(words) <= 1:
+            trimmed = f"${trimmed}$"
+            text = trimmed
+
+    # 2. $...$ blokları içindeki formül temizliği
     def fix_math_block(match):
-        inner = match.group(1)
+        inner = match.group(1).strip()
+        inner = inner.replace("²", "^{2}").replace("³", "^{3}").replace("⁴", "^{4}").replace("⁰", "^{0}")
+        inner = inner.replace("°", "^{\\circ}")
+        inner = re.sub(r'\^\\circ(?!\w)', r'^{\\circ}', inner)
+        inner = re.sub(r'\^0\b', r'^{\\circ}', inner)
+        inner = re.sub(r'\^\{\^\{\\circ\}\}', r'^{\\circ}', inner)
+        inner = re.sub(r'√([0-9a-zA-Z]+)', r'\\sqrt{\1}', inner)
         inner = re.sub(r'(?<=[a-zA-Z0-9])\s*([+\-*/=><])\s*(?=[a-zA-Z0-9])', r' \1 ', inner)
         inner = re.sub(r'\s+', ' ', inner)
-        return f"${inner.strip()}$"
+        return f"${inner}$"
 
     text = re.sub(r'\$([^\$]+)\$', fix_math_block, text)
+
+    # 3. $ dışında kalmış derece, pi, birim kare/küp kalıplarını $...$ ile sar:
+    text = re.sub(r'(?<!\$)\b([0-9]+)\s*\^\\circ\b(?!\$)', r'$\1^{\\circ}$', text)
+    text = re.sub(r'(?<!\$)\b([0-9]+)\s*\^\{\\circ\}\b(?!\$)', r'$\1^{\\circ}$', text)
+    text = re.sub(r'(?<!\$)\b([0-9]+)\s*\\circ\b(?!\$)', r'$\1^{\\circ}$', text)
+    text = re.sub(r'(?<!\$)\b([0-9]+)\s*°(?!\$)', r'$\1^{\\circ}$', text)
+    text = re.sub(r'(?<!\$)\b([0-9]+)\s*\\pi\b(?!\$)', r'$\1\\pi$', text)
+    text = re.sub(r'(?<!\$)\b(cm|m|mm|km|dm)\s*\^2\b(?!\$)', r'$\text{\1}^2$', text, flags=re.IGNORECASE)
+    text = re.sub(r'(?<!\$)\b(cm|m|mm|km|dm)\s*\^3\b(?!\$)', r'$\text{\1}^3$', text, flags=re.IGNORECASE)
+    text = re.sub(r'(?<!\$)\b(cm|m|mm|km|dm)²\b(?!\$)', r'$\text{\1}^2$', text, flags=re.IGNORECASE)
+    text = re.sub(r'(?<!\$)\b(cm|m|mm|km|dm)³\b(?!\$)', r'$\text{\1}^3$', text, flags=re.IGNORECASE)
+    text = re.sub(r'(?<![\$\w])([a-zA-Z])\s*\^\s*([0-9]+)(?![\$\w])', r'$\1^{\2}$', text)
+
     return text.strip()
 
 # ================= BENZERSİZLİK VE METİN KARŞILAŞTIRMA =================
@@ -222,10 +253,12 @@ def format_options(correct_str: str, distractors: List[str]) -> Dict[str, Any]:
     d_ptr = 0
     for i, letter in enumerate(letters):
         if i == correct_idx:
-            opts[f"option_{letter.lower()}"] = str(correct_str)
+            raw_val = str(correct_str)
         else:
-            opts[f"option_{letter.lower()}"] = str(shuffled_distractors[d_ptr])
+            raw_val = str(shuffled_distractors[d_ptr])
             d_ptr += 1
+
+        opts[f"option_{letter.lower()}"] = sanitize_math_and_turkish(raw_val, is_option=True)
 
     opts["correct_option"] = letters[correct_idx]
     opts["correct_answer"] = letters[correct_idx]
@@ -549,7 +582,7 @@ def q_geometry_pythagoras_euclid() -> Dict[str, Any]:
 def q_geometry_circle() -> Dict[str, Any]:
     r = random.choice([3, 4, 5, 6, 7])
     area = r * r
-    opts = format_options(f"{area}\\pi", [f"{area + d}\\pi" for d in make_distractors(area)])
+    opts = format_options(f"${area}\\pi$", [f"${area + d}\\pi$" for d in make_distractors(area)])
     return {
         "question_text": f"Yarıçapı $r = {r}\\text{{ cm}}$ olan bir dairenin **alanı kaç $\\pi\\text{{ cm}}^2$**'dir?",
         "visual_svg": None,
@@ -577,7 +610,7 @@ def q_geometry_analytic() -> Dict[str, Any]:
 def q_geometry_polygon() -> Dict[str, Any]:
     n = random.choice([5, 6, 8, 10])
     interior = ((n - 2) * 180) // n
-    opts = format_options(f"{interior}^\\circ", [f"{interior + d}^\\circ" for d in [-30, -15, 15, 20, -10]])
+    opts = format_options(f"${interior}^\\circ$", [f"${interior + d}^\\circ$" for d in [-30, -15, 15, 20, -10]])
     return {
         "question_text": f"Düzgün bir **${n}$'genin bir iç açısının ölçüsü kaç derecedir**?",
         "visual_svg": None,
@@ -591,7 +624,7 @@ def q_geometry_solid() -> Dict[str, Any]:
     r = random.choice([2, 3, 4])
     h = random.choice([5, 8, 10])
     vol = (r ** 2) * h
-    opts = format_options(f"{vol}\\pi", [f"{vol + d}\\pi" for d in make_distractors(vol)])
+    opts = format_options(f"${vol}\\pi$", [f"${vol + d}\\pi$" for d in make_distractors(vol)])
     return {
         "question_text": f"Taban yarıçapı $r = {r}\\text{{ cm}}$ ve yüksekliği $h = {h}\\text{{ cm}}$ olan dik dairesel bir silindirin **hacmi kaç $\\pi\\text{{ cm}}^3$**'tür?",
         "visual_svg": None,
@@ -1310,7 +1343,15 @@ KATI VE DEĞİŞMEZ KURALLAR:
 1. Üreteceğin {question_count} sorunun TAMAMI birbirinden ve piyasadaki tüm klasik sorulardan KESİNLİKLE FARKLI VE ÖZGÜN OLMALIDIR.
 2. AYNI TESTTE ASLA BENZER KALIP VEYA AYNI SORU KULLANILAMAZ. Her soru farklı bir senaryo, farklı bir kurgu veya farklı bir alt kazanımı test etmelidir.
 3. Sorular güncel ÖSYM yeni nesil formatında olmalıdır: Gerçek hayat problemi, akıl yürütme, mantık, tablo/grafik analizi veya adım adım düşünme gerektirmelidir.
-4. Matematik ve fen formülleri için KaTeX uyumlu standart LaTeX ($ ... $ veya $$ ... $$) kullan.
+4. MATEMATİK VE GEOMETRİ İFADELERİ (KUSURSUZ KATEX STANDARD):
+   - Kare, küp, üslü ifadeler ve derece işaretleri her zaman standart LaTeX ($ ... $) içinde yazılmalıdır.
+   - Soru metninde, açıklamalarda ve TÜM ŞIKLARDA (A, B, C, D, E) matematiksel ifadeleri MUTLAKA $ ... $ içine al.
+   - Derece için HER ZAMAN: $30\\circ$, $45\\circ$, $90\\circ$, $108\\circ$ kullan (asla ham 30^0 veya işaretsiz 30 derece yazma).
+   - Kare için: $x^2$, $\\text{cm}^2$, $\\text{m}^2$ kullan.
+   - Küp için: $x^3$, $\\text{cm}^3$, $\\text{m}^3$ kullan.
+   - Pi sayısı için: $2\\\\pi$, $36\\\\pi$ vb. her zaman $ içine al.
+   - Köklü sayılar ve kesirler için: $\\sqrt{3}$, $\\frac{a}{b}$ vb. her zaman $ içine al.
+   - Şıklarda tek bir formül veya sayı olsa bile (örn. $108\\circ$ veya $36\\\\pi$ veya $x^2 + 1$) MUTLAKA $ sembolü ile sar.
 5. Türkçe karakterleri hatasız, temiz UTF-8 olarak doğrudan yaz (ç, ğ, ı, İ, ö, ş, ü).
 6. Her soru için 5 seçenek (A, B, C, D, E), doğru cevap harfi ve öğrencinin hatasını anlamasını sağlayacak detaylı bir çözüm adımı (explanation) ekle.
 7. Çıktı SADECE ve SADECE geçerli bir JSON dizisi olmalıdır. Markdown süslemesi dışında hiçbir metin yazma.
@@ -1431,8 +1472,11 @@ Zorluk: {difficulty}
             parsed = parsed["questions"]
         if isinstance(parsed, list):
             for q in parsed:
-                q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""))
-                q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""))
+                q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""), is_option=False)
+                q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""), is_option=False)
+                for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
+                    if opt_k in q:
+                        q[opt_k] = sanitize_math_and_turkish(q[opt_k], is_option=True)
             return parsed
     return []
 
