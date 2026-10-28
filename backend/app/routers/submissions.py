@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from sqlalchemy.orm import Session
 
 from app.database import get_db, BASE_DIR
-from app.models import User, Assignment, Submission
+from app.models import User, Classroom, Assignment, Submission
 from app.schemas import SubmissionOut, SubmissionGradeRequest
 from app.auth import get_current_user, require_teacher, require_student
 
@@ -79,9 +79,9 @@ def get_assignment_submissions(
     if teacher.username.lower() == "pirireis":
         assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     else:
-        assignment = db.query(Assignment).filter(
+        assignment = db.query(Assignment).join(Classroom, Assignment.classroom_id == Classroom.id).filter(
             Assignment.id == assignment_id,
-            Assignment.teacher_id == teacher.id
+            (Assignment.teacher_id == teacher.id) | (Classroom.teacher_id == teacher.id)
         ).first()
     if not assignment:
         raise HTTPException(status_code=404, detail="Ödev bulunamadı veya yetkiniz yok.")
@@ -117,9 +117,9 @@ def grade_submission(
     if teacher.username.lower() == "pirireis":
         submission = db.query(Submission).filter(Submission.id == submission_id).first()
     else:
-        submission = db.query(Submission).join(Assignment).filter(
+        submission = db.query(Submission).join(Assignment, Submission.assignment_id == Assignment.id).join(Classroom, Assignment.classroom_id == Classroom.id).filter(
             Submission.id == submission_id,
-            Assignment.teacher_id == teacher.id
+            (Assignment.teacher_id == teacher.id) | (Classroom.teacher_id == teacher.id)
         ).first()
 
     if not submission:

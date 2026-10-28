@@ -180,6 +180,8 @@ def list_classrooms(current_user: User = Depends(get_current_user), db: Session 
             .all()
         )
 
+    teacher_map = {t.id: t.full_name for t in db.query(User).filter(User.role == "teacher").all()}
+
     result = []
     for c in classes:
         student_count = db.query(ClassroomStudent).filter(ClassroomStudent.classroom_id == c.id).count()
@@ -190,6 +192,7 @@ def list_classrooms(current_user: User = Depends(get_current_user), db: Session 
             grade_level=c.grade_level,
             description=c.description,
             teacher_id=c.teacher_id,
+            teacher_name=teacher_map.get(c.teacher_id, "Öğretmen"),
             created_at=c.created_at,
             student_count=student_count,
             assignment_count=assignment_count
@@ -202,21 +205,30 @@ def create_classroom(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db)
 ):
+    assigned_teacher_id = teacher.id
+    if teacher.username.lower() == "pirireis" and request.teacher_id:
+        target_teacher = db.query(User).filter(User.id == request.teacher_id, User.role == "teacher").first()
+        if target_teacher:
+            assigned_teacher_id = target_teacher.id
+
     classroom = Classroom(
         name=request.name.strip(),
         grade_level=request.grade_level.strip() if request.grade_level else "Bilişim Teknolojileri",
         description=request.description.strip() if request.description else "",
-        teacher_id=teacher.id
+        teacher_id=assigned_teacher_id
     )
     db.add(classroom)
     db.commit()
     db.refresh(classroom)
+
+    assigned_teacher = db.query(User).filter(User.id == assigned_teacher_id).first()
     return ClassroomOut(
         id=classroom.id,
         name=classroom.name,
         grade_level=classroom.grade_level,
         description=classroom.description,
         teacher_id=classroom.teacher_id,
+        teacher_name=assigned_teacher.full_name if assigned_teacher else "Öğretmen",
         created_at=classroom.created_at,
         student_count=0,
         assignment_count=0

@@ -7,24 +7,28 @@
 
 ---
 
-## 📌 Son Yapılan Geliştirmeler (26-27 Ekim 2026)
+## 📌 Son Yapılan Geliştirmeler (27-28 Ekim 2026)
 
-### 1. e-Okul PDF Dosyası Çoklu Sütun Ayrıştırma (Gelişmiş Algoritma):
-- e-Okul'dan alınan dikey/sütunlu sınıf listeleri (1. Sütun: Sıra No, 2. Sütun: Okul No, 3. Sütun: Adı, 4. Sütun: Soyadı, 5. Sütun: Cinsiyeti) dinamik token bloklama algoritması ile eksiksiz ayrıştırıldı.
-- Çok kelimeli isimler (Örn: *Mehmet Ali Demir*) ve cinsiyet sütunu olan/olmayan tüm tablo yapıları desteklendi.
-- Kullanıcı adları okul numarası ve ad bitişik formatta (Örn: `101ahmet`, `120irem`), şifreler standart `1234` olarak oluşturuldu.
-- Tekrar yükleme durumlarında mükerrer kayıt engellendi ve mevcut öğrenciler güncellendi.
-
-### 2. Okul Amblemi ve Favicon:
-- Torbalı Piri Reis MTAL resmi okul amblemi favicon ve logo bileşenlerine entegre edildi.
-
-### 3. Veri Kaybı Sorununun Tespiti ve Kalıcı Çözümü (Verilerin Silinme Sebebi):
-- **Sorunun Nedeni:**  
-  Render.com ücretsiz (free) katmanında çalışan web servisleri 15 dakika boyunca istek almadığında uyku moduna (spin-down) geçer. Render'ın ücretsiz konteyner diskleri **geçicidir (ephemeral)**. Konteyner her uyandığında veya yeniden başladığında yerel diskteki `lms.db` SQLite veritabanı sıfırlanıyor ve sadece başlangıçtaki varsayılan tohum veriler kalıyordu. Ayrıca backend kodunda Master kullanıcının tüm sınıfları listelemesinde öğretmen filtresi kısıtı vardı.
-- **Uygulanan Çözüm:**  
-  1. `backend/app/database.py` dosyasına dinamik `DATABASE_URL` (PostgreSQL) desteği eklendi. Bulut ortamında (Render/Supabase/Neon) PostgreSQL bağlantısı otomatik kullanılırken yerelde SQLite ile kesintisiz çalışma sağlandı (`psycopg2-binary` eklendi).
-  2. `render.yaml` yapılandırmasına kalıcı Render PostgreSQL veritabanı (`pirireis-db`) eklendi.
-  3. `classrooms.py` ve `assignments.py` uç noktalarında Master öğretmen (`pirireis`) için filtreler genişletildi; tüm okuldaki sınıfları ve öğretmenleri eksiksiz görebilmesi ve yönetebilmesi sağlandı.
+### 1. Veri Kaybı Sorununun Kök Nedenleri ve Kalıcı Düzeltmeler:
+- **Kök Neden 1: Render Ephemeral Container ve Eksik DATABASE_URL:**
+  Canlı sunucu (Render `pirireis-api`), `render.yaml` dosyasını Blueprint olarak başlatılmadığı için dikkate almamış ve `DATABASE_URL` ortam değişkeni tanımlı olmadığından kod yerel SQLite (`lms.db`) kullanmaya devam etmiştir. Render ücretsiz katmanı 15 dakika boyunca HTTP isteği almadığında uyku moduna (spin-down) geçer ve konteyner diski geçici (ephemeral) olduğu için her uyandığında boş `lms.db` oluşturur.
+- **Kök Neden 2: Kod İçi Tehlikeli Kullanıcı Temizliği:**
+  `main.py` dosyasındaki eski tohumlama kodunda `username == "ogretmen"` olan kullanıcının her sunucu açılışında silinip sınıflarının devredildiği tespit edildi ve bu kod güvenli hale getirildi.
+- **Kök Neden 3: Master Sınıf Açarken Öğretmen Atama Eksikliği:**
+  Master kullanıcı sınıf açarken sorumlu öğretmen seçemiyordu, tüm sınıflar Master'a atanıyordu. Yeni açılan öğretmenler sisteme giriş yaptığında sınıfları göremiyor ve silindi sanıyordu. `ClassroomCreate` şemasına `teacher_id` ve `teacher_name` desteği eklendi.
+- **Uygulanan Kalıcı Çözümler:**
+  1. **SQLAlchemy 2.0 PostgreSQL Driver ve Bağlantı Çözümü:**
+     - `database.py` içinde `DATABASE_URL` hem `postgres://` hem de `postgresql://` için `postgresql+psycopg2://` protokolüne standardize edildi. `psycopg2-binary` kütüphanesiyle tam uyum sağlandı ve `ModuleNotFoundError: No module named 'psycopg'` hatası giderildi.
+     - Bulut veritabanına bağlanılamaması veya çevrimdışı çalışma durumunda sistemin çökmesini engelleyen akıllı yerel SQLite (`lms.db`) geri dönüş (fallback) mekanizması entegre edildi.
+  2. **Çoklu Öğretmen Ödev ve Notlandırma Yetki Matrisi:**
+     - Öğretmenlerin hem bizzat açtıkları ödevleri hem de sorumlu oldukları sınıflara tanımlanan ödevleri eksiksiz görebilmeleri, inceleyebilmeleri ve notlandırabilmeleri sağlandı (`assignments.py` ve `submissions.py`).
+  3. **Tek Tıkla Tam Yedekleme & Geri Yükleme (JSON Backup/Restore Engine):**
+     - Master paneline `/api/system/backup` ve `/api/system/restore` entegre edildi.
+     - Tüm öğretmenler, sınıflar, öğrenciler ve ödevler tek tıkla şifreli JSON formatında bilgisayara indirilebilir veya geri yüklenebilir.
+  4. **Veritabanı Sağlık & Kalıcılık Teşhisi:**
+     - Master paneline ve `/api/health` uç noktasına aktif veritabanı durumu (PostgreSQL Kalıcı mı yoksa SQLite Geçici mi) canlı rozet olarak eklendi.
+  5. **Bağlantı Havuzu (Connection Pool) Optimizasyonu:**
+     - `database.py` içine `pool_recycle=300` ve `pool_pre_ping=True` eklenerek Neon, Supabase ve Render bağlantı kopmaları önlendi.
 
 ### 2. Karanlık Tema (Dark Mode) Desteği:
 - Hem **Öğretmen / Yönetici Paneli** hem de **Öğrenci Portalı** ve **Giriş Ekranı** için eksiksiz karanlık tema geliştirildi.

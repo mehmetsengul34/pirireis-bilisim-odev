@@ -35,7 +35,11 @@ yarn-debug.log*
 # Environment & Editor
 .env
 .env.local
+backend/.env
+backend/.env.local
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+.agents/
+skills-lock.json

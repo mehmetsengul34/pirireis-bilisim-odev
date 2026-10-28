@@ -3,10 +3,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.database import engine, Base, SessionLocal, BASE_DIR
+from app.database import engine, Base, SessionLocal, BASE_DIR, get_db_info
 from app.models import User, Classroom, ClassroomStudent, Assignment
 from app.auth import hash_password
-from app.routers import auth, classrooms, assignments, submissions
+from app.routers import auth, classrooms, assignments, submissions, system
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -37,6 +37,7 @@ app.include_router(auth.router)
 app.include_router(classrooms.router)
 app.include_router(assignments.router)
 app.include_router(submissions.router)
+app.include_router(system.router)
 
 @app.on_event("startup")
 def startup_seed_data():
@@ -60,19 +61,9 @@ def startup_seed_data():
             pirireis_teacher.role = "teacher"
             db.commit()
 
-        # Reassign any old classes from ogretmen to pirireis and permanently delete ogretmen user
-        old_teacher = db.query(User).filter(User.username == "ogretmen").first()
-        if old_teacher:
-            for c in db.query(Classroom).filter(Classroom.teacher_id == old_teacher.id).all():
-                c.teacher_id = pirireis_teacher.id
-            for a in db.query(Assignment).filter(Assignment.teacher_id == old_teacher.id).all():
-                a.teacher_id = pirireis_teacher.id
-            db.delete(old_teacher)
-            db.commit()
-
-        # Check if sample class exists
-        sample_class = db.query(Classroom).filter(Classroom.teacher_id == pirireis_teacher.id).first()
-        if not sample_class:
+        # Check if sample class exists - only create if database has zero classes
+        class_count = db.query(Classroom).count()
+        if class_count == 0:
             sample_class = Classroom(
                 name="11-B Bilişim - Web Tasarım ve Programlama",
                 grade_level="11. Sınıf",
@@ -83,49 +74,51 @@ def startup_seed_data():
             db.commit()
             db.refresh(sample_class)
 
-        # Check if sample student exists
-        student = db.query(User).filter(User.username == "ogrenci").first()
-        if not student:
-            student = User(
-                username="ogrenci",
-                password_hash=hash_password("123"),
-                full_name="Ali Yılmaz",
-                student_number="1024",
-                role="student"
-            )
-            db.add(student)
-            db.commit()
-            db.refresh(student)
+            # Check if sample student exists
+            student = db.query(User).filter(User.username == "ogrenci").first()
+            if not student:
+                student = User(
+                    username="ogrenci",
+                    password_hash=hash_password("123"),
+                    full_name="Ali Yılmaz",
+                    student_number="1024",
+                    role="student"
+                )
+                db.add(student)
+                db.commit()
+                db.refresh(student)
 
-            # Enroll student in sample class
-            enrollment = ClassroomStudent(
-                classroom_id=sample_class.id,
-                student_id=student.id
-            )
-            db.add(enrollment)
-            db.commit()
+                # Enroll student in sample class
+                enrollment = ClassroomStudent(
+                    classroom_id=sample_class.id,
+                    student_id=student.id
+                )
+                db.add(enrollment)
+                db.commit()
 
-        # Check if sample assignment exists
-        sample_assignment = db.query(Assignment).filter(Assignment.classroom_id == sample_class.id).first()
-        if not sample_assignment:
-            sample_assignment = Assignment(
-                classroom_id=sample_class.id,
-                teacher_id=pirireis_teacher.id,
-                title="Hafta 1: Responsive Portfolyo Web Sitesi",
-                description="Flexbox ve Grid kullanarak mobil uyumlu, temiz kodlanmış bir kişisel portfolyo sayfası hazırlayınız. Kodlarınızı zip olarak yükleyiniz.",
-                due_date=None
-            )
-            db.add(sample_assignment)
-            db.commit()
+            # Check if sample assignment exists
+            sample_assignment = db.query(Assignment).filter(Assignment.classroom_id == sample_class.id).first()
+            if not sample_assignment:
+                sample_assignment = Assignment(
+                    classroom_id=sample_class.id,
+                    teacher_id=pirireis_teacher.id,
+                    title="Hafta 1: Responsive Portfolyo Web Sitesi",
+                    description="Flexbox ve Grid kullanarak mobil uyumlu, temiz kodlanmış bir kişisel portfolyo sayfası hazırlayınız. Kodlarınızı zip olarak yükleyiniz.",
+                    due_date=None
+                )
+                db.add(sample_assignment)
+                db.commit()
 
     finally:
         db.close()
 
 @app.get("/api/health")
 def health_check():
+    db_info = get_db_info()
     return {
         "status": "healthy",
         "school": "Torbalı Piri Reis Mesleki ve Teknik Anadolu Lisesi",
         "department": "Bilişim Teknolojileri Alanı",
-        "system": "Ödev ve Sınıf Takip Sistemi"
+        "system": "Ödev ve Sınıf Takip Sistemi",
+        "database": db_info
     }

@@ -26,7 +26,12 @@ def list_assignments(
 
     if current_user.role == "teacher":
         if current_user.username.lower() != "pirireis":
-            query = query.filter(Assignment.teacher_id == current_user.id)
+            teacher_class_ids = [
+                row[0] for row in db.query(Classroom.id).filter(Classroom.teacher_id == current_user.id).all()
+            ]
+            query = query.filter(
+                (Assignment.teacher_id == current_user.id) | (Assignment.classroom_id.in_(teacher_class_ids))
+            )
         if classroom_id:
             query = query.filter(Assignment.classroom_id == classroom_id)
     else:
@@ -153,9 +158,9 @@ def delete_assignment(
     if teacher.username.lower() == "pirireis":
         assignment = db.query(Assignment).filter(Assignment.id == assignment_id).first()
     else:
-        assignment = db.query(Assignment).filter(
+        assignment = db.query(Assignment).join(Classroom, Assignment.classroom_id == Classroom.id).filter(
             Assignment.id == assignment_id,
-            Assignment.teacher_id == teacher.id
+            (Assignment.teacher_id == teacher.id) | (Classroom.teacher_id == teacher.id)
         ).first()
     if not assignment:
         raise HTTPException(status_code=404, detail="Ödev bulunamadı veya yetkiniz yok.")

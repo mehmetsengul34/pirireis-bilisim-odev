@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, BookOpen, Plus, CheckCircle2, Clock, FileText, Download, 
   Send, UserPlus, Trash2, Award, ChevronRight, X,
-  Crown, ShieldCheck, Upload, FileUp, Copy, Check
+  Crown, ShieldCheck, Upload, FileUp, Copy, Check,
+  Database, Save, RefreshCw, AlertTriangle, Server, HardDrive
 } from 'lucide-react';
-import { classroomService, assignmentService, submissionService, teacherService, getFileUrl } from '../services/api';
+import { 
+  classroomService, assignmentService, submissionService, 
+  teacherService, systemService, getFileUrl 
+} from '../services/api';
 
 export default function TeacherDashboard({ user }) {
   const isMaster = user?.username?.toLowerCase() === 'pirireis';
-  const [activeTab, setActiveTab] = useState('assignments'); // 'assignments' | 'classrooms' | 'teachers'
+  const [activeTab, setActiveTab] = useState('assignments'); // 'assignments' | 'classrooms' | 'teachers' | 'system'
   const [classrooms, setClassrooms] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,11 +25,19 @@ export default function TeacherDashboard({ user }) {
   const [teacherUsername, setTeacherUsername] = useState('');
   const [teacherPassword, setTeacherPassword] = useState('');
 
+  // System & Backup States (Master Only)
+  const [systemStatus, setSystemStatus] = useState(null);
+  const [loadingSystem, setLoadingSystem] = useState(false);
+  const [restoreFile, setRestoreFile] = useState(null);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreResult, setRestoreResult] = useState(null);
+
   // Classroom Modal States
   const [showClassModal, setShowClassModal] = useState(false);
   const [newClassName, setNewClassName] = useState('');
   const [newClassGrade, setNewClassGrade] = useState('11. Sınıf');
   const [newClassDesc, setNewClassDesc] = useState('');
+  const [newClassTeacherId, setNewClassTeacherId] = useState('');
 
   // Student Modal States
   const [showStudentModal, setShowStudentModal] = useState(false);
@@ -91,12 +103,62 @@ export default function TeacherDashboard({ user }) {
     }
   };
 
+  const fetchSystemStatus = async () => {
+    if (!isMaster) return;
+    setLoadingSystem(true);
+    try {
+      const status = await systemService.getStatus();
+      setSystemStatus(status);
+    } catch (err) {
+      console.error('Sistem durumu alınamadı:', err);
+    } finally {
+      setLoadingSystem(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     if (isMaster) {
       fetchTeachers();
+      fetchSystemStatus();
     }
   }, []);
+
+  // Handle Download Backup
+  const handleDownloadBackup = async () => {
+    try {
+      await systemService.downloadBackup();
+    } catch (err) {
+      alert('Yedek indirilirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    }
+  };
+
+  // Handle Restore Backup
+  const handleRestoreBackup = async (e) => {
+    e.preventDefault();
+    if (!restoreFile) {
+      alert('Lütfen geri yüklemek için geçerli bir JSON yedek dosyası seçiniz.');
+      return;
+    }
+    if (!confirm('Seçilen yedek dosyasındaki veriler mevcut veritabanına aktarılacak ve eksik kayıtlar eklenecektir. Devam etmek istiyor musunuz?')) {
+      return;
+    }
+    setRestoring(true);
+    setRestoreResult(null);
+    try {
+      const res = await systemService.restoreBackup(restoreFile);
+      setRestoreResult(res);
+      alert('Tüm veriler başarıyla geri yüklendi!');
+      setRestoreFile(null);
+      fetchData();
+      fetchTeachers();
+      fetchSystemStatus();
+    } catch (err) {
+      alert('Geri yükleme başarısız oldu: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setRestoring(false);
+    }
+  };
 
   // Handle Create Teacher (Master Only)
   const handleCreateTeacher = async (e) => {
@@ -116,6 +178,7 @@ export default function TeacherDashboard({ user }) {
       setTeacherUsername('');
       setTeacherPassword('');
       fetchTeachers();
+      fetchSystemStatus();
     } catch (err) {
       alert(err.response?.data?.detail || 'Öğretmen hesabı oluşturulamadı.');
     }
@@ -128,6 +191,7 @@ export default function TeacherDashboard({ user }) {
       await teacherService.delete(teacherId);
       fetchTeachers();
       fetchData();
+      fetchSystemStatus();
     } catch (err) {
       alert(err.response?.data?.detail || 'Öğretmen silinirken hata oluştu.');
     }
@@ -144,12 +208,15 @@ export default function TeacherDashboard({ user }) {
       await classroomService.create({
         name: newClassName.trim(),
         grade_level: newClassGrade.trim(),
-        description: newClassDesc.trim()
+        description: newClassDesc.trim(),
+        teacher_id: newClassTeacherId ? parseInt(newClassTeacherId, 10) : undefined
       });
       setShowClassModal(false);
       setNewClassName('');
       setNewClassDesc('');
+      setNewClassTeacherId('');
       fetchData();
+      fetchSystemStatus();
     } catch (err) {
       alert('Sınıf oluşturulamadı.');
     }
@@ -385,9 +452,28 @@ export default function TeacherDashboard({ user }) {
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 sm:p-7 shadow-sm transition-colors duration-200">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium mb-2 border border-zinc-200 dark:border-zinc-700">
-              <Award className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-              <span>{isMaster ? 'Master Yönetici & Öğretmen Paneli' : 'Öğretmen Yönetim Paneli'}</span>
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-medium border border-zinc-200 dark:border-zinc-700">
+                <Award className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                <span>{isMaster ? 'Master Yönetici & Öğretmen Paneli' : 'Öğretmen Yönetim Paneli'}</span>
+              </div>
+              {isMaster && systemStatus?.db && (
+                <button
+                  onClick={() => {
+                    setActiveTab('system');
+                    fetchSystemStatus();
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border transition ${
+                    systemStatus.db.is_persistent
+                      ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100'
+                      : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100'
+                  }`}
+                  title="Veritabanı ve Kalıcılık Durumu (Tıklayın)"
+                >
+                  <Database className="w-3 h-3" />
+                  <span>{systemStatus.db.is_persistent ? 'PostgreSQL (Kalıcı)' : 'SQLite (Geçici Bulut Diski - Yedek Alınız)'}</span>
+                </button>
+              )}
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
               Hoş Geldiniz, {user.full_name}
@@ -428,7 +514,7 @@ export default function TeacherDashboard({ user }) {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex items-center gap-1.5 p-1 bg-zinc-100/90 dark:bg-zinc-850 dark:bg-zinc-900 rounded-xl w-fit border border-zinc-200 dark:border-zinc-800">
+      <div className="flex flex-wrap items-center gap-1.5 p-1 bg-zinc-100/90 dark:bg-zinc-850 dark:bg-zinc-900 rounded-xl w-fit border border-zinc-200 dark:border-zinc-800">
         <button
           onClick={() => setActiveTab('assignments')}
           className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
@@ -462,6 +548,22 @@ export default function TeacherDashboard({ user }) {
           >
             <Crown className="w-3.5 h-3.5" />
             <span>Öğretmenler ({teachers.length})</span>
+          </button>
+        )}
+        {isMaster && (
+          <button
+            onClick={() => {
+              setActiveTab('system');
+              fetchSystemStatus();
+            }}
+            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition ${
+              activeTab === 'system'
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm font-semibold'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            <span>Veri Güvenliği & Yedekleme</span>
           </button>
         )}
       </div>
@@ -581,6 +683,12 @@ export default function TeacherDashboard({ user }) {
                   </div>
 
                   <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-1">{cls.name}</h3>
+                  {cls.teacher_name && (
+                    <div className="text-[11px] font-medium text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-1">
+                      <Award className="w-3 h-3 text-amber-500 shrink-0" />
+                      <span>Öğretmen: {cls.teacher_name}</span>
+                    </div>
+                  )}
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
                     {cls.description || 'Açıklama girilmemiş.'}
                   </p>
@@ -756,6 +864,176 @@ export default function TeacherDashboard({ user }) {
         </div>
       )}
 
+      {/* Tab 4: System & Data Persistence (Master Only) */}
+      {isMaster && activeTab === 'system' && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-emerald-500" />
+                  <span>Sistem Durumu ve Veri Kalıcılığı Güvencesi</span>
+                </h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                  Bulut sunucusunda (Render) ve yerel ortamda veritabanı durumunuzu kontrol edin, tek tıkla tam yedek alın veya geri yükleyin.
+                </p>
+              </div>
+              <button
+                onClick={fetchSystemStatus}
+                disabled={loadingSystem}
+                className="px-3.5 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-xl text-xs font-medium transition flex items-center gap-1.5 self-start md:self-center"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingSystem ? 'animate-spin' : ''}`} />
+                <span>Yenile</span>
+              </button>
+            </div>
+
+            {/* DB Health Alert Banner */}
+            <div className="mt-5">
+              {systemStatus?.db?.is_persistent ? (
+                <div className="p-4 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xl flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-semibold text-emerald-900 dark:text-emerald-200">
+                      Veritabanı Kalıcı Modda Aktif ({systemStatus.db.dialect.toUpperCase()})
+                    </h4>
+                    <p className="text-xs text-emerald-800 dark:text-emerald-300/90 mt-0.5">
+                      Sistem bulut ortamında kalıcı PostgreSQL veritabanına bağlıdır. Sunucu uykuya geçse bile öğretmen, sınıf, öğrenci ve ödev verileriniz asla silinmez.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-semibold text-amber-900 dark:text-amber-200">
+                      Dikkat: Geçici Dosya Tabanlı Veritabanı Aktif (SQLite)
+                    </h4>
+                    <p className="text-xs text-amber-800 dark:text-amber-300/90 mt-0.5">
+                      Canlı Render sunucusunda <code className="px-1 py-0.5 bg-amber-100 dark:bg-amber-900/50 rounded font-mono text-[11px]">DATABASE_URL</code> ortam değişkeni tanımlanmadığında veriler geçici diske kaydedilir ve Render 15 dakika hareketsiz kalıp uyuduğunda sıfırlanır.
+                      Aşağıdaki <strong>"Yedek İndir"</strong> butonuyla verilerinizi bilgisayarınıza indirebilir veya kalıcı PostgreSQL veritabanını sisteme bağlayabilirsiniz.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Counts Grid */}
+            {systemStatus?.counts && (
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
+                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Öğretmenler</div>
+                  <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">{systemStatus.counts.teachers}</div>
+                </div>
+                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Sınıflar</div>
+                  <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">{systemStatus.counts.classrooms}</div>
+                </div>
+                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Öğrenciler</div>
+                  <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">{systemStatus.counts.students}</div>
+                </div>
+                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Aktif Ödevler</div>
+                  <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">{systemStatus.counts.assignments}</div>
+                </div>
+                <div className="p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                  <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Teslimler</div>
+                  <div className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mt-0.5">{systemStatus.counts.submissions}</div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Backup & Restore Action Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Backup Card */}
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 mb-3">
+                  <Download className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Tam Sistem Yedeği İndir (JSON)</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                  Tüm öğretmen hesaplarını, sınıfları, öğrencileri ve ödevleri tek tıkla şifreli ve güvenli formatta bilgisayarınıza dosya olarak indirir.
+                </p>
+              </div>
+              <button
+                onClick={handleDownloadBackup}
+                className="mt-5 w-full py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm"
+              >
+                <Download className="w-4 h-4" />
+                <span>Tüm Verileri Bilgisayarıma İndir</span>
+              </button>
+            </div>
+
+            {/* Restore Card */}
+            <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+              <div>
+                <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-700 dark:text-zinc-300 mb-3">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Yedekten Geri Yükle (Restore)</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                  Daha önce indirdiğiniz JSON yedeğini yükleyerek tüm öğretmenleri, sınıfları ve öğrencileri sıfır veri kaybıyla anında geri getirin.
+                </p>
+                <form onSubmit={handleRestoreBackup} className="mt-4 space-y-3">
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={(e) => setRestoreFile(e.target.files[0])}
+                    className="w-full text-xs text-zinc-500 dark:text-zinc-400 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-zinc-100 dark:file:bg-zinc-800 file:text-zinc-800 dark:file:text-zinc-200 hover:file:bg-zinc-200 dark:hover:file:bg-zinc-700 cursor-pointer"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!restoreFile || restoring}
+                    className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition shadow-sm"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>{restoring ? 'Geri Yükleniyor...' : 'Seçilen Yedeği Yükle ve Uygula'}</span>
+                  </button>
+                </form>
+              </div>
+
+              {restoreResult && (
+                <div className="mt-3 p-2.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs text-emerald-800 dark:text-emerald-200">
+                  Geri yükleme başarılı: {restoreResult.stats?.new_users || 0} kullanıcı, {restoreResult.stats?.new_classrooms || 0} sınıf aktarıldı.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Cloud Database Setup Guide */}
+          <div className="bg-zinc-50 dark:bg-zinc-850/60 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6">
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 mb-2">
+              <Server className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+              <span>Kalıcı PostgreSQL Bulut Veritabanı Bağlama Adımları (Render)</span>
+            </h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-4 leading-relaxed">
+              Verilerin Render sunucusu uykuya geçse dahi hiçbir zaman silinmemesini sağlamak için aşağıdaki adımları 2 dakikada tamamlayabilirsiniz:
+            </p>
+            <ol className="space-y-2.5 text-xs text-zinc-700 dark:text-zinc-300 list-decimal list-inside">
+              <li>
+                <strong>Neon.tech</strong> (ücretsiz &amp; asla silinmeyen PostgreSQL) veya <strong>Render PostgreSQL</strong> üzerinden ücretsiz bir veritabanı oluşturun.
+              </li>
+              <li>
+                Veritabanının bağlantı adresini (Connection String) kopyalayın (Örn: <code className="font-mono bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-[11px]">postgresql://user:pass@ep-xyz.neon.tech/neondb?sslmode=require</code>).
+              </li>
+              <li>
+                Render.com kontrol panelinde <strong>pirireis-api</strong> servisinize girip <strong>Environment</strong> sekmesine tıklayın.
+              </li>
+              <li>
+                Anahtar olarak <code className="font-mono font-bold text-zinc-900 dark:text-zinc-100">DATABASE_URL</code>, değer olarak da kopyaladığınız bağlantı adresini yapıştırıp <strong>Save Changes</strong> butonuna basın.
+              </li>
+              <li>
+                Render otomatik yeniden başlatılacak ve sistem artık kalıcı bulut veritabanını kullanacaktır!
+              </li>
+            </ol>
+          </div>
+        </div>
+      )}
+
       {/* Modal: New Classroom Modal */}
       {showClassModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -782,6 +1060,24 @@ export default function TeacherDashboard({ user }) {
                   className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-400"
                 />
               </div>
+
+              {isMaster && (
+                <div>
+                  <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Sorumlu Öğretmen</label>
+                  <select
+                    value={newClassTeacherId}
+                    onChange={(e) => setNewClassTeacherId(e.target.value)}
+                    className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-400"
+                  >
+                    <option value="">{user.full_name} (Kendim)</option>
+                    {teachers.filter(t => t.id !== user.id).map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.full_name} (@{t.username})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Sınıf Seviyesi</label>

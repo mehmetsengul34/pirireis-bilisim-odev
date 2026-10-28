@@ -169,4 +169,33 @@ export const submissionService = {
   }
 };
 
+export const systemService = {
+  getStatus: async () => {
+    const response = await api.get('/system/status');
+    return response.data;
+  },
+  downloadBackup: async () => {
+    const response = await api.get('/system/backup', {
+      responseType: 'blob'
+    });
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    link.setAttribute('download', `pirireis_lms_yedek_${dateStr}.json`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
+  restoreBackup: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post('/system/restore', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  }
+};
+
 export default api;

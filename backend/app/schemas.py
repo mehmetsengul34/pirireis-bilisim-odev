@@ -44,6 +44,7 @@ class ClassroomCreate(BaseModel):
     name: str
     grade_level: Optional[str] = "Bilişim Teknolojileri"
     description: Optional[str] = None
+    teacher_id: Optional[int] = None
 
 class ClassroomOut(BaseModel):
     id: int
@@ -51,6 +52,7 @@ class ClassroomOut(BaseModel):
     grade_level: Optional[str]
     description: Optional[str]
     teacher_id: int
+    teacher_name: Optional[str] = None
     created_at: datetime
     student_count: int = 0
     assignment_count: int = 0
