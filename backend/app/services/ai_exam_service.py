@@ -1341,7 +1341,14 @@ KATI VE DEĞİŞMEZ KURALLAR:
         user_msg += f" Öğretmenin özel notu: {custom_prompt}"
 
     # Öncelikli olarak Gemini 1.5 Pro, ardından Gemini 2.0 Flash ve Gemini 1.5 Flash modelleri denenir
-    candidate_models = ["gemini-1.5-pro", "gemini-2.0-flash", "gemini-1.5-flash"]
+    candidate_models = [
+        "gemini-3.8-flash",
+        "gemini-3.5-flash",
+        "gemini-3-flash-preview",
+        "gemini-3.5-flash-lite",
+        "gemini-flash-latest",
+        "gemini-pro-latest"
+    ]
 
     payload = {
         "contents": [{"parts": [{"text": f"{system_instruction}\n\nTalep: {user_msg}"}]}],

@@ -12,6 +12,8 @@ services:
         fromDatabase:
           name: pirireis-db
           property: connectionString
+      - key: GEMINI_API_KEY
+        value: AQ.Ab8RN6KTlFTwqsmAA4YcVjqjzyAF33MGmAThB3F5MvbZZQqSxw
 
 databases:
   - name: pirireis-db
