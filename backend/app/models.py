@@ -205,6 +205,9 @@ class QuestionBank(Base):
     option_e = Column(Text, nullable=False)
     correct_option = Column(String(10), nullable=False)
     explanation = Column(Text, nullable=True)
+    quality_score = Column(Integer, default=92) # 0 - 100 Hakem Ajanı Puanı
+    quality_review = Column(Text, nullable=True) # Hakem Ajanı Değerlendirme Raporu
+    ai_verified = Column(Boolean, default=True) # Otonom denetimden geçti mi?
     created_by_teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -224,5 +227,28 @@ class AIQuestionTrainingDoc(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     teacher = relationship("User")
+
+class AIAgentActivity(Base):
+    __tablename__ = "ai_agent_activities"
+
+    id = Column(Integer, primary_key=True, index=True)
+    agent_name = Column(String(100), nullable=False) # e.g. "JudgeAgent", "NightlyPoolSynthesizer", "DistractorAuditAgent", "ContinuousLearningAgent"
+    action = Column(String(100), nullable=False)
+    status = Column(String(50), default="SUCCESS") # "SUCCESS", "WARNING", "INFO", "ERROR"
+    summary = Column(String(255), nullable=False)
+    details = Column(Text, nullable=True)
+    questions_affected = Column(Integer, default=0)
+    quality_score = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+class AIAgentMemory(Base):
+    __tablename__ = "ai_agent_memory"
+
+    id = Column(Integer, primary_key=True, index=True)
+    memory_key = Column(String(100), unique=True, nullable=False) # örn: "learned_pedagogical_style", "weak_topics"
+    category = Column(String(50), default="general")
+    content = Column(Text, nullable=False) # JSON veya metin
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 
 

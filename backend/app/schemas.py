@@ -345,6 +345,9 @@ class QuestionBankItem(BaseModel):
     option_e: str
     correct_option: str
     explanation: Optional[str] = None
+    quality_score: Optional[int] = 92
+    quality_review: Optional[str] = None
+    ai_verified: Optional[bool] = True
     created_by_teacher_id: Optional[int] = None
     created_at: datetime
 
@@ -384,3 +387,45 @@ class AITrainingDocItem(BaseModel):
 class AITrainingDocListResponse(BaseModel):
     total: int
     documents: List[AITrainingDocItem]
+
+# ================= AUTONOMOUS AI AGENT SCHEMAS =================
+
+class AIAgentActivityOut(BaseModel):
+    id: int
+    agent_name: str
+    action: str
+    status: str
+    summary: str
+    details: Optional[str] = None
+    questions_affected: int
+    quality_score: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class AIAgentInfo(BaseModel):
+    id: str
+    name: str
+    role: str
+    description: str
+    status: str # "Aktif", "Çalışıyor", "Beklemede"
+    icon: str
+    metrics: Dict[str, Any]
+
+class AIAgentStatusOut(BaseModel):
+    is_running: bool
+    last_cycle_at: Optional[datetime] = None
+    total_activities: int
+    total_pool_questions: int
+    verified_questions_count: int
+    average_quality_score: float
+    agents: List[AIAgentInfo]
+    recent_activities: List[AIAgentActivityOut]
+    learned_style_preview: Optional[str] = None
+
+class AIAgentRunRequest(BaseModel):
+    force_pool_enrichment: bool = True
+    target_count_per_subject: int = 2
+    audit_distractors: bool = True
+

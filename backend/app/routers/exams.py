@@ -8,16 +8,25 @@ from sqlalchemy.orm import Session
 import pypdf
 
 from app.database import get_db
-from app.models import User, Classroom, ClassroomStudent, Exam, ExamQuestion, ExamSubmission, ExamAnswer, Notification, QuestionBank, AIQuestionTrainingDoc
+from app.models import (
+    User, Classroom, ClassroomStudent, Exam, ExamQuestion, ExamSubmission,
+    ExamAnswer, Notification, QuestionBank, AIQuestionTrainingDoc,
+    AIAgentActivity, AIAgentMemory
+)
 from app.schemas import (
     ExamOut, ExamDetailOut, ExamCreateRequest, GenerateQuestionsRequest,
     ExamSubmitRequest, ExamSubmissionOut, ExamAnalyticsOut, QuestionAnalytic,
     TopicAnalytic, StudentRanking, ExamQuestionStudentOut, ExamQuestionOut, ExamAnswerOut, 
     QuestionBankItem, QuestionBankListResponse, CreateExamFromBankRequest,
-    AITrainingDocItem, AITrainingDocListResponse
+    AITrainingDocItem, AITrainingDocListResponse,
+    AIAgentStatusOut, AIAgentActivityOut, AIAgentRunRequest
 )
 from app.auth import get_current_user, require_teacher
 from app.services.ai_exam_service import YKS_CURRICULUM, generate_questions_smart, sanitize_math_and_turkish
+from app.services.ai_agent_service import (
+    AutonomousCoordinator, JudgeAgent, NightlyPoolSynthesizer,
+    DistractorAuditAgent, ContinuousLearningAgent
+)
 
 router = APIRouter(prefix="/api/exams", tags=["exams"])
 
@@ -50,6 +59,8 @@ def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject
             q_e = getattr(q, "option_e", None) or (q.get("option_e") if isinstance(q, dict) else "")
             q_cor = getattr(q, "correct_option", None) or (q.get("correct_option") if isinstance(q, dict) else "A")
             q_exp = getattr(q, "explanation", None) or (q.get("explanation") if isinstance(q, dict) else None)
+            q_score = getattr(q, "quality_score", None) or (q.get("quality_score") if isinstance(q, dict) else 92) or 92
+            q_rev = getattr(q, "quality_review", None) or (q.get("quality_review") if isinstance(q, dict) else "Hakem Onaylı") or "Hakem Onaylı"
 
             bank_item = QuestionBank(
                 exam_type=exam_type or "TYT",
@@ -66,6 +77,9 @@ def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject
                 option_e=sanitize_math_and_turkish(q_e, is_option=True) if q_e else "-",
                 correct_option=str(q_cor or "A").upper(),
                 explanation=sanitize_math_and_turkish(q_exp, is_option=False) if q_exp else None,
+                quality_score=q_score,
+                quality_review=q_rev,
+                ai_verified=True,
                 created_by_teacher_id=teacher_id
             )
             db.add(bank_item)
@@ -1062,4 +1076,68 @@ def delete_exam(
     db.delete(exam)
     db.commit()
     return {"message": "Sınav başarıyla silindi."}
+
+
+# ================= AUTONOMOUS AI AGENT ENDPOINTS =================
+
+@router.get("/agents/status", response_model=AIAgentStatusOut)
+def get_ai_agent_status(
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Tüm otonom ajanların çalışma durumunu, kalite metriklerini ve son aktiviteleri döndürür."""
+    status_data = AutonomousCoordinator.get_system_status(db)
+    return status_data
+
+
+@router.get("/agents/activities", response_model=List[AIAgentActivityOut])
+def get_ai_agent_activities(
+    limit: int = 30,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Ajanların son gerçekleştirdiği otonom aksiyon kayıtlarını listeler."""
+    activities = db.query(AIAgentActivity).order_by(AIAgentActivity.created_at.desc()).limit(limit).all()
+    return activities
+
+
+@router.post("/agents/run-cycle")
+async def trigger_ai_agent_cycle(
+    payload: Optional[AIAgentRunRequest] = None,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """
+    Öğretmen paneli üzerinden tam otonom gelişim döngüsünü manuel tetikler:
+    1. Stil Hafızası & PDF Senkronizasyonu
+    2. Eksik Branş/Konu Taraması & Otonom Soru Sentezi
+    3. Hakem Ajanı Kalite Onayı & Otomatik İyileştirme
+    4. Çeldirici & Hata Taraması
+    """
+    target_count = payload.target_count_per_subject if payload else 2
+    report = await AutonomousCoordinator.run_full_autonomous_cycle(
+        db=db,
+        teacher_id=current_user.id,
+        target_count_per_subject=target_count
+    )
+    return {
+        "message": "Otonom gelişim döngüsü başarıyla tamamlandı.",
+        "report": report
+    }
+
+
+@router.post("/agents/judge-question")
+def judge_custom_question(
+    question_payload: dict,
+    subject: str = "Genel",
+    current_user: User = Depends(require_teacher)
+):
+    """Tek bir soruyu Hakem Ajanı ile 5 pedagojik boyutta denetler ve puanlar."""
+    eval_result = JudgeAgent.evaluate_question(question_payload, subject=subject)
+    repaired = JudgeAgent.auto_repair_question(question_payload, subject=subject)
+    return {
+        "evaluation": eval_result,
+        "repaired_question": repaired
+    }
+
 

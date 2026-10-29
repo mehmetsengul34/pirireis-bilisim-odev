@@ -262,6 +262,23 @@ export const examService = {
   deleteTrainingDocument: async (docId) => {
     const response = await api.delete(`/exams/training/documents/${docId}`);
     return response.data;
+  },
+  // Otonom AI Ajanları & Sürekli Gelişim Servisleri
+  getAgentStatus: async () => {
+    const response = await api.get('/exams/agents/status');
+    return response.data;
+  },
+  getAgentActivities: async (limit = 30) => {
+    const response = await api.get('/exams/agents/activities', { params: { limit } });
+    return response.data;
+  },
+  triggerAgentCycle: async (payload = {}) => {
+    const response = await api.post('/exams/agents/run-cycle', payload);
+    return response.data;
+  },
+  judgeQuestion: async (questionPayload, subject = 'Genel') => {
+    const response = await api.post('/exams/agents/judge-question', questionPayload, { params: { subject } });
+    return response.data;
   }
 };
 

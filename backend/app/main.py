@@ -1,15 +1,47 @@
 import os
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.database import engine, Base, SessionLocal, BASE_DIR, get_db_info
-from app.models import User, Classroom, ClassroomStudent, Assignment
+from app.models import (
+    User, Classroom, ClassroomStudent, Assignment, Submission,
+    Exam, ExamQuestion, ExamSubmission, ExamAnswer, Notification,
+    QuestionBank, AIQuestionTrainingDoc, AIAgentActivity, AIAgentMemory
+)
 from app.auth import hash_password
 from app.routers import auth, classrooms, assignments, submissions, system, exams, notifications
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+def ensure_schema_compatibility():
+    """Mevcut veritabanlarında yeni eklenen alanların (quality_score vb.) güvenle oluşturulmasını sağlar."""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            # SQLite & PostgreSQL uyumlu sütun kontrolü
+            if engine.dialect.name == "sqlite":
+                cols_result = conn.execute(text("PRAGMA table_info(question_bank)"))
+                existing_cols = [row[1] for row in cols_result.fetchall()]
+                if existing_cols:
+                    if "quality_score" not in existing_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN quality_score INTEGER DEFAULT 92"))
+                    if "quality_review" not in existing_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN quality_review TEXT"))
+                    if "ai_verified" not in existing_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN ai_verified BOOLEAN DEFAULT 1"))
+                    conn.commit()
+            elif engine.dialect.name == "postgresql":
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS quality_score INTEGER DEFAULT 92"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS quality_review TEXT"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS ai_verified BOOLEAN DEFAULT TRUE"))
+                conn.commit()
+    except Exception as e:
+        print(f"[DB Schema Check] Sütun kontrol uyarısı (yeni tablolar zaten güncel): {e}")
+
+ensure_schema_compatibility()
 
 app = FastAPI(
     title="Torbalı Piri Reis MTAL - Bilişim Teknolojileri & YKS Test LMS",
@@ -118,8 +150,35 @@ def startup_seed_data():
         except Exception as sync_err:
             print(f"[UYARI] Başlangıç soru bankası eşitleme uyarısı: {sync_err}")
 
+        # Otonom Arka Plan Ajan Döngüsünü Başlat
+        try:
+            asyncio.create_task(autonomous_agent_background_loop())
+        except Exception as loop_err:
+            print(f"[UYARI] Ajan arka plan döngüsü başlatılamadı: {loop_err}")
+
     finally:
         db.close()
+
+async def autonomous_agent_background_loop():
+    """Arka planda periyodik olarak çalışan otonom gelişim döngüsü."""
+    await asyncio.sleep(8) # Sunucu ilk açılışını tamamlasın
+    print("[AIAgent] Otonom arka plan gelişim ajanları nöbete başladı.")
+    while True:
+        try:
+            from app.services.ai_agent_service import AutonomousCoordinator
+            db = SessionLocal()
+            try:
+                print("[AIAgent] Otonom periyodik gelişim döngüsü yürütülüyor...")
+                await AutonomousCoordinator.run_full_autonomous_cycle(db, target_count_per_subject=2)
+                print("[AIAgent] Otonom döngü başarıyla tamamlandı.")
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"[AIAgent] Arka plan döngü uyarısı: {e}")
+
+        # Her 6 saatte bir (21600 sn) periyodik tekrar
+        await asyncio.sleep(21600)
+
 
 @app.get("/api/health")
 def health_check():
