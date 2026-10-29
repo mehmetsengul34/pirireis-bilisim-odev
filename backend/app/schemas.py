@@ -117,12 +117,18 @@ class ExamQuestionBase(BaseModel):
     option_b: str
     option_c: str
     option_d: str
-    option_e: str
+    option_e: Optional[str] = None # LGS için opsiyonel
     correct_option: Optional[str] = None # "A", "B", "C", "D", "E"
     correct_answer: Optional[str] = None # Geriye dönük uyumluluk
     explanation: Optional[str] = None
     topic: Optional[str] = None
     subtopic: Optional[str] = None
+    learning_outcome_code: Optional[str] = None # Resmî MEB/ÖSYM kazanım kodu
+    cognitive_domain: Optional[str] = "Uygulama / Muhakeme" # Hatırlama, Kavrama, Uygulama, Analiz
+    distractor_analysis: Optional[str] = None # JSON string
+    quality_gate_status: Optional[str] = None # JSON string
+    item_difficulty_p: Optional[float] = None
+    item_discrimination_d: Optional[float] = None
 
     @model_validator(mode="before")
     @classmethod
@@ -154,8 +160,10 @@ class ExamQuestionStudentOut(BaseModel):
     option_b: str
     option_c: str
     option_d: str
-    option_e: str
+    option_e: Optional[str] = None
     topic: Optional[str] = None
+    learning_outcome_code: Optional[str] = None
+    cognitive_domain: Optional[str] = "Uygulama / Muhakeme"
 
     class Config:
         from_attributes = True
@@ -332,9 +340,13 @@ class NotificationOut(BaseModel):
 class QuestionBankItem(BaseModel):
     id: int
     exam_type: str
+    curriculum_version: Optional[str] = "2024-2025 MEB / ÖSYM"
+    grade_level: Optional[str] = "12. Sınıf / Mezun"
     subject: str
     topic: str
     subtopic: Optional[str] = None
+    learning_outcome_code: Optional[str] = None
+    cognitive_domain: Optional[str] = "Uygulama / Muhakeme"
     difficulty: str
     question_text: str
     visual_svg: Optional[str] = None
@@ -342,17 +354,51 @@ class QuestionBankItem(BaseModel):
     option_b: str
     option_c: str
     option_d: str
-    option_e: str
+    option_e: Optional[str] = None
     correct_option: str
     explanation: Optional[str] = None
+    distractor_analysis: Optional[str] = None
+    quality_gate_status: Optional[str] = None
+    review_status: Optional[str] = "APPROVED"
     quality_score: Optional[int] = 92
     quality_review: Optional[str] = None
     ai_verified: Optional[bool] = True
+    item_difficulty_p: Optional[float] = None
+    item_discrimination_d: Optional[float] = None
+    version: Optional[int] = 1
     created_by_teacher_id: Optional[int] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+class QuestionBankUpdate(BaseModel):
+    question_text: Optional[str] = None
+    visual_svg: Optional[str] = None
+    option_a: Optional[str] = None
+    option_b: Optional[str] = None
+    option_c: Optional[str] = None
+    option_d: Optional[str] = None
+    option_e: Optional[str] = None
+    correct_option: Optional[str] = None
+    explanation: Optional[str] = None
+    learning_outcome_code: Optional[str] = None
+    cognitive_domain: Optional[str] = None
+    distractor_analysis: Optional[str] = None
+    review_status: Optional[str] = None
+    difficulty: Optional[str] = None
+
+class GateAuditResponse(BaseModel):
+    question_id: int
+    passed_all: bool
+    overall_gate_score: float
+    review_status: str
+    gate_a: Dict[str, Any]
+    gate_b: Dict[str, Any]
+    gate_c: Dict[str, Any]
+    gate_d: Dict[str, Any]
+    recommendations: List[str]
+    audit_summary: str
 
 class QuestionBankListResponse(BaseModel):
     total: int

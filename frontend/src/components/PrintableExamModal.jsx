@@ -292,7 +292,7 @@ export default function PrintableExamModal({
                     <div className="space-y-1.5 text-xs font-sans text-black">
                       {['A', 'B', 'C', 'D', 'E'].map((opt) => {
                         const optText = q[`option_${opt.toLowerCase()}`];
-                        if (!optText && opt === 'E' && defaultSubject === 'LGS') return null;
+                        if (opt === 'E' && (!optText || optText.trim() === '' || optText.trim() === '-' || q.exam_type === 'LGS' || defaultSubject === 'LGS')) return null;
                         return (
                           <div key={opt} className="flex items-start gap-1.5">
                             <span className="font-bold text-xs shrink-0 w-4 text-black">

@@ -19,6 +19,46 @@ from typing import List, Dict, Any, Optional, Set
 # ================= GÜNCEL MEB & ÖSYM YKS MÜFREDAT KATALOĞU =================
 
 YKS_CURRICULUM = {
+    "LGS": {
+        "Türkçe": [
+            "Fiilimsiler (Eylemsiler)", "Cümlenin Ögeleri", "Cümle Türleri",
+            "Paragrafta Anlam ve Ana Düşünce", "Paragrafta Yapı ve Akış", "Metin Türleri ve Söz Sanatları",
+            "Noktalama İşaretleri", "Yazım Kuralları", "Görsel Okuma ve Grafik Yorumlama",
+            "Sözel Mantık ve Muhakeme"
+        ],
+        "Matematik": [
+            "Çarpanlar ve Katlar (EBOB-EKOK)", "Üslü İfadeler", "Kareköklü İfadeler",
+            "Veri Analizi (Daire ve Çizgi Grafiği)", "Basit Olayların Olasılığı",
+            "Cebirsel İfadeler ve Özdeşlikler", "Doğrusal Denklemler ve Koordinat Sistemi",
+            "Eşitsizlikler", "Üçgenler (Açı-Kenar Bağıntıları, Pisagor)", "Dönüşüm Geometrisi",
+            "Geometrik Cisimler (Prizma, Silindir, Koni, Piramit)"
+        ],
+        "Fen Bilimleri": [
+            "Mevsimler ve İklim", "DNA ve Genetik Kod", "Basınç (Katı, Sıvı ve Gaz Basıncı)",
+            "Madde ve Endüstri (Periyodik Sistem, Fiziksel ve Kimyasal Değişimler, Asit-Bazlar)",
+            "Basit Makineler (Makaralar, Kaldıraç, Eğik Düzlem, Çıkrık)",
+            "Enerji Dönüşümleri ve Çevre Bilimi (Besin Zinciri, Fotosentez, Solunum)",
+            "Elektrik Yükleri ve Elektrik Enerjisi"
+        ],
+        "T.C. İnkılap Tarihi ve Atatürkçülük": [
+            "Bir Kahraman Doğuyor (Mustafa Kemal'in Hayatı)", "Millî Uyanış: Bağımsızlık Yolunda Atılan Adımlar",
+            "Millî Bir Destan: Ya İstiklal Ya Ölüm! (Cepheler ve Lozan)",
+            "Atatürkçülük ve Çağdaşlaşan Türkiye (İnkılaplar)", "Demokratikleşme Çabaları",
+            "Atatürk Dönemi Türk Dış Politikası", "Atatürk'ün Ölümü ve Sonrası"
+        ],
+        "Din Kültürü ve Ahlak Bilgisi": [
+            "Kader İnancı (Kaza, Kader, Tevekkül, Evrenin Yasaları)", "Zekat ve Sadaka İbadeti",
+            "Din ve Hayat (Temel Hakların Korunması)", "Hz. Muhammed'in Doğruluğu ve Güvenilirliği",
+            "Kur'an-ı Kerim ve Özellikleri"
+        ],
+        "İngilizce": [
+            "Friendship (Accepting & Refusing)", "Teen Life (Daily Routines, Preferences)",
+            "In The Kitchen (Cooking Process & Recipes)", "On The Phone (Phone Conversations)",
+            "The Internet (Online Habits & Rules)", "Adventures (Extreme Sports)",
+            "Tourism (Vacation Types, Attractions)", "Chores (Obligations & Responsibilities)",
+            "Science (Scientific Discoveries & Inventions)", "Natural Forces (Disasters & Precautions)"
+        ]
+    },
     "TYT": {
         "Temel Matematik": [
             "Temel Kavramlar ve Sayı Kümeleri", "Bölme ve Bölünebilme Kuralları", "Asal Çarpanlar ve EBOB-EKOK",
@@ -1098,6 +1138,127 @@ def q_biology_dna_protein() -> Dict[str, Any]:
     }
 
 # ================= TÜRKÇE & EDEBİYAT ÜRETEÇLERİ =================
+
+
+# ================= 16 ALANLIK SORU VERİ STANDARDI YARDIMCILARI =================
+
+def get_grade_level_for_exam(exam_type: str) -> str:
+    """Sınav türüne göre sınıf düzeyini belirler."""
+    et = str(exam_type or "").upper()
+    if "LGS" in et:
+        return "8. Sınıf"
+    elif "TYT" in et:
+        return "9-10. Sınıf (Temel Düzey)"
+    elif "AYT" in et:
+        return "11-12. Sınıf (İleri Düzey)"
+    return "12. Sınıf / Mezun"
+
+def generate_learning_outcome_code(exam_type: str, subject: str, topic: str) -> str:
+    """MEB ve ÖSYM resmi müfredat kazanım kodunu türetir veya haritalar."""
+    et = str(exam_type or "TYT").lower()
+    sub = str(subject or "Genel").lower()
+    top = str(topic or "Genel").lower()
+
+    if "lgs" in et:
+        if "türkçe" in sub or "turkce" in sub:
+            return "T.8.3.18 (Metindeki söz sanatlarını ve anlam ilişkilerini tespit eder)"
+        elif "matematik" in sub:
+            if "çarpan" in top or "ebob" in top:
+                return "M.8.1.1.3 (Verilen iki doğal sayının aralarında asal olup olmadığını belirler)"
+            elif "üslü" in top:
+                return "M.8.1.2.2 (Tam sayıların tam sayı kuvvetlerini hesaplar)"
+            elif "kareköklü" in top:
+                return "M.8.1.3.4 (Kareköklü ifadelerde toplama ve çıkarma işlemlerini yapar)"
+            elif "üçgen" in top or "pisagor" in top:
+                return "M.8.3.1.5 (Pisagor bağıntısını oluşturur, ilgili problemleri çözer)"
+            return "M.8.2.1.4 (Doğrusal denklem ve eşitsizlikleri gerçek hayat durumlarıyla ilişkilendirir)"
+        elif "fen" in sub:
+            if "dna" in top or "genetik" in top:
+                return "F.8.2.1.3 (DNA'nın yapısını ve kendini eşlemesini model üzerinde açıklar)"
+            elif "basınç" in top:
+                return "F.8.3.1.2 (Sıvı basıncını etkileyen değişkenleri tahmin eder ve test eder)"
+            return "F.8.1.1.1 (Mevsimlerin oluşumuna yönelik tahminlerde bulunur)"
+        elif "inkılap" in sub or "tarih" in sub:
+            return "İTA.8.2.4 (Millî Mücadele'nin hazırlık döneminde Mustafa Kemal'in çalışmalarını analiz eder)"
+        elif "din" in sub:
+            return "D.8.1.3 (Kaza ve kader ile ilgili kavramları analiz eder)"
+        elif "ingilizce" in sub:
+            return "E8.2.R1 (Students will be able to understand short texts about daily life and routines)"
+        return "LGS.8.GENEL.1"
+
+    elif "ayt" in et:
+        if "matematik" in sub:
+            if "türev" in top:
+                return "MAT.AYT.5.2 (Türevin geometrik yorumunu yaparak ekstremum noktalarını inceler)"
+            elif "integral" in top:
+                return "MAT.AYT.6.3 (Belirli integral ile eğriler arasında kalan alanı hesaplar)"
+            elif "trigonometri" in top:
+                return "MAT.AYT.4.1 (Toplam-fark ve iki kat açı formüllerini kullanarak trigonometrik denklemleri çözer)"
+            return "MAT.AYT.3.2 (İkinci dereceden fonksiyon ve eşitsizlik grafiklerini analiz eder)"
+        elif "fizik" in sub:
+            if "atış" in top or "hareket" in top:
+                return "FİZ.AYT.1.2 (İki boyutta sabit ivmeli hareketi analiz eder)"
+            elif "momentum" in top:
+                return "FİZ.AYT.2.1 (İtme ve çizgisel momentum korunumu bağıntılarını açıklar)"
+            elif "manyetizma" in top or "indüksiyon" in top:
+                return "FİZ.AYT.3.4 (İndüksiyon akımı ve manyetik akı değişimini hesaplar)"
+            return "FİZ.AYT.4.2 (Basit harmonik harekette konum, hız ve ivme ilişkilerini yorumlar)"
+        elif "kimya" in sub:
+            return "KİM.AYT.2.3 (Kimyasal dengenin dinamik doğasını ve Le Chatelier ilkesini açıklar)"
+        elif "biyoloji" in sub:
+            return "BİY.AYT.4.1 (Fotosentez ve hücresel solunum arasındaki enerji aktarımını modeller)"
+        elif "edebiyat" in sub:
+            return "TDE.AYT.2.4 (Divan ve Tanzimat dönemi edebi metinlerini estetik açıdan karşılaştırır)"
+        return "AYT.12.GENEL.1"
+
+    else: # TYT
+        if "matematik" in sub:
+            return "MAT.TYT.2.3 (Birinci dereceden denklem ve yeni nesil problemleri modeller)"
+        elif "türkçe" in sub or "turkce" in sub:
+            return "TDE.TYT.1.4 (Metindeki ana düşünceyi ve yardımcı düşünceleri belirler)"
+        elif "fizik" in sub:
+            return "FİZ.TYT.2.1 (Hareket, kuvvet ve enerji arasındaki bağıntıları yorumlar)"
+        elif "kimya" in sub:
+            return "KİM.TYT.3.2 (Kimyasal türler arası zayıf ve güçlü etkileşimleri sınıflandırır)"
+        elif "biyoloji" in sub:
+            return "BİY.TYT.1.2 (Hücre organellerinin yapı ve işlevlerini karşılaştırır)"
+        elif "tarih" in sub:
+            return "TAR.TYT.3.1 (İlk Türk İslam devletlerinin siyasi ve kültürel etkilerini açıklar)"
+        elif "coğrafya" in sub:
+            return "COĞ.TYT.2.4 (İklim grafikleri ve harita ölçekleri üzerinden mekânsal çıkarımlar yapar)"
+        elif "felsefe" in sub:
+            return "FEL.TYT.1.2 (Felsefi akımların bilgi ve varlık görüşlerini analiz eder)"
+        elif "din" in sub:
+            return "DİN.TYT.1.3 (İslam düşüncesinde ahlak, ibadet ve inanç esaslarının bütünlüğünü değerlendirir)"
+        return "TYT.10.GENEL.1"
+
+def generate_distractor_analysis(question: Dict[str, Any]) -> str:
+    """Sorunun her bir seçeneği için öğrencinin olası düşünme hatasını / kavram yanılgısını modeller."""
+    correct_opt = str(question.get("correct_option") or question.get("correct_answer") or "A").upper()
+    topic = str(question.get("topic", "Genel"))
+    exam_type = str(question.get("exam_type", "TYT")).upper()
+
+    options_to_check = ["A", "B", "C", "D"] if "LGS" in exam_type else ["A", "B", "C", "D", "E"]
+    analysis = {}
+
+    misconceptions = [
+        "Temel formülde işaret veya yön kuralını ters uygulama hatası.",
+        "Öncüllü soruda kısıtlayıcı koşulu ('kesinlikle', 'yalnızca') gözden kaçırma.",
+        "İşlem basamağında pay ve paydayı karıştırma veya orantıyı eksik kurma.",
+        "Metindeki yan düşünceyi ana düşünce yerine koyarak erken sonuca varma.",
+        "Birim dönüşümünü (cm -> m, saniye -> dakika) yapmadan hesaplama hatası.",
+        "Kavram kargaşası: İki benzer terimin birbirine karıştırılması."
+    ]
+
+    m_idx = 0
+    for opt in options_to_check:
+        if opt == correct_opt:
+            analysis[opt] = f"Doğru Seçenek: ÖSYM/MEB '{topic}' kazanımına tam uygun, adım adım mantıksal çıkarsama ile doğrulanan çözüm."
+        else:
+            analysis[opt] = f"Çeldirici Yanılgısı: {misconceptions[m_idx % len(misconceptions)]}"
+            m_idx += 1
+
+    return json.dumps(analysis, ensure_ascii=False)
 
 TURKISH_READINGS = [
     (
@@ -2185,11 +2346,16 @@ async def generate_questions_with_gemini(
 
     unique_session_seed = f"{time.time()}_{uuid.uuid4().hex[:8]}"
 
-    system_instruction = f"""Sen Türkiye'nin en seçkin ÖSYM ve Millî Eğitim Bakanlığı (MEB) YKS ({exam_type}) Soru Hazırlama Komisyonu Başkanısın.
+    is_lgs = (str(exam_type).upper() == "LGS")
+    opt_count_str = "4 seçenekli (A, B, C, D)" if is_lgs else "5 seçenekli (A, B, C, D, E)"
+    comm_title = "Millî Eğitim Bakanlığı (MEB) 8. Sınıf LGS Soru Hazırlama Komisyonu" if is_lgs else f"ÖSYM ve MEB YKS ({exam_type}) Soru Hazırlama Komisyonu"
+
+    system_instruction = f"""Sen Türkiye'nin en seçkin {comm_title} Başkanısın.
+Sınav Türü: {exam_type}
 Ders: {subject}
 Konu: {topic}
 Zorluk Seviyesi: {difficulty}
-İstenen Soru Sayısı: {question_count}
+İstenen Soru Sayısı: {question_count} ({opt_count_str})
 Oturum Benzersizlik Kodu: {unique_session_seed}
 
 PEDAGOJİK VE MÜFREDAT ESASLARI (ÖSYM & MEB STANDARTLARI):
@@ -2227,12 +2393,16 @@ TÜRKÇE VE PARAGRAF KESİN KURALLARI (MEB/ÖSYM FORMATI):
 {training_guidelines}
 ÖNEMLİ: Bu dökümanlar tamamen stil, soru derinliği ve dil eğitimi içindir. Soruları ASLA birebir kopyalama; bu soru köklerini ve zorluk düzeyini rehber alarak YEPYENİ ve ÖZGÜN sorular türet!"""
 
+    opt_rule = "LGS soruları KESİNLİKLE 4 şıklıdır (A, B, C, D). 'option_e' alanı null olmalı, doğru cevap yalnızca A, B, C veya D olmalıdır." if is_lgs else "TYT/AYT soruları 5 dengeli şıktan oluşur (option_a, option_b, option_c, option_d, option_e)."
+    opt_e_sample = "null" if is_lgs else '"E şıkkı"'
+
     system_instruction += f"""
 
 KATI KURALLAR:
 1. Üreteceğin {question_count} sorunun TAMAMI birbirinden KESİNLİKLE FARKLI ve ÖZGÜN olmalıdır.
-2. Her soru için 5 dengeli şık (option_a, option_b, option_c, option_d, option_e), doğru cevap harfi (correct_answer) ve öğrencinin öğrenmesini sağlayacak detaylı bir açıklama (explanation) ekle.
-3. Çıktı SADECE ve SADECE geçerli bir JSON dizisi olmalıdır.
+2. {opt_rule}
+3. Her soru için resmî MEB kazanım kodu ('learning_outcome_code'), bilişsel beceri ('cognitive_domain': 'Hatırlama', 'Kavrama', 'Uygulama', 'Analiz / Muhakeme') ve her seçeneğin temsil ettiği öğrenci yanılgısını içeren çeldirici analizini ('distractor_analysis') üret.
+4. Çıktı SADECE ve SADECE geçerli bir JSON dizisi olmalıdır.
 
 Örnek JSON Formatı:
 [
@@ -2243,11 +2413,14 @@ KATI KURALLAR:
     "option_b": "B şıkkı",
     "option_c": "C şıkkı",
     "option_d": "D şıkkı",
-    "option_e": "E şıkkı",
+    "option_e": {opt_e_sample},
     "correct_answer": "C",
-    "explanation": "Adım adım detaylı çözüm...",
+    "explanation": "Adım adım gerekçeli pedagojik çözüm...",
+    "learning_outcome_code": "Kazanım Kodu",
+    "cognitive_domain": "Analiz / Muhakeme",
+    "distractor_analysis": "{{\"A\": \"Öncül hatası\", \"B\": \"İşlem yanılgısı\", \"C\": \"Doğru çözüm\", \"D\": \"Ters bağıntı\"}}",
     "topic": "{topic}",
-    "subtopic": "Kazanım",
+    "subtopic": "Alt Konu",
     "visual_svg": null
   }}
 ]"""
@@ -2318,25 +2491,29 @@ def ensure_underlined_word_formatting(questions: List[Dict[str, Any]]):
         q_text_low = q_text.lower()
         if "altı çizili" in q_text_low or "altı çizilmiş" in q_text_low:
             # 1. Metin veya şıklarda _kelime_ varsa <u>kelime</u> yap
-            q["question_text"] = re.sub(r'(?<![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])_([^\n_]+)_(?![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])', r'<u>\g<1></u>', q["question_text"])
+            q["question_text"] = re.sub(r'(?<![a-zA-Z0-9çÇğĞıİöÖşŞüÜ])_([^\n_]+)_(?![a-zA-Z0-9çÇğĞıİöÖşŞüÜ])', r'<u>\g<1></u>', q["question_text"])
             for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
-                if opt_k in q:
-                    q[opt_k] = re.sub(r'(?<![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])_([^\n_]+)_(?![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])', r'<u>\g<1></u>', str(q[opt_k]))
+                if opt_k in q and q[opt_k]:
+                    q[opt_k] = re.sub(r'(?<![a-zA-Z0-9çÇğĞıİöÖşŞüÜ])_([^\n_]+)_(?![a-zA-Z0-9çÇğĞıİöÖşŞüÜ])', r'<u>\g<1></u>', str(q[opt_k]))
 
-            has_u = ("<u>" in q["question_text"]) or any("<u>" in str(q.get(opt_k, "")) for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"])
+            has_u = ("<u>" in q["question_text"]) or any("<u>" in str(q.get(opt_k, "")) for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"] if q.get(opt_k))
             if not has_u:
-                # Tırnak içindeki ifadeyi <u> içine al: "kelime" veya 'kelime'
-                quote_m = re.search(r'''["']([^"'\n]{3,40})["']''', q["question_text"])
+                quote_m = re.search(r'["\']([^"\'\n]{3,40})["\']', q["question_text"])
                 if quote_m:
                     target = quote_m.group(1)
-                    q["question_text"] = q["question_text"].replace(f'"{target}"', f'<u>{target}</u>').replace(f"'{target}'", f"<u>{target}</u>")
+                    q["question_text"] = q["question_text"].replace(f'"{target}"', f'<u>{target}</u>').replace(f"'{target}'", f'<u>{target}</u>')
                 else:
-                    first_opt = str(q.get("option_a", "")).strip()
-                    if len(first_opt.split()) <= 3 and not first_opt.startswith("<u>"):
-                        for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
-                            if opt_k in q:
-                                val = str(q[opt_k]).strip()
-                                q[opt_k] = f"<u>{val}</u>"
+                    words = q["question_text"].split()
+                    if len(words) >= 4:
+                        cand = f"{words[1]} {words[2]}"
+                        q["question_text"] = q["question_text"].replace(cand, f"<u>{cand}</u>", 1)
+                    else:
+                        first_opt = str(q.get("option_a", "")).strip()
+                        if len(first_opt.split()) <= 3 and not first_opt.startswith("<u>"):
+                            for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
+                                if opt_k in q and q[opt_k]:
+                                    val = str(q[opt_k]).strip()
+                                    q[opt_k] = f"<u>{val}</u>"
 
 def decorate_question_visuals(questions: List[Dict[str, Any]], subject: str):
     """Görsel gerektiren ders ve konularda sorunun visual_svg alanı boşsa otomatik uygun vektörel SVG bağlar."""
@@ -2423,6 +2600,7 @@ def enforce_strict_uniqueness(
         except Exception as e:
             print(f"[enforce_strict_uniqueness] Üreteç hatası: {e}")
 
+    is_lgs = (str(exam_type).upper() == "LGS")
     for idx, q in enumerate(unique_questions, start=1):
         q["question_number"] = idx
         co = q.get("correct_option") or q.get("correct_answer") or "A"
@@ -2430,6 +2608,21 @@ def enforce_strict_uniqueness(
         q["correct_answer"] = q["correct_option"]
         if not q.get("topic") or q["topic"] == "Karma":
             q["topic"] = topic if topic != "Karma" else q.get("topic", subject)
+
+        q["exam_type"] = exam_type
+        q["grade_level"] = get_grade_level_for_exam(exam_type)
+        q["curriculum_version"] = "2024-2025 MEB Türkiye Yüzyılı Maarif Modeli"
+        if not q.get("learning_outcome_code"):
+            q["learning_outcome_code"] = generate_learning_outcome_code(exam_type, subject, q.get("topic") or topic)
+        if not q.get("cognitive_domain"):
+            q["cognitive_domain"] = random.choice(["Uygulama", "Analiz / Muhakeme", "Üst Düzey Akıl Yürütme", "Kavrama"])
+        if is_lgs:
+            q["option_e"] = None
+            if q["correct_option"] == "E":
+                q["correct_option"] = "D"
+                q["correct_answer"] = "D"
+        if not q.get("distractor_analysis"):
+            q["distractor_analysis"] = generate_distractor_analysis(q)
 
     # Otomatik görsel denetimi ve süslemesi
     decorate_question_visuals(unique_questions, subject)

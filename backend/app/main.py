@@ -17,26 +17,88 @@ from app.routers import auth, classrooms, assignments, submissions, system, exam
 Base.metadata.create_all(bind=engine)
 
 def ensure_schema_compatibility():
-    """Mevcut veritabanlarında yeni eklenen alanların (quality_score vb.) güvenle oluşturulmasını sağlar."""
+    """Mevcut veritabanlarında yeni eklenen alanların (16 Alanlık Soru Standardı vb.) güvenle oluşturulmasını sağlar."""
     from sqlalchemy import text
     try:
         with engine.connect() as conn:
             # SQLite & PostgreSQL uyumlu sütun kontrolü
             if engine.dialect.name == "sqlite":
+                # question_bank tablosu kontrolü
                 cols_result = conn.execute(text("PRAGMA table_info(question_bank)"))
-                existing_cols = [row[1] for row in cols_result.fetchall()]
-                if existing_cols:
-                    if "quality_score" not in existing_cols:
+                qb_cols = [row[1] for row in cols_result.fetchall()]
+                if qb_cols:
+                    if "quality_score" not in qb_cols:
                         conn.execute(text("ALTER TABLE question_bank ADD COLUMN quality_score INTEGER DEFAULT 92"))
-                    if "quality_review" not in existing_cols:
+                    if "quality_review" not in qb_cols:
                         conn.execute(text("ALTER TABLE question_bank ADD COLUMN quality_review TEXT"))
-                    if "ai_verified" not in existing_cols:
+                    if "ai_verified" not in qb_cols:
                         conn.execute(text("ALTER TABLE question_bank ADD COLUMN ai_verified BOOLEAN DEFAULT 1"))
-                    conn.commit()
+                    if "curriculum_version" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN curriculum_version TEXT DEFAULT '2024-2025 MEB / ÖSYM'"))
+                    if "grade_level" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN grade_level TEXT DEFAULT '12. Sınıf / Mezun'"))
+                    if "learning_outcome_code" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN learning_outcome_code TEXT"))
+                    if "cognitive_domain" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN cognitive_domain TEXT DEFAULT 'Uygulama / Muhakeme'"))
+                    if "distractor_analysis" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN distractor_analysis TEXT"))
+                    if "quality_gate_status" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN quality_gate_status TEXT"))
+                    if "review_status" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN review_status TEXT DEFAULT 'APPROVED'"))
+                    if "item_difficulty_p" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN item_difficulty_p FLOAT"))
+                    if "item_discrimination_d" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN item_discrimination_d FLOAT"))
+                    if "version" not in qb_cols:
+                        conn.execute(text("ALTER TABLE question_bank ADD COLUMN version INTEGER DEFAULT 1"))
+
+                # exam_questions tablosu kontrolü
+                eq_cols_result = conn.execute(text("PRAGMA table_info(exam_questions)"))
+                eq_cols = [row[1] for row in eq_cols_result.fetchall()]
+                if eq_cols:
+                    if "learning_outcome_code" not in eq_cols:
+                        conn.execute(text("ALTER TABLE exam_questions ADD COLUMN learning_outcome_code TEXT"))
+                    if "cognitive_domain" not in eq_cols:
+                        conn.execute(text("ALTER TABLE exam_questions ADD COLUMN cognitive_domain TEXT DEFAULT 'Uygulama / Muhakeme'"))
+                    if "distractor_analysis" not in eq_cols:
+                        conn.execute(text("ALTER TABLE exam_questions ADD COLUMN distractor_analysis TEXT"))
+                    if "quality_gate_status" not in eq_cols:
+                        conn.execute(text("ALTER TABLE exam_questions ADD COLUMN quality_gate_status TEXT"))
+                    if "item_difficulty_p" not in eq_cols:
+                        conn.execute(text("ALTER TABLE exam_questions ADD COLUMN item_difficulty_p FLOAT"))
+                    if "item_discrimination_d" not in eq_cols:
+                        conn.execute(text("ALTER TABLE exam_questions ADD COLUMN item_discrimination_d FLOAT"))
+
+                conn.commit()
+
             elif engine.dialect.name == "postgresql":
+                # question_bank tablosu
                 conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS quality_score INTEGER DEFAULT 92"))
                 conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS quality_review TEXT"))
                 conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS ai_verified BOOLEAN DEFAULT TRUE"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS curriculum_version VARCHAR(100) DEFAULT '2024-2025 MEB / ÖSYM'"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS grade_level VARCHAR(50) DEFAULT '12. Sınıf / Mezun'"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS learning_outcome_code VARCHAR(100)"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS cognitive_domain VARCHAR(100) DEFAULT 'Uygulama / Muhakeme'"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS distractor_analysis TEXT"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS quality_gate_status TEXT"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS review_status VARCHAR(50) DEFAULT 'APPROVED'"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS item_difficulty_p FLOAT"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS item_discrimination_d FLOAT"))
+                conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1"))
+                conn.execute(text("ALTER TABLE question_bank ALTER COLUMN option_e DROP NOT NULL"))
+
+                # exam_questions tablosu
+                conn.execute(text("ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS learning_outcome_code VARCHAR(100)"))
+                conn.execute(text("ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS cognitive_domain VARCHAR(100) DEFAULT 'Uygulama / Muhakeme'"))
+                conn.execute(text("ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS distractor_analysis TEXT"))
+                conn.execute(text("ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS quality_gate_status TEXT"))
+                conn.execute(text("ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS item_difficulty_p FLOAT"))
+                conn.execute(text("ALTER TABLE exam_questions ADD COLUMN IF NOT EXISTS item_discrimination_d FLOAT"))
+                conn.execute(text("ALTER TABLE exam_questions ALTER COLUMN option_e DROP NOT NULL"))
+
                 conn.commit()
     except Exception as e:
         print(f"[DB Schema Check] Sütun kontrol uyarısı (yeni tablolar zaten güncel): {e}")

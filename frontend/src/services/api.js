@@ -244,6 +244,14 @@ export const examService = {
     const response = await api.delete(`/exams/question-bank/${questionId}`);
     return response.data;
   },
+  updateBankQuestion: async (questionId, data) => {
+    const response = await api.put(`/exams/question-bank/${questionId}`, data);
+    return response.data;
+  },
+  auditQuestionGates: async (questionId) => {
+    const response = await api.post(`/exams/question-bank/${questionId}/gate-audit`);
+    return response.data;
+  },
   bulkDeleteFromBank: async (questionIds) => {
     const response = await api.post('/exams/question-bank/bulk-delete', { question_ids: questionIds });
     return response.data;

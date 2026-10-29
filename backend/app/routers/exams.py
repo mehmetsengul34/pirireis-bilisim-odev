@@ -14,6 +14,7 @@ from app.models import (
     AIAgentActivity, AIAgentMemory
 )
 from app.schemas import (
+    QuestionBankUpdate, GateAuditResponse,
     ExamOut, ExamDetailOut, ExamCreateRequest, GenerateQuestionsRequest,
     ExamSubmitRequest, ExamSubmissionOut, ExamAnalyticsOut, QuestionAnalytic,
     TopicAnalytic, StudentRanking, ExamQuestionStudentOut, ExamQuestionOut, ExamAnswerOut, 
@@ -62,11 +63,27 @@ def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject
             q_score = getattr(q, "quality_score", None) or (q.get("quality_score") if isinstance(q, dict) else 92) or 92
             q_rev = getattr(q, "quality_review", None) or (q.get("quality_review") if isinstance(q, dict) else "Hakem Onaylı") or "Hakem Onaylı"
 
+            is_lgs = (str(exam_type or "").upper() == "LGS")
+            q_cur_ver = getattr(q, "curriculum_version", None) or (q.get("curriculum_version") if isinstance(q, dict) else None) or "2024-2025 MEB Türkiye Yüzyılı Maarif Modeli"
+            q_grade = getattr(q, "grade_level", None) or (q.get("grade_level") if isinstance(q, dict) else None) or get_grade_level_for_exam(exam_type)
+            q_outcome = getattr(q, "learning_outcome_code", None) or (q.get("learning_outcome_code") if isinstance(q, dict) else None) or generate_learning_outcome_code(exam_type, subject, q_top)
+            q_cogn = getattr(q, "cognitive_domain", None) or (q.get("cognitive_domain") if isinstance(q, dict) else None) or "Analiz / Muhakeme"
+            q_dist = getattr(q, "distractor_analysis", None) or (q.get("distractor_analysis") if isinstance(q, dict) else None)
+            if not q_dist:
+                q_dict_repr = q if isinstance(q, dict) else q.__dict__
+                q_dist = generate_distractor_analysis(q_dict_repr)
+            q_gates = getattr(q, "quality_gate_status", None) or (q.get("quality_gate_status") if isinstance(q, dict) else None)
+            q_status = getattr(q, "review_status", None) or (q.get("review_status") if isinstance(q, dict) else None) or "APPROVED"
+
             bank_item = QuestionBank(
                 exam_type=exam_type or "TYT",
+                curriculum_version=q_cur_ver,
+                grade_level=q_grade,
                 subject=subject or "Genel",
                 topic=q_top or "Genel",
                 subtopic=q_sub,
+                learning_outcome_code=q_outcome,
+                cognitive_domain=q_cogn,
                 difficulty=q_diff or "ÖSYM / Yeni Nesil",
                 question_text=clean_text,
                 visual_svg=q_svg,
@@ -74,9 +91,12 @@ def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject
                 option_b=sanitize_math_and_turkish(q_b, is_option=True) if q_b else "-",
                 option_c=sanitize_math_and_turkish(q_c, is_option=True) if q_c else "-",
                 option_d=sanitize_math_and_turkish(q_d, is_option=True) if q_d else "-",
-                option_e=sanitize_math_and_turkish(q_e, is_option=True) if q_e else "-",
+                option_e=(sanitize_math_and_turkish(q_e, is_option=True) if q_e else None) if not is_lgs else None,
                 correct_option=str(q_cor or "A").upper(),
                 explanation=sanitize_math_and_turkish(q_exp, is_option=False) if q_exp else None,
+                distractor_analysis=q_dist if isinstance(q_dist, str) else json.dumps(q_dist, ensure_ascii=False),
+                quality_gate_status=q_gates if isinstance(q_gates, str) else (json.dumps(q_gates, ensure_ascii=False) if q_gates else None),
+                review_status=q_status,
                 quality_score=q_score,
                 quality_review=q_rev,
                 ai_verified=True,
@@ -392,6 +412,8 @@ def get_question_bank(
     subject: Optional[str] = None,
     topic: Optional[str] = None,
     difficulty: Optional[str] = None,
+    review_status: Optional[str] = None,
+    cognitive_domain: Optional[str] = None,
     search: Optional[str] = None,
     limit: int = 100,
     offset: int = 0,
@@ -412,6 +434,10 @@ def get_question_bank(
         query = query.filter(QuestionBank.topic == topic)
     if difficulty and difficulty != "Tümü":
         query = query.filter(QuestionBank.difficulty == difficulty)
+    if review_status and review_status != "Tümü":
+        query = query.filter(QuestionBank.review_status == review_status)
+    if cognitive_domain and cognitive_domain != "Tümü":
+        query = query.filter(QuestionBank.cognitive_domain == cognitive_domain)
     if search:
         s = f"%{search}%"
         query = query.filter(
@@ -490,7 +516,13 @@ def create_exam_from_bank(
             correct_option=bq.correct_option.upper(),
             explanation=bq.explanation,
             topic=bq.topic,
-            subtopic=bq.subtopic
+            subtopic=bq.subtopic,
+            learning_outcome_code=bq.learning_outcome_code,
+            cognitive_domain=bq.cognitive_domain,
+            distractor_analysis=bq.distractor_analysis,
+            quality_gate_status=bq.quality_gate_status,
+            item_difficulty_p=bq.item_difficulty_p,
+            item_discrimination_d=bq.item_discrimination_d
         )
         db.add(eq)
 
@@ -526,6 +558,93 @@ def create_exam_from_bank(
         created_at=exam.created_at,
         question_count=len(ordered_questions),
         submission_count=0
+    )
+
+
+@router.put("/question-bank/{question_id}", response_model=QuestionBankItem)
+def update_bank_question(
+    question_id: int,
+    req: QuestionBankUpdate,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Soru bankasındaki bir sorunun metnini, şıklarını, kazanım kodunu veya durumunu günceller."""
+    bq = db.query(QuestionBank).filter(QuestionBank.id == question_id).first()
+    if not bq:
+        raise HTTPException(status_code=404, detail="Soru bulunamadı.")
+
+    if req.question_text is not None:
+        bq.question_text = sanitize_math_and_turkish(req.question_text, is_option=False)
+    if req.visual_svg is not None:
+        bq.visual_svg = req.visual_svg
+    if req.option_a is not None:
+        bq.option_a = sanitize_math_and_turkish(req.option_a, is_option=True)
+    if req.option_b is not None:
+        bq.option_b = sanitize_math_and_turkish(req.option_b, is_option=True)
+    if req.option_c is not None:
+        bq.option_c = sanitize_math_and_turkish(req.option_c, is_option=True)
+    if req.option_d is not None:
+        bq.option_d = sanitize_math_and_turkish(req.option_d, is_option=True)
+    if req.option_e is not None:
+        bq.option_e = sanitize_math_and_turkish(req.option_e, is_option=True) if req.option_e else None
+    if req.correct_option is not None:
+        bq.correct_option = str(req.correct_option).upper().strip()
+    if req.explanation is not None:
+        bq.explanation = sanitize_math_and_turkish(req.explanation, is_option=False)
+    if req.learning_outcome_code is not None:
+        bq.learning_outcome_code = req.learning_outcome_code
+    if req.cognitive_domain is not None:
+        bq.cognitive_domain = req.cognitive_domain
+    if req.distractor_analysis is not None:
+        bq.distractor_analysis = req.distractor_analysis
+    if req.review_status is not None:
+        bq.review_status = req.review_status
+    if req.difficulty is not None:
+        bq.difficulty = req.difficulty
+
+    # Otomatik Kabul Kapıları Denetimini yenile
+    gate_eval = JudgeAgent.evaluate_quality_gates(bq.__dict__, subject=bq.subject, exam_type=bq.exam_type)
+    bq.quality_gate_status = json.dumps(gate_eval["gate_status"], ensure_ascii=False)
+    bq.quality_score = gate_eval["total_score"]
+    bq.quality_review = gate_eval["summary"]
+    if not req.review_status:
+        bq.review_status = gate_eval["review_status"]
+
+    bq.version = (bq.version or 1) + 1
+    db.commit()
+    db.refresh(bq)
+    return bq
+
+@router.post("/question-bank/{question_id}/gate-audit", response_model=GateAuditResponse)
+def audit_bank_question_gates(
+    question_id: int,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """Soru bankasındaki bir soruyu 4 Kabul Kapısı (A, B, C, D) standardında denetler."""
+    bq = db.query(QuestionBank).filter(QuestionBank.id == question_id).first()
+    if not bq:
+        raise HTTPException(status_code=404, detail="Soru bulunamadı.")
+
+    gate_eval = JudgeAgent.evaluate_quality_gates(bq.__dict__, subject=bq.subject, exam_type=bq.exam_type)
+    bq.quality_gate_status = json.dumps(gate_eval["gate_status"], ensure_ascii=False)
+    bq.quality_score = gate_eval["total_score"]
+    bq.quality_review = gate_eval["summary"]
+    bq.review_status = gate_eval["review_status"]
+    db.commit()
+
+    gs = gate_eval["gate_status"]
+    return GateAuditResponse(
+        question_id=bq.id,
+        passed_all=gs["passed_all"],
+        overall_gate_score=gs["overall_score"],
+        review_status=gs["review_status"],
+        gate_a=gs["gate_a"],
+        gate_b=gs["gate_b"],
+        gate_c=gs["gate_c"],
+        gate_d=gs["gate_d"],
+        recommendations=gate_eval["recommendations"],
+        audit_summary=gate_eval["summary"]
     )
 
 @router.delete("/question-bank/{question_id}")

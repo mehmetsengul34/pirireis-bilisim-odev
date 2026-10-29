@@ -127,11 +127,17 @@ class ExamQuestion(Base):
     option_b = Column(Text, nullable=False)
     option_c = Column(Text, nullable=False)
     option_d = Column(Text, nullable=False)
-    option_e = Column(Text, nullable=False)
+    option_e = Column(Text, nullable=True) # LGS 4 seçenekli olduğu için nullable
     correct_option = Column(String(5), nullable=False) # "A", "B", "C", "D", "E"
     explanation = Column(Text, nullable=True) # Ayrıntılı pedagojik çözüm
     topic = Column(String(150), nullable=True)
     subtopic = Column(String(150), nullable=True)
+    learning_outcome_code = Column(String(100), nullable=True) # Kazanım kodu örn: T.8.3.18
+    cognitive_domain = Column(String(100), default="Uygulama / Muhakeme") # Hatırlama, Kavrama, Uygulama, Analiz
+    distractor_analysis = Column(Text, nullable=True) # JSON: Çeldirici yanılgı analizleri
+    quality_gate_status = Column(Text, nullable=True) # JSON: Kapı A, B, C, D durumu
+    item_difficulty_p = Column(Float, nullable=True) # Madde güçlüğü p
+    item_discrimination_d = Column(Float, nullable=True) # Madde ayırt ediciliği D
 
     exam = relationship("Exam", back_populates="questions")
     answers = relationship("ExamAnswer", back_populates="question", cascade="all, delete-orphan")
@@ -191,10 +197,14 @@ class QuestionBank(Base):
     __tablename__ = "question_bank"
 
     id = Column(Integer, primary_key=True, index=True)
-    exam_type = Column(String(50), default="TYT")
+    exam_type = Column(String(50), default="TYT") # "LGS", "TYT", "AYT"
+    curriculum_version = Column(String(100), default="2024-2025 MEB / ÖSYM") # Müfredat sürümü
+    grade_level = Column(String(50), default="12. Sınıf / Mezun") # Sınıf düzeyi (örn: "8. Sınıf", "9. Sınıf", "12. Sınıf")
     subject = Column(String(100), index=True, nullable=False)
     topic = Column(String(200), index=True, nullable=False)
     subtopic = Column(String(200), nullable=True)
+    learning_outcome_code = Column(String(100), nullable=True) # Resmî MEB/ÖSYM kazanım kodu (örn: MAT.TYT.4.2)
+    cognitive_domain = Column(String(100), default="Uygulama / Muhakeme") # Hatırlama, Kavrama, Uygulama, Analiz / Muhakeme
     difficulty = Column(String(50), default="ÖSYM / Yeni Nesil")
     question_text = Column(Text, nullable=False)
     visual_svg = Column(Text, nullable=True)
@@ -202,12 +212,18 @@ class QuestionBank(Base):
     option_b = Column(Text, nullable=False)
     option_c = Column(Text, nullable=False)
     option_d = Column(Text, nullable=False)
-    option_e = Column(Text, nullable=False)
+    option_e = Column(Text, nullable=True) # LGS 4 seçenekli olduğu için nullable
     correct_option = Column(String(10), nullable=False)
-    explanation = Column(Text, nullable=True)
+    explanation = Column(Text, nullable=True) # Adım adım pedagojik çözüm
+    distractor_analysis = Column(Text, nullable=True) # JSON: Seçeneklerin temsil ettiği kavram yanılgıları
+    quality_gate_status = Column(Text, nullable=True) # JSON: Kabul Kapıları A, B, C, D denetim karnesi
+    review_status = Column(String(50), default="APPROVED") # "DRAFT", "IN_REVIEW", "APPROVED", "REJECTED", "NEEDS_REVISION"
     quality_score = Column(Integer, default=92) # 0 - 100 Hakem Ajanı Puanı
     quality_review = Column(Text, nullable=True) # Hakem Ajanı Değerlendirme Raporu
     ai_verified = Column(Boolean, default=True) # Otonom denetimden geçti mi?
+    item_difficulty_p = Column(Float, nullable=True) # Gerçek öğrenci madde güçlük indeksi p
+    item_discrimination_d = Column(Float, nullable=True) # Gerçek öğrenci madde ayırt edicilik indeksi D
+    version = Column(Integer, default=1) # Soru sürümü
     created_by_teacher_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

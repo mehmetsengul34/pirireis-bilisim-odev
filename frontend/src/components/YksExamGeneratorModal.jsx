@@ -8,6 +8,46 @@ import MathRenderer from './MathRenderer';
 
 // MEB ve ÖSYM Güncel Müfredat Kataloğu (Her an hazır, sıfır gecikme)
 export const DEFAULT_YKS_CURRICULUM = {
+  LGS: {
+    'Türkçe': [
+      'Fiilimsiler (Eylemsiler)', 'Cümlenin Ögeleri', 'Cümle Türleri',
+      'Paragrafta Anlam ve Ana Düşünce', 'Paragrafta Yapı ve Akış', 'Metin Türleri ve Söz Sanatları',
+      'Noktalama İşaretleri', 'Yazım Kuralları', 'Görsel Okuma ve Grafik Yorumlama',
+      'Sözel Mantık ve Muhakeme'
+    ],
+    'Matematik': [
+      'Çarpanlar ve Katlar (EBOB-EKOK)', 'Üslü İfadeler', 'Kareköklü İfadeler',
+      'Veri Analizi (Daire ve Çizgi Grafiği)', 'Basit Olayların Olasılığı',
+      'Cebirsel İfadeler ve Özdeşlikler', 'Doğrusal Denklemler ve Koordinat Sistemi',
+      'Eşitsizlikler', 'Üçgenler (Açı-Kenar Bağıntıları, Pisagor)', 'Dönüşüm Geometrisi',
+      'Geometrik Cisimler (Prizma, Silindir, Koni, Piramit)'
+    ],
+    'Fen Bilimleri': [
+      'Mevsimler ve İklim', 'DNA ve Genetik Kod', 'Basınç (Katı, Sıvı ve Gaz Basıncı)',
+      'Madde ve Endüstri (Periyodik Sistem, Fiziksel ve Kimyasal Değişimler, Asit-Bazlar)',
+      'Basit Makineler (Makaralar, Kaldıraç, Eğik Düzlem, Çıkrık)',
+      'Enerji Dönüşümleri ve Çevre Bilimi (Besin Zinciri, Fotosentez, Solunum)',
+      'Elektrik Yükleri ve Elektrik Enerjisi'
+    ],
+    'T.C. İnkılap Tarihi ve Atatürkçülük': [
+      'Bir Kahraman Doğuyor (Mustafa Kemal\'in Hayatı)', 'Millî Uyanış: Bağımsızlık Yolunda Atılan Adımlar',
+      'Millî Bir Destan: Ya İstiklal Ya Ölüm! (Cepheler ve Lozan)',
+      'Atatürkçülük ve Çağdaşlaşan Türkiye (İnkılaplar)', 'Demokratikleşme Çabaları',
+      'Atatürk Dönemi Türk Dış Politikası', 'Atatürk\'ün Ölümü ve Sonrası'
+    ],
+    'Din Kültürü ve Ahlak Bilgisi': [
+      'Kader İnancı (Kaza, Kader, Tevekkül, Evrenin Yasaları)', 'Zekat ve Sadaka İbadeti',
+      'Din ve Hayat (Temel Hakların Korunması)', 'Hz. Muhammed\'in Doğruluğu ve Güvenilirliği',
+      'Kur\'an-ı Kerim ve Özellikleri'
+    ],
+    'İngilizce': [
+      'Friendship (Accepting & Refusing)', 'Teen Life (Daily Routines, Preferences)',
+      'In The Kitchen (Cooking Process & Recipes)', 'On The Phone (Phone Conversations)',
+      'The Internet (Online Habits & Rules)', 'Adventures (Extreme Sports)',
+      'Tourism (Vacation Types, Attractions)', 'Chores (Obligations & Responsibilities)',
+      'Science (Scientific Discoveries & Inventions)', 'Natural Forces (Disasters & Precautions)'
+    ]
+  },
   TYT: {
     'Temel Matematik': [
       'Temel Kavramlar ve Sayı Kümeleri', 'Bölme ve Bölünebilme Kuralları', 'Asal Çarpanlar ve EBOB-EKOK',
@@ -399,20 +439,20 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                 <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-2">
                   Sınav Grubu
                 </label>
-                <div className="grid grid-cols-2 gap-3 max-w-md">
-                  {['TYT', 'AYT'].map((t) => (
+                <div className="grid grid-cols-3 gap-2.5 max-w-lg">
+                  {['TYT', 'AYT', 'LGS'].map((t) => (
                     <button
                       type="button"
                       key={t}
                       onClick={() => handleExamTypeChange(t)}
-                      className={`py-2.5 px-4 rounded-2xl text-xs sm:text-sm font-bold border transition flex items-center justify-center gap-2 ${
+                      className={`py-2.5 px-3 rounded-2xl text-xs sm:text-sm font-bold border transition flex items-center justify-center gap-1.5 ${
                         examType === t
                           ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-600/20'
                           : 'bg-zinc-50 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700/60 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100'
                       }`}
                     >
                       <BookOpen className="w-4 h-4" />
-                      {t} ({t === 'TYT' ? 'Temel Yeterlilik' : 'Alan Yeterlilik'})
+                      <span>{t} ({t === 'TYT' ? 'Temel' : t === 'AYT' ? 'Alan' : '8. Sınıf'})</span>
                     </button>
                   ))}
                 </div>
@@ -714,7 +754,7 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
 
                           {/* Şıklar */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {['a', 'b', 'c', 'd', 'e'].map((opt) => (
+                            {(examType === 'LGS' ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c', 'd', 'e']).map((opt) => (
                               <div key={opt} className="flex items-center gap-2">
                                 <span className="font-bold text-xs uppercase w-4">{opt}:</span>
                                 <input
@@ -734,7 +774,7 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                               onChange={(e) => handleQuestionChange(idx, 'correct_option', e.target.value)}
                               className="text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1 font-bold"
                             >
-                              {['A', 'B', 'C', 'D', 'E'].map(c => (
+                              {(examType === 'LGS' ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']).map(c => (
                                 <option key={c} value={c}>{c}</option>
                               ))}
                             </select>
@@ -755,7 +795,7 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
 
                           {/* Şıklar Listesi */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                            {['A', 'B', 'C', 'D', 'E'].map((opt) => {
+                            {(examType === 'LGS' || q.exam_type === 'LGS' || !q.option_e ? ['A', 'B', 'C', 'D'] : ['A', 'B', 'C', 'D', 'E']).map((opt) => {
                               const key = `option_${opt.toLowerCase()}`;
                               const isCorrect = q.correct_option === opt;
 
