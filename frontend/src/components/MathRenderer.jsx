@@ -20,6 +20,14 @@ function sanitizeFormulaForKatex(formula) {
   f = f.replace(/⁻¹/g, '^{-1}');
   f = f.replace(/⁻²/g, '^{-2}');
 
+  // Fizik ve Matematik birim üsleri (ör: \text{m/s}2 -> \text{m/s}^2, m/s2 -> \text{m/s}^2, cm2 -> \text{cm}^2)
+  f = f.replace(/\\text\{\s*(m\/s|km\/h|cm\/s|m\/sn|km\/sa)\s*\}\s*([23])(?![0-9])/gi, '\\text{$1}^{$2}');
+  f = f.replace(/\\text\{\s*(m\/s|km\/h|cm\/s|m\/sn|km\/sa)\s*\}\s*\^\s*([23])/gi, '\\text{$1}^{$2}');
+  f = f.replace(/\b(m\/s|km\/h|cm\/s|m\/sn|km\/sa)\s*([23])(?![0-9])/gi, '\\text{$1}^{$2}');
+  f = f.replace(/\b(m\/s|km\/h|cm\/s|m\/sn|km\/sa)\s*\^\s*([23])/gi, '\\text{$1}^{$2}');
+  f = f.replace(/\\text\{\s*(cm|mm|dm|km|m)\s*\}\s*([23])(?![0-9a-zA-Z])/gi, '\\text{$1}^{$2}');
+  f = f.replace(/\b(cm|mm|dm|km|m)\s*([23])(?![0-9a-zA-Z])/gi, '\\text{$1}^{$2}');
+
   // 2. Derece sembolü ve bozuk varyasyonlarını tek seferde temiz ve standart hale getir:
   // Örn: 108^{^{\circ}}, 60^^\circ, 30^°, 30°, 60^\circ, 90\circ
   f = f.replace(/\^+\{*\s*\^+\{*\s*\\circ\}*\}*/g, '^{\\circ}');
@@ -150,7 +158,11 @@ function normalizeMathText(rawText) {
     s = s.replace(/\b([0-9]+)\s*\\pi\b/g, (_m, g1) => `$${g1}\\pi$`);
     s = s.replace(/(?<![a-zA-Z0-9])\\pi\b/g, '$\\pi$');
 
-    // C. Alan ve hacim birimleri: 12 cm², 5 m³, 10 cm^2
+    // C. Alan, hacim ve fizik hız/ivme birimleri (g = 10 m/s 2, ivmesi kaç m/s 2, 12 cm², 5 m³)
+    s = s.replace(/\(?\b(g\s*=\s*[0-9]+(?:[.,][0-9]+)?)\s*(?:m\/s|m\/sn)[\s\^]*[2²]\s*(?:alınız\.?)?\)?/gi, '($1\\text{ m/s}^2$ alınız.)');
+    s = s.replace(/\b([0-9]+(?:[.,][0-9]+)?)\s*(m\/s|km\/h|cm\/s|m\/sn)[\s\^]*[2²](?![a-zA-Z0-9])/gi, (_m, num, unit) => `$${num}\\text{ ${unit}}^2$`);
+    s = s.replace(/\b(kaç\s+)(m\/s|km\/h|cm\/s|m\/sn)[\s\^]*[2²](?![a-zA-Z0-9])/gi, (_m, prefix, unit) => `${prefix}$\\text{${unit}}^2$`);
+    s = s.replace(/(?<!\$)\b(m\/s|km\/h|cm\/s|m\/sn)[\s\^]*[2²](?![a-zA-Z0-9])(?!\$)/gi, (_m, unit) => `$\\text{${unit}}^2$`);
     s = s.replace(/\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[2²](?![a-zA-Z0-9])/gi, (_m, num, unit) => `$${num}\\text{ ${unit}}^2$`);
     s = s.replace(/\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[3³](?![a-zA-Z0-9])/gi, (_m, num, unit) => `$${num}\\text{ ${unit}}^3$`);
 

@@ -208,6 +208,13 @@ def sanitize_math_and_turkish(text: str, is_option: bool = False) -> str:
     def clean_math_inner(formula: str) -> str:
         f = formula.strip()
         f = f.replace("²", "^{2}").replace("³", "^{3}").replace("⁴", "^{4}").replace("⁰", "^{0}").replace("¹", "^{1}")
+        # Fizik hız ve ivme birimleri: \text{m/s}2 -> \text{m/s}^2, m/s2 -> \text{m/s}^2, vb.
+        f = re.sub(r'\\text\{\s*(m/s|km/h|cm/s|m/sn|km/sa)\s*\}\s*([23])(?![0-9])', r'\\text{\1}^{\2}', f, flags=re.IGNORECASE)
+        f = re.sub(r'\\text\{\s*(m/s|km/h|cm/s|m/sn|km/sa)\s*\}\s*\^\s*([23])', r'\\text{\1}^{\2}', f, flags=re.IGNORECASE)
+        f = re.sub(r'\b(m/s|km/h|cm/s|m/sn|km/sa)\s*([23])(?![0-9])', r'\\text{\1}^{\2}', f, flags=re.IGNORECASE)
+        f = re.sub(r'\b(m/s|km/h|cm/s|m/sn|km/sa)\s*\^\s*([23])', r'\\text{\1}^{\2}', f, flags=re.IGNORECASE)
+        f = re.sub(r'\\text\{\s*(cm|mm|dm|km|m)\s*\}\s*([23])(?![0-9a-zA-Z])', r'\\text{\1}^{\2}', f, flags=re.IGNORECASE)
+        f = re.sub(r'\b(cm|mm|dm|km|m)\s*([23])(?![0-9a-zA-Z])', r'\\text{\1}^{\2}', f, flags=re.IGNORECASE)
         # Bozuk ve iç içe geçmiş dereceleri tek standarda indir:
         f = re.sub(r'\^+\{*\s*\^+\{*\s*\\circ\}*\}*', r'^{\\circ}', f)
         f = re.sub(r'\^+\{*\s*°\}*', r'^{\\circ}', f)
@@ -278,7 +285,11 @@ def sanitize_math_and_turkish(text: str, is_option: bool = False) -> str:
             t = re.sub(r'\b([0-9]+)\s*\\circ\b', r'$\1^{\\circ}$', t)
             # Formül dışı pi sayısı
             t = re.sub(r'\b([0-9]+)\s*\\pi\b', r'$\1\\pi$', t)
-            # Formül dışı alan ve hacim birimleri
+            # Formül dışı alan, hacim ve fizik hız/ivme birimleri (m/s^2, cm^2, g=10 m/s 2)
+            t = re.sub(r'\(?\b(g\s*=\s*[0-9]+(?:[.,][0-9]+)?)\s*(?:m/s|m/sn)[\s\^]*[2²]\s*(?:alınız\.?)?\)?', r'($\1\\text{ m/s}^2$ alınız.)', t, flags=re.IGNORECASE)
+            t = re.sub(r'\b([0-9]+(?:[.,][0-9]+)?)\s*(m/s|km/h|cm/s|m/sn)[\s\^]*[2²](?![a-zA-Z0-9])', r'$\1\\text{ \2}^2$', t, flags=re.IGNORECASE)
+            t = re.sub(r'\b(kaç\s+)(m/s|km/h|cm/s|m/sn)[\s\^]*[2²](?![a-zA-Z0-9])', r'\1$\\text{\2}^2$', t, flags=re.IGNORECASE)
+            t = re.sub(r'(?<!\$)\b(m/s|km/h|cm/s|m/sn)[\s\^]*[2²](?![a-zA-Z0-9])(?!\$)', r'$\\text{\1}^2$', t, flags=re.IGNORECASE)
             t = re.sub(r'\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[2²](?![a-zA-Z0-9])', r'$\1\\text{ \2}^2$', t, flags=re.IGNORECASE)
             t = re.sub(r'\b([0-9]+)\s*(cm|m|mm|km|dm)[\^]?[3³](?![a-zA-Z0-9])', r'$\1\\text{ \2}^3$', t, flags=re.IGNORECASE)
             # Formül dışı değişken kare ve küpleri
@@ -368,68 +379,62 @@ def format_options(correct_str: str, distractors: List[str]) -> Dict[str, Any]:
     opts["correct_answer"] = letters[correct_idx]
     return opts
 
-# ================= DİNAMİK VEKTÖREL SVG GÖRSEL ÜRETEÇLERİ =================
+# ================= DİNAMİK VEKTÖREL SVG GÖRSEL ÜRETEÇLERİ (AÇIK ZEMİN / YÜKSEK KONTRAST) =================
 
 def generate_dynamic_triangle_svg(a: int = 6, b: int = 8, c: int = 10, label: str = "ABC Dik Üçgeni") -> str:
-    return f'''<svg viewBox="0 0 380 230" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
-  <defs>
-    <linearGradient id="triGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.30"/>
-      <stop offset="100%" stop-color="#818cf8" stop-opacity="0.10"/>
-    </linearGradient>
-  </defs>
-  <polygon points="60,180 320,180 60,40" fill="url(#triGrad)" stroke="#38bdf8" stroke-width="2.5" stroke-linejoin="round"/>
-  <rect x="60" y="162" width="18" height="18" fill="none" stroke="#f43f5e" stroke-width="2"/>
-  <circle cx="69" cy="171" r="2.5" fill="#f43f5e"/>
-  <circle cx="60" cy="40" r="4.5" fill="#38bdf8"/>
-  <circle cx="60" cy="180" r="4.5" fill="#38bdf8"/>
-  <circle cx="320" cy="180" r="4.5" fill="#38bdf8"/>
-  <text x="45" y="35" fill="#f8fafc" font-size="14" font-family="sans-serif" font-weight="bold">A</text>
-  <text x="45" y="195" fill="#f8fafc" font-size="14" font-family="sans-serif" font-weight="bold">B</text>
-  <text x="330" y="195" fill="#f8fafc" font-size="14" font-family="sans-serif" font-weight="bold">C</text>
-  <text x="25" y="115" fill="#fbbf24" font-size="13" font-family="sans-serif" font-weight="bold">{c}</text>
-  <text x="180" y="202" fill="#fbbf24" font-size="13" font-family="sans-serif" font-weight="bold">{a}</text>
-  <text x="200" y="105" fill="#34d399" font-size="13" font-family="sans-serif" font-weight="bold">{b}</text>
-  <text x="120" y="25" fill="#94a3b8" font-size="12" font-family="sans-serif">{label}</text>
+    return f'''<svg viewBox="0 0 380 230" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <polygon points="60,180 320,180 60,40" fill="#f0f9ff" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="60" y="162" width="18" height="18" fill="none" stroke="#dc2626" stroke-width="2"/>
+  <circle cx="69" cy="171" r="2.5" fill="#dc2626"/>
+  <circle cx="60" cy="40" r="4.5" fill="#0284c7"/>
+  <circle cx="60" cy="180" r="4.5" fill="#0284c7"/>
+  <circle cx="320" cy="180" r="4.5" fill="#0284c7"/>
+  <text x="45" y="35" fill="#0f172a" font-size="14" font-family="sans-serif" font-weight="bold">A</text>
+  <text x="45" y="195" fill="#0f172a" font-size="14" font-family="sans-serif" font-weight="bold">B</text>
+  <text x="330" y="195" fill="#0f172a" font-size="14" font-family="sans-serif" font-weight="bold">C</text>
+  <text x="25" y="115" fill="#b45309" font-size="13" font-family="sans-serif" font-weight="bold">{c}</text>
+  <text x="180" y="202" fill="#b45309" font-size="13" font-family="sans-serif" font-weight="bold">{a}</text>
+  <text x="200" y="105" fill="#15803d" font-size="13" font-family="sans-serif" font-weight="bold">{b}</text>
+  <text x="120" y="25" fill="#334155" font-size="12" font-family="sans-serif" font-weight="bold">{label}</text>
 </svg>'''
 
 def generate_dynamic_geometry_circle_svg(r: int = 6, angle: int = 60) -> str:
-    return f'''<svg viewBox="0 0 360 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:400px; margin:auto; display:block;">
-  <circle cx="180" cy="115" r="75" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
-  <circle cx="180" cy="115" r="4" fill="#f43f5e"/>
-  <text x="185" y="110" fill="#f8fafc" font-size="13" font-family="sans-serif" font-weight="bold">O</text>
-  <line x1="180" y1="115" x2="255" y2="115" stroke="#fbbf24" stroke-width="2"/>
-  <line x1="180" y1="115" x2="225" y2="52" stroke="#fbbf24" stroke-width="2"/>
-  <path d="M 210,115 A 30 30 0 0 0 200,90" fill="none" stroke="#34d399" stroke-width="2"/>
-  <text x="212" y="102" fill="#34d399" font-size="12" font-family="sans-serif" font-weight="bold">α={angle}°</text>
-  <text x="210" y="130" fill="#fbbf24" font-size="12" font-family="sans-serif" font-weight="bold">r={r}</text>
-  <text x="110" y="25" fill="#94a3b8" font-size="12" font-family="sans-serif">Dairede Merkez Açı ve Yay</text>
+    return f'''<svg viewBox="0 0 360 220" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:400px; margin:auto; display:block;">
+  <circle cx="180" cy="115" r="75" fill="#f8fafc" stroke="#0284c7" stroke-width="2.5"/>
+  <circle cx="180" cy="115" r="4" fill="#dc2626"/>
+  <text x="185" y="110" fill="#0f172a" font-size="13" font-family="sans-serif" font-weight="bold">O</text>
+  <line x1="180" y1="115" x2="255" y2="115" stroke="#b45309" stroke-width="2"/>
+  <line x1="180" y1="115" x2="225" y2="52" stroke="#b45309" stroke-width="2"/>
+  <path d="M 210,115 A 30 30 0 0 0 200,90" fill="none" stroke="#16a34a" stroke-width="2"/>
+  <text x="212" y="102" fill="#15803d" font-size="12" font-family="sans-serif" font-weight="bold">α={angle}°</text>
+  <text x="210" y="130" fill="#b45309" font-size="12" font-family="sans-serif" font-weight="bold">r={r}</text>
+  <text x="110" y="25" fill="#334155" font-size="12" font-family="sans-serif" font-weight="bold">Dairede Merkez Açı ve Yay</text>
 </svg>'''
 
 def generate_dynamic_circuit_svg(v: int = 24, r1: int = 4, r2: int = 6, r3: int = 2) -> str:
-    return f'''<svg viewBox="0 0 440 210" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:460px; margin:auto; display:block;">
-  <rect x="50" y="35" width="340" height="140" fill="none" stroke="#64748b" stroke-width="2.5" rx="6"/>
-  <line x1="180" y1="35" x2="250" y2="35" stroke="#0f172a" stroke-width="8"/>
-  <rect x="185" y="25" width="60" height="20" fill="#1e293b" stroke="#38bdf8" stroke-width="2" rx="4"/>
-  <text x="195" y="39" fill="#38bdf8" font-size="11" font-family="sans-serif" font-weight="bold">R₁={r1}Ω</text>
-  <line x1="180" y1="175" x2="250" y2="175" stroke="#0f172a" stroke-width="8"/>
-  <rect x="185" y="165" width="60" height="20" fill="#1e293b" stroke="#38bdf8" stroke-width="2" rx="4"/>
-  <text x="195" y="179" fill="#38bdf8" font-size="11" font-family="sans-serif" font-weight="bold">R₂={r2}Ω</text>
-  <line x1="390" y1="80" x2="390" y2="130" stroke="#0f172a" stroke-width="8"/>
-  <rect x="375" y="85" width="30" height="40" fill="#1e293b" stroke="#a855f7" stroke-width="2" rx="4"/>
-  <text x="350" y="110" fill="#c084fc" font-size="11" font-family="sans-serif" font-weight="bold">R₃={r3}Ω</text>
-  <line x1="50" y1="85" x2="50" y2="125" stroke="#0f172a" stroke-width="8"/>
-  <line x1="38" y1="95" x2="62" y2="95" stroke="#f43f5e" stroke-width="3"/>
-  <line x1="44" y1="115" x2="56" y2="115" stroke="#f43f5e" stroke-width="1.5"/>
-  <text x="12" y="110" fill="#f43f5e" font-size="12" font-family="sans-serif" font-weight="bold">V={v}V</text>
-  <circle cx="110" cy="35" r="13" fill="#0f172a" stroke="#fbbf24" stroke-width="2"/>
-  <text x="105" y="40" fill="#fbbf24" font-size="12" font-family="sans-serif" font-weight="bold">A</text>
-  <text x="135" y="22" fill="#94a3b8" font-size="11" font-family="sans-serif">Elektrik Devresi (Ana Kol Akımı)</text>
+    return f'''<svg viewBox="0 0 440 210" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:460px; margin:auto; display:block;">
+  <rect x="50" y="35" width="340" height="140" fill="none" stroke="#334155" stroke-width="2.5" rx="6"/>
+  <line x1="180" y1="35" x2="250" y2="35" stroke="#ffffff" stroke-width="8"/>
+  <rect x="185" y="25" width="60" height="20" fill="#f1f5f9" stroke="#0284c7" stroke-width="2" rx="4"/>
+  <text x="195" y="39" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">R₁={r1}Ω</text>
+  <line x1="180" y1="175" x2="250" y2="175" stroke="#ffffff" stroke-width="8"/>
+  <rect x="185" y="165" width="60" height="20" fill="#f1f5f9" stroke="#0284c7" stroke-width="2" rx="4"/>
+  <text x="195" y="179" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">R₂={r2}Ω</text>
+  <line x1="390" y1="80" x2="390" y2="130" stroke="#ffffff" stroke-width="8"/>
+  <rect x="375" y="85" width="30" height="40" fill="#f1f5f9" stroke="#7c3aed" stroke-width="2" rx="4"/>
+  <text x="345" y="110" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">R₃={r3}Ω</text>
+  <line x1="50" y1="85" x2="50" y2="125" stroke="#ffffff" stroke-width="8"/>
+  <line x1="38" y1="95" x2="62" y2="95" stroke="#dc2626" stroke-width="3"/>
+  <line x1="44" y1="115" x2="56" y2="115" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="12" y="110" fill="#b91c1c" font-size="12" font-family="sans-serif" font-weight="bold">V={v}V</text>
+  <circle cx="110" cy="35" r="13" fill="#ffffff" stroke="#b45309" stroke-width="2"/>
+  <text x="105" y="40" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">A</text>
+  <text x="135" y="22" fill="#334155" font-size="11" font-family="sans-serif" font-weight="bold">Elektrik Devresi (Ana Kol Akımı)</text>
 </svg>'''
 
 def generate_dynamic_force_block_svg(m: int = 4, f_uyg: int = 20, f_s: int = 8, a: int = 3) -> str:
-    return f'''<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:440px; margin:auto; display:block;">
-  <line x1="30" y1="150" x2="370" y2="150" stroke="#94a3b8" stroke-width="3"/>
+    return f'''<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:440px; margin:auto; display:block;">
+  <line x1="30" y1="150" x2="370" y2="150" stroke="#334155" stroke-width="3"/>
   <line x1="40" y1="150" x2="30" y2="165" stroke="#64748b" stroke-width="1.5"/>
   <line x1="80" y1="150" x2="70" y2="165" stroke="#64748b" stroke-width="1.5"/>
   <line x1="120" y1="150" x2="110" y2="165" stroke="#64748b" stroke-width="1.5"/>
@@ -438,128 +443,128 @@ def generate_dynamic_force_block_svg(m: int = 4, f_uyg: int = 20, f_s: int = 8, 
   <line x1="240" y1="150" x2="230" y2="165" stroke="#64748b" stroke-width="1.5"/>
   <line x1="280" y1="150" x2="270" y2="165" stroke="#64748b" stroke-width="1.5"/>
   <line x1="320" y1="150" x2="310" y2="165" stroke="#64748b" stroke-width="1.5"/>
-  <rect x="150" y="80" width="90" height="70" fill="#1e293b" stroke="#38bdf8" stroke-width="2.5" rx="4"/>
-  <text x="175" y="122" fill="#38bdf8" font-size="15" font-family="sans-serif" font-weight="bold">m={m} kg</text>
-  <line x1="240" y1="115" x2="320" y2="115" stroke="#34d399" stroke-width="3"/>
-  <polygon points="320,115 310,110 310,120" fill="#34d399"/>
-  <text x="270" y="105" fill="#34d399" font-size="12" font-family="sans-serif" font-weight="bold">F={f_uyg} N</text>
-  <line x1="150" y1="135" x2="90" y2="135" stroke="#f43f5e" stroke-width="2.5"/>
-  <polygon points="90,135 100,130 100,140" fill="#f43f5e"/>
-  <text x="95" y="125" fill="#f43f5e" font-size="11" font-family="sans-serif" font-weight="bold">fs={f_s} N</text>
-  <line x1="160" y1="55" x2="210" y2="55" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,3"/>
-  <polygon points="210,55 204,52 204,58" fill="#fbbf24"/>
-  <text x="160" y="45" fill="#fbbf24" font-size="11" font-family="sans-serif">İvme: a={a} m/s²</text>
-  <text x="80" y="22" fill="#94a3b8" font-size="12" font-family="sans-serif">Sürtünmeli Yatay Düzlemde Kuvvet Diyagramı</text>
+  <rect x="150" y="80" width="90" height="70" fill="#f1f5f9" stroke="#0284c7" stroke-width="2.5" rx="4"/>
+  <text x="175" y="122" fill="#0f172a" font-size="15" font-family="sans-serif" font-weight="bold">m={m} kg</text>
+  <line x1="240" y1="115" x2="320" y2="115" stroke="#16a34a" stroke-width="3"/>
+  <polygon points="320,115 310,110 310,120" fill="#16a34a"/>
+  <text x="270" y="105" fill="#15803d" font-size="12" font-family="sans-serif" font-weight="bold">F={f_uyg} N</text>
+  <line x1="150" y1="135" x2="90" y2="135" stroke="#dc2626" stroke-width="2.5"/>
+  <polygon points="90,135 100,130 100,140" fill="#dc2626"/>
+  <text x="95" y="125" fill="#b91c1c" font-size="11" font-family="sans-serif" font-weight="bold">fs={f_s} N</text>
+  <line x1="160" y1="55" x2="210" y2="55" stroke="#b45309" stroke-width="2" stroke-dasharray="4,3"/>
+  <polygon points="210,55 204,52 204,58" fill="#b45309"/>
+  <text x="160" y="45" fill="#b45309" font-size="11" font-family="sans-serif" font-weight="bold">İvme: a={a} m/s²</text>
+  <text x="80" y="22" fill="#334155" font-size="12" font-family="sans-serif" font-weight="bold">Sürtünmeli Yatay Düzlemde Kuvvet Diyagramı</text>
 </svg>'''
 
 def generate_dynamic_optics_prism_svg() -> str:
-    return '''<svg viewBox="0 0 380 210" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
-  <polygon points="190,40 100,170 280,170" fill="#38bdf8" fill-opacity="0.15" stroke="#38bdf8" stroke-width="2"/>
-  <line x1="40" y1="140" x2="130" y2="125" stroke="#fbbf24" stroke-width="2.5"/>
-  <polygon points="100,130 90,127 92,135" fill="#fbbf24"/>
-  <line x1="130" y1="125" x2="225" y2="140" stroke="#f43f5e" stroke-width="2"/>
-  <line x1="225" y1="140" x2="330" y2="165" stroke="#34d399" stroke-width="2.5"/>
-  <polygon points="290,155 280,150 283,158" fill="#34d399"/>
-  <line x1="105" y1="100" x2="155" y2="150" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,3"/>
-  <text x="45" y="130" fill="#fbbf24" font-size="11" font-family="sans-serif" font-weight="bold">Gelen Işın</text>
-  <text x="260" y="180" fill="#34d399" font-size="11" font-family="sans-serif" font-weight="bold">Kırılan Işın</text>
-  <text x="180" y="110" fill="#f43f5e" font-size="11" font-family="sans-serif">Cam (n₂)</text>
-  <text x="75" y="80" fill="#94a3b8" font-size="11" font-family="sans-serif">Hava (n₁)</text>
-  <text x="115" y="25" fill="#94a3b8" font-size="12" font-family="sans-serif">Prizmada Işığın Kırılması</text>
+    return '''<svg viewBox="0 0 380 210" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <polygon points="190,40 100,170 280,170" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <line x1="40" y1="140" x2="130" y2="125" stroke="#b45309" stroke-width="2.5"/>
+  <polygon points="100,130 90,127 92,135" fill="#b45309"/>
+  <line x1="130" y1="125" x2="225" y2="140" stroke="#dc2626" stroke-width="2"/>
+  <line x1="225" y1="140" x2="330" y2="165" stroke="#16a34a" stroke-width="2.5"/>
+  <polygon points="290,155 280,150 283,158" fill="#16a34a"/>
+  <line x1="105" y1="100" x2="155" y2="150" stroke="#64748b" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="45" y="130" fill="#b45309" font-size="11" font-family="sans-serif" font-weight="bold">Gelen Işın</text>
+  <text x="260" y="180" fill="#15803d" font-size="11" font-family="sans-serif" font-weight="bold">Kırılan Işın</text>
+  <text x="180" y="110" fill="#b91c1c" font-size="11" font-family="sans-serif" font-weight="bold">Cam (n₂)</text>
+  <text x="75" y="80" fill="#334155" font-size="11" font-family="sans-serif" font-weight="bold">Hava (n₁)</text>
+  <text x="115" y="25" fill="#334155" font-size="12" font-family="sans-serif" font-weight="bold">Prizmada Işığın Kırılması</text>
 </svg>'''
 
 def generate_dynamic_parabola_svg(a: int = 1, b: int = -4, c: int = 3, r: float = 2.0, k: float = -1.0) -> str:
-    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
   <line x1="40" y1="160" x2="350" y2="160" stroke="#475569" stroke-width="2"/>
   <line x1="190" y1="20" x2="190" y2="200" stroke="#475569" stroke-width="2"/>
   <polygon points="350,160 342,156 342,164" fill="#475569"/>
   <polygon points="190,20 186,28 194,28" fill="#475569"/>
-  <text x="355" y="164" fill="#94a3b8" font-size="12" font-family="sans-serif">x</text>
-  <text x="182" y="15" fill="#94a3b8" font-size="12" font-family="sans-serif">y</text>
-  <path d="M 80,180 Q 190,30 300,180" fill="none" stroke="#38bdf8" stroke-width="3"/>
-  <circle cx="190" cy="55" r="5" fill="#f43f5e"/>
-  <text x="200" y="55" fill="#f43f5e" font-size="12" font-family="sans-serif" font-weight="bold">T(r={r:.0f}, k={k:.0f})</text>
-  <text x="70" y="208" fill="#34d399" font-size="12" font-family="sans-serif">f(x) = {a}x² + {b}x + {c}</text>
+  <text x="355" y="164" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">x</text>
+  <text x="182" y="15" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">y</text>
+  <path d="M 80,180 Q 190,30 300,180" fill="none" stroke="#0284c7" stroke-width="3"/>
+  <circle cx="190" cy="55" r="5" fill="#dc2626"/>
+  <text x="200" y="55" fill="#b91c1c" font-size="12" font-family="sans-serif" font-weight="bold">T(r={r:.0f}, k={k:.0f})</text>
+  <text x="70" y="208" fill="#15803d" font-size="12" font-family="sans-serif" font-weight="bold">f(x) = {a}x² + {b}x + {c}</text>
 </svg>'''
 
 def generate_dynamic_pedigree_svg(trait_name: str = "Otozomal Çekinik Kalıtım") -> str:
-    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
-  <text x="90" y="25" fill="#94a3b8" font-size="12" font-family="sans-serif">Kalıtım Soyağacı ({trait_name})</text>
-  <rect x="100" y="45" width="28" height="28" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
-  <text x="109" y="63" fill="#38bdf8" font-size="11" font-family="sans-serif">1</text>
-  <line x1="128" y1="59" x2="210" y2="59" stroke="#94a3b8" stroke-width="2"/>
-  <circle cx="224" cy="59" r="14" fill="#f43f5e" stroke="#f43f5e" stroke-width="2"/>
+    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <text x="90" y="25" fill="#334155" font-size="12" font-family="sans-serif" font-weight="bold">Kalıtım Soyağacı ({trait_name})</text>
+  <rect x="100" y="45" width="28" height="28" fill="#f8fafc" stroke="#0284c7" stroke-width="2"/>
+  <text x="109" y="63" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">1</text>
+  <line x1="128" y1="59" x2="210" y2="59" stroke="#475569" stroke-width="2"/>
+  <circle cx="224" cy="59" r="14" fill="#f43f5e" stroke="#dc2626" stroke-width="2"/>
   <text x="220" y="64" fill="#ffffff" font-size="11" font-family="sans-serif" font-weight="bold">2</text>
-  <line x1="169" y1="59" x2="169" y2="105" stroke="#94a3b8" stroke-width="2"/>
-  <line x1="70" y1="105" x2="270" y2="105" stroke="#94a3b8" stroke-width="2"/>
-  <line x1="70" y1="105" x2="70" y2="135" stroke="#94a3b8" stroke-width="2"/>
-  <circle cx="70" cy="149" r="14" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
-  <text x="66" y="154" fill="#38bdf8" font-size="11" font-family="sans-serif">3</text>
-  <line x1="169" y1="105" x2="169" y2="135" stroke="#94a3b8" stroke-width="2"/>
-  <rect x="155" y="135" width="28" height="28" fill="#f43f5e" stroke="#f43f5e" stroke-width="2"/>
+  <line x1="169" y1="59" x2="169" y2="105" stroke="#475569" stroke-width="2"/>
+  <line x1="70" y1="105" x2="270" y2="105" stroke="#475569" stroke-width="2"/>
+  <line x1="70" y1="105" x2="70" y2="135" stroke="#475569" stroke-width="2"/>
+  <circle cx="70" cy="149" r="14" fill="#f8fafc" stroke="#0284c7" stroke-width="2"/>
+  <text x="66" y="154" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">3</text>
+  <line x1="169" y1="105" x2="169" y2="135" stroke="#475569" stroke-width="2"/>
+  <rect x="155" y="135" width="28" height="28" fill="#f43f5e" stroke="#dc2626" stroke-width="2"/>
   <text x="165" y="153" fill="#ffffff" font-size="11" font-family="sans-serif" font-weight="bold">4</text>
-  <line x1="270" y1="105" x2="270" y2="135" stroke="#94a3b8" stroke-width="2"/>
-  <rect x="256" y="135" width="28" height="28" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
-  <text x="266" y="153" fill="#38bdf8" font-size="11" font-family="sans-serif">5</text>
-  <rect x="60" y="190" width="12" height="12" fill="#f43f5e"/>
-  <text x="78" y="200" fill="#94a3b8" font-size="10" font-family="sans-serif">: Özelliği Gösteren Birey</text>
-  <rect x="220" y="190" width="12" height="12" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
-  <text x="238" y="200" fill="#94a3b8" font-size="10" font-family="sans-serif">: Normal Birey</text>
+  <line x1="270" y1="105" x2="270" y2="135" stroke="#475569" stroke-width="2"/>
+  <rect x="256" y="135" width="28" height="28" fill="#f8fafc" stroke="#0284c7" stroke-width="2"/>
+  <text x="266" y="153" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">5</text>
+  <rect x="60" y="190" width="12" height="12" fill="#f43f5e" stroke="#dc2626"/>
+  <text x="78" y="200" fill="#0f172a" font-size="10" font-family="sans-serif" font-weight="semibold">: Özelliği Gösteren Birey</text>
+  <rect x="220" y="190" width="12" height="12" fill="#f8fafc" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="238" y="200" fill="#0f172a" font-size="10" font-family="sans-serif" font-weight="semibold">: Normal Birey</text>
 </svg>'''
 
 def generate_dynamic_food_pyramid_svg() -> str:
-    return '''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
-  <polygon points="190,30 230,70 150,70" fill="#f43f5e" stroke="#0f172a" stroke-width="2"/>
-  <text x="170" y="56" fill="#ffffff" font-size="9" font-family="sans-serif" font-weight="bold">3. Tüketici</text>
-  <polygon points="150,70 230,70 260,115 120,115" fill="#fbbf24" stroke="#0f172a" stroke-width="2"/>
-  <text x="160" y="98" fill="#0f172a" font-size="10" font-family="sans-serif" font-weight="bold">2. Tüketici</text>
-  <polygon points="120,115 260,115 290,160 90,160" fill="#38bdf8" stroke="#0f172a" stroke-width="2"/>
-  <text x="155" y="142" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">1. Tüketici (Otçul)</text>
-  <polygon points="90,160 290,160 320,200 60,200" fill="#34d399" stroke="#0f172a" stroke-width="2"/>
-  <text x="145" y="185" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">Üreticiler (Bitkiler)</text>
-  <line x1="335" y1="195" x2="335" y2="45" stroke="#c084fc" stroke-width="2"/>
-  <polygon points="335,40 330,50 340,50" fill="#c084fc"/>
-  <text x="345" y="115" fill="#c084fc" font-size="9" font-family="sans-serif" transform="rotate(90 345,115)">Biyolojik Birikim Artar ↑</text>
-  <text x="115" y="20" fill="#94a3b8" font-size="11" font-family="sans-serif">Ekolojik Besin Piramidi</text>
+    return '''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <polygon points="190,30 230,70 150,70" fill="#fee2e2" stroke="#dc2626" stroke-width="2"/>
+  <text x="165" y="56" fill="#991b1b" font-size="10" font-family="sans-serif" font-weight="bold">3. Tüketici</text>
+  <polygon points="150,70 230,70 260,115 120,115" fill="#fef3c7" stroke="#d97706" stroke-width="2"/>
+  <text x="160" y="98" fill="#92400e" font-size="10" font-family="sans-serif" font-weight="bold">2. Tüketici</text>
+  <polygon points="120,115 260,115 290,160 90,160" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <text x="150" y="142" fill="#075985" font-size="11" font-family="sans-serif" font-weight="bold">1. Tüketici (Otçul)</text>
+  <polygon points="90,160 290,160 320,200 60,200" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+  <text x="140" y="185" fill="#166534" font-size="12" font-family="sans-serif" font-weight="bold">Üreticiler (Bitkiler)</text>
+  <line x1="335" y1="195" x2="335" y2="45" stroke="#7c3aed" stroke-width="2"/>
+  <polygon points="335,40 330,50 340,50" fill="#7c3aed"/>
+  <text x="345" y="115" fill="#5b21b6" font-size="9" font-family="sans-serif" font-weight="bold" transform="rotate(90 345,115)">Biyolojik Birikim Artar ↑</text>
+  <text x="115" y="20" fill="#334155" font-size="11" font-family="sans-serif" font-weight="bold">Ekolojik Besin Piramidi</text>
 </svg>'''
 
 def generate_dynamic_isohypse_svg(h_val: int = 100) -> str:
-    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
   <ellipse cx="190" cy="115" rx="140" ry="75" fill="none" stroke="#475569" stroke-width="1.5"/>
-  <text x="65" y="120" fill="#94a3b8" font-size="10" font-family="sans-serif">0m (Deniz)</text>
-  <ellipse cx="190" cy="115" rx="100" ry="55" fill="none" stroke="#38bdf8" stroke-width="2"/>
-  <text x="100" y="118" fill="#38bdf8" font-size="10" font-family="sans-serif">{h_val}m</text>
-  <ellipse cx="190" cy="115" rx="60" ry="35" fill="none" stroke="#fbbf24" stroke-width="2"/>
-  <text x="145" y="118" fill="#fbbf24" font-size="10" font-family="sans-serif">{h_val*2}m</text>
-  <circle cx="190" cy="115" r="4" fill="#f43f5e"/>
-  <text x="198" y="113" fill="#f43f5e" font-size="11" font-family="sans-serif" font-weight="bold">Δ Doruk ({h_val*2 + 80}m)</text>
-  <path d="M 190,115 Q 230,150 280,180" fill="none" stroke="#34d399" stroke-width="2" stroke-dasharray="3,3"/>
-  <text x="240" y="170" fill="#34d399" font-size="10" font-family="sans-serif">Akarsu Vadisi</text>
-  <text x="110" y="20" fill="#94a3b8" font-size="11" font-family="sans-serif">Topografya / Eş Yükselti (İzohips) Haritası</text>
+  <text x="65" y="120" fill="#0f172a" font-size="10" font-family="sans-serif" font-weight="bold">0m (Deniz)</text>
+  <ellipse cx="190" cy="115" rx="100" ry="55" fill="none" stroke="#0284c7" stroke-width="2"/>
+  <text x="100" y="118" fill="#075985" font-size="10" font-family="sans-serif" font-weight="bold">{h_val}m</text>
+  <ellipse cx="190" cy="115" rx="60" ry="35" fill="none" stroke="#b45309" stroke-width="2"/>
+  <text x="145" y="118" fill="#92400e" font-size="10" font-family="sans-serif" font-weight="bold">{h_val*2}m</text>
+  <circle cx="190" cy="115" r="4" fill="#dc2626"/>
+  <text x="198" y="113" fill="#b91c1c" font-size="11" font-family="sans-serif" font-weight="bold">Δ Doruk ({h_val*2 + 80}m)</text>
+  <path d="M 190,115 Q 230,150 280,180" fill="none" stroke="#16a34a" stroke-width="2" stroke-dasharray="3,3"/>
+  <text x="240" y="170" fill="#166534" font-size="10" font-family="sans-serif" font-weight="bold">Akarsu Vadisi</text>
+  <text x="110" y="20" fill="#334155" font-size="11" font-family="sans-serif" font-weight="bold">Topografya / Eş Yükselti (İzohips) Haritası</text>
 </svg>'''
 
 def generate_dynamic_climate_graph_svg(climate_name: str = "Akdeniz İklimi") -> str:
-    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
-  <line x1="45" y1="180" x2="340" y2="180" stroke="#64748b" stroke-width="1.5"/>
-  <line x1="45" y1="35" x2="45" y2="180" stroke="#38bdf8" stroke-width="1.5"/>
-  <line x1="340" y1="35" x2="340" y2="180" stroke="#f43f5e" stroke-width="1.5"/>
-  <text x="20" y="30" fill="#38bdf8" font-size="9" font-family="sans-serif">Yağış (mm)</text>
-  <text x="310" y="30" fill="#f43f5e" font-size="9" font-family="sans-serif">Sıcaklık (°C)</text>
-  <rect x="55" y="70" width="14" height="110" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="75" y="80" width="14" height="100" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="95" y="100" width="14" height="80" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="115" y="120" width="14" height="60" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="135" y="145" width="14" height="35" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="155" y="170" width="14" height="10" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="175" y="175" width="14" height="5" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="195" y="172" width="14" height="8" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="215" y="160" width="14" height="20" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="235" y="130" width="14" height="50" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="255" y="90" width="14" height="90" fill="#38bdf8" fill-opacity="0.6"/>
-  <rect x="275" y="65" width="14" height="115" fill="#38bdf8" fill-opacity="0.6"/>
-  <path d="M 62,145 Q 185,60 282,148" fill="none" stroke="#f43f5e" stroke-width="3"/>
-  <text x="110" y="20" fill="#f8fafc" font-size="12" font-family="sans-serif" font-weight="bold">{climate_name} Grafiği</text>
-  <text x="80" y="200" fill="#94a3b8" font-size="10" font-family="sans-serif">O  Ş  M  N  M  H  T  A  E  E  K  A (Aylar)</text>
+    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <line x1="45" y1="180" x2="340" y2="180" stroke="#475569" stroke-width="1.5"/>
+  <line x1="45" y1="35" x2="45" y2="180" stroke="#0284c7" stroke-width="1.5"/>
+  <line x1="340" y1="35" x2="340" y2="180" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="15" y="30" fill="#075985" font-size="9" font-family="sans-serif" font-weight="bold">Yağış (mm)</text>
+  <text x="305" y="30" fill="#991b1b" font-size="9" font-family="sans-serif" font-weight="bold">Sıcaklık (°C)</text>
+  <rect x="55" y="70" width="14" height="110" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="75" y="80" width="14" height="100" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="95" y="100" width="14" height="80" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="115" y="120" width="14" height="60" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="135" y="145" width="14" height="35" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="155" y="170" width="14" height="10" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="175" y="175" width="14" height="5" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="195" y="172" width="14" height="8" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="215" y="160" width="14" height="20" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="235" y="130" width="14" height="50" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="255" y="90" width="14" height="90" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <rect x="275" y="65" width="14" height="115" fill="#38bdf8" fill-opacity="0.8" stroke="#0284c7"/>
+  <path d="M 62,145 Q 185,60 282,148" fill="none" stroke="#dc2626" stroke-width="3"/>
+  <text x="110" y="20" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">{climate_name} Grafiği</text>
+  <text x="80" y="200" fill="#334155" font-size="10" font-family="sans-serif" font-weight="bold">O  Ş  M  N  M  H  T  A  E  E  K  A (Aylar)</text>
 </svg>'''
 
 # ================= TEMEL MATEMATİK & AYT MATEMATİK ÜRETEÇLERİ =================

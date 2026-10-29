@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, X, CheckCircle2, ShieldCheck, EyeOff, KeyRound, Layers, Sliders } from 'lucide-react';
+import { Printer, X, CheckCircle2, ShieldCheck, EyeOff, KeyRound, Sliders, FileText } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 
 export default function PrintableExamModal({ 
@@ -78,6 +78,131 @@ export default function PrintableExamModal({
   const [showAnswerKey, setShowAnswerKey] = useState(false); // Varsayılan kapalı (öğrenci kağıdında cevap yazmaz)
   const [showSolutions, setShowSolutions] = useState(false);
 
+  // 1. Fiziksel Yazıcılar İçin Doğrudan ve İzole Baskı Motoru (HP, Canon, Epson, Brother)
+  // SPA kökünü veya modal katmanlarını bypass ederek sadece sınav kağıdını saf HTML olarak yazıcı kuyruğuna gönderir.
+  const handleDirectPrinter = () => {
+    const paperElement = document.getElementById('printable-exam-paper-content');
+    if (!paperElement) {
+      window.print();
+      return;
+    }
+
+    const oldIframe = document.getElementById('direct-printer-iframe');
+    if (oldIframe) {
+      oldIframe.remove();
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'direct-printer-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    const styleSheets = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map(node => node.outerHTML)
+      .join('\n');
+
+    const iframeDoc = iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(`
+      <!DOCTYPE html>
+      <html lang="tr">
+      <head>
+        <meta charset="utf-8" />
+        <title>${examTitle || 'Sınav Kağıdı'}</title>
+        ${styleSheets}
+        <style>
+          @page {
+            size: A4 portrait;
+            margin: 12mm 12mm 12mm 12mm;
+          }
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            font-family: "Times New Roman", Times, Georgia, serif !important;
+            font-size: 10pt !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          * {
+            color: #000000 !important;
+            -webkit-text-fill-color: #000000 !important;
+            text-shadow: none !important;
+            box-sizing: border-box !important;
+          }
+          .printable-columns-2 {
+            display: block !important;
+            column-count: 2 !important;
+            -webkit-column-count: 2 !important;
+            column-gap: 22px !important;
+            column-rule: 1px solid #000000 !important;
+            width: 100% !important;
+          }
+          .printable-question-item {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            -webkit-column-break-inside: avoid !important;
+            margin-bottom: 16px !important;
+            padding-bottom: 12px !important;
+            border-bottom: 1px solid #000000 !important;
+            display: block !important;
+          }
+          svg {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            max-width: 250px !important;
+            height: auto !important;
+            display: block !important;
+            margin: 4px auto !important;
+            border: 1px solid #000000 !important;
+            border-radius: 4px !important;
+          }
+          svg text {
+            fill: #000000 !important;
+            font-weight: bold !important;
+          }
+          svg line, svg rect, svg polygon, svg circle, svg path {
+            stroke: #000000 !important;
+          }
+          .page-break-before {
+            break-before: page !important;
+            page-break-before: always !important;
+          }
+          .katex {
+            font-size: 1em !important;
+            color: #000000 !important;
+          }
+        </style>
+      </head>
+      <body>
+        <div style="width: 100%; max-width: 100%; margin: 0; padding: 0;">
+          ${paperElement.innerHTML}
+        </div>
+      </body>
+      </html>
+    `);
+    iframeDoc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (err) {
+        console.error('Doğrudan yazdırma başarısız oldu, sistem yazdırmaya geçiliyor:', err);
+        window.print();
+      }
+    }, 300);
+  };
+
+  // 2. Sistem Penceresi & PDF Olarak Kaydetme
   const handlePrint = () => {
     setTimeout(() => {
       window.print();
@@ -109,19 +234,29 @@ export default function PrintableExamModal({
                 )}
               </h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                ÖSYM & MEB standartlarında 2 sütunlu A4 sınav kağıdı şablonu.
+                ÖSYM & MEB standartlarında 2 sütunlu A4 sınav kağıdı şablonu (Fiziksel yazıcı ve PDF uyumlu).
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handlePrint}
+              onClick={handleDirectPrinter}
               disabled={displayedQuestions.length === 0}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition flex items-center gap-2 cursor-pointer"
+              title="Fiziksel masaüstü yazıcınıza doğrudan gönderir (HP, Canon, Epson, Brother)"
             >
               <Printer className="w-4 h-4" />
-              <span>Yazdır / PDF Olarak Kaydet</span>
+              <span>Yazıcıya Gönder (Fiziksel)</span>
+            </button>
+            <button
+              onClick={handlePrint}
+              disabled={displayedQuestions.length === 0}
+              className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
+              title="PDF Olarak Kaydet / Sistem Önizlemesi"
+            >
+              <FileText className="w-4 h-4" />
+              <span>PDF Olarak Kaydet</span>
             </button>
             <button
               onClick={onClose}
@@ -254,7 +389,10 @@ export default function PrintableExamModal({
         </div>
 
         {/* Printable Document Paper (Önizleme ve Baskı Birebir Aynı) */}
-        <div className="p-6 sm:p-10 bg-white text-black font-serif printable-paper overflow-y-auto max-h-[72vh] print:max-h-none print:overflow-visible">
+        <div 
+          id="printable-exam-paper-content"
+          className="p-6 sm:p-10 bg-white text-black font-serif printable-paper overflow-y-auto max-h-[72vh] print:max-h-none print:overflow-visible"
+        >
           
           {/* Sınav Başlığı / Header */}
           <div className="border-b-2 border-black pb-3 mb-4 text-center space-y-1">
@@ -333,7 +471,7 @@ export default function PrintableExamModal({
                       )}
                     </div>
 
-                    {/* Vektörel SVG Çizimi (Varsa) */}
+                    {/* Vektörel SVG Çizimi (Açık Zemin / Yüksek Kontrast) */}
                     {q.visual_svg && (
                       <div className="my-2 p-1.5 bg-white flex justify-center overflow-hidden printable-svg-container">
                         <div className="max-w-[260px] w-full" dangerouslySetInnerHTML={{ __html: q.visual_svg }} />
