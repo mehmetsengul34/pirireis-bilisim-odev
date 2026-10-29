@@ -2521,33 +2521,56 @@ def ensure_underlined_word_formatting(questions: List[Dict[str, Any]]):
                                     q[opt_k] = f"<u>{val}</u>"
 
 def decorate_question_visuals(questions: List[Dict[str, Any]], subject: str):
-    """Görsel gerektiren ders ve konularda sorunun visual_svg alanı boşsa otomatik uygun vektörel SVG bağlar."""
+    """Görsel gerektiren ders ve konularda sorunun visual_svg alanı boşsa yalnızca ilgili branşa uygun vektörel SVG bağlar.
+    Sözel branşlara (Türkçe, Edebiyat, Tarih, Felsefe, Din Kültürü vb.) kesinlikle geometri/fizik görselleri bağlanmaz.
+    """
+    verbal_subjects = [
+        "türkçe", "turkce", "edebiyat", "tarih", "t.c. inkılap", "inkilap",
+        "felsefe", "din kültürü", "din kulturu"
+    ]
+    
+    subj_norm = (subject or "").lower()
+    if any(v in subj_norm for v in verbal_subjects):
+        for q in questions:
+            q["visual_svg"] = None
+        return
+
     for q in questions:
         if not q.get("visual_svg"):
             q_text_low = (q.get("question_text") or "").lower()
             q_topic_low = (q.get("topic") or "").lower()
-            q_subj_low = (subject or "").lower()
 
-            if "geometri" in q_subj_low or "üçgen" in q_topic_low or "pisagor" in q_text_low or "hipotenüs" in q_text_low:
-                q["visual_svg"] = generate_dynamic_triangle_svg()
-            elif "çember" in q_topic_low or "daire" in q_topic_low or "yay" in q_text_low:
-                q["visual_svg"] = generate_dynamic_geometry_circle_svg()
-            elif "parabol" in q_topic_low or ("fonksiyon" in q_topic_low and "grafik" in q_text_low):
-                q["visual_svg"] = generate_dynamic_parabola_svg()
-            elif "fizik" in q_subj_low and ("devre" in q_topic_low or "direnç" in q_text_low or "akım" in q_text_low or "ohm" in q_text_low):
-                q["visual_svg"] = generate_dynamic_circuit_svg()
-            elif "fizik" in q_subj_low and ("kuvvet" in q_topic_low or "ivme" in q_text_low or "sürtünme" in q_text_low or "newton" in q_topic_low):
-                q["visual_svg"] = generate_dynamic_force_block_svg()
-            elif "fizik" in q_subj_low and ("optik" in q_topic_low or "kırılma" in q_topic_low or "prizma" in q_text_low or "ışın" in q_text_low):
-                q["visual_svg"] = generate_dynamic_optics_prism_svg()
-            elif "biyoloji" in q_subj_low and ("kalıtım" in q_topic_low or "soyağacı" in q_text_low or "genetik" in q_topic_low or "çekinik" in q_text_low):
-                q["visual_svg"] = generate_dynamic_pedigree_svg()
-            elif "biyoloji" in q_subj_low and ("ekoloji" in q_topic_low or "besin" in q_text_low or "piramit" in q_text_low or "trofik" in q_text_low):
-                q["visual_svg"] = generate_dynamic_food_pyramid_svg()
-            elif "coğrafya" in q_subj_low and ("harita" in q_topic_low or "izohips" in q_topic_low or "yükselti" in q_text_low or "topografya" in q_text_low):
-                q["visual_svg"] = generate_dynamic_isohypse_svg()
-            elif "coğrafya" in q_subj_low and ("iklim" in q_topic_low or "sıcaklık" in q_text_low or "yağış" in q_text_low or "grafiği" in q_text_low):
-                q["visual_svg"] = generate_dynamic_climate_graph_svg()
+            # Geometri veya Matematik
+            if "geometri" in subj_norm or "matematik" in subj_norm:
+                if any(k in q_topic_low for k in ["üçgen", "pisagor", "trigonometri"]) or any(k in q_text_low for k in ["üçgen", "pisagor", "hipotenüs"]):
+                    q["visual_svg"] = generate_dynamic_triangle_svg()
+                elif any(k in q_topic_low for k in ["çember", "daire"]) or any(k in q_text_low for k in ["çemberde açı", "dairede alan", "yarıçapı r =", "merkez açı"]):
+                    q["visual_svg"] = generate_dynamic_geometry_circle_svg()
+                elif any(k in q_topic_low for k in ["parabol", "ikinci dereceden fonksiyon"]):
+                    q["visual_svg"] = generate_dynamic_parabola_svg()
+
+            # Fizik
+            elif "fizik" in subj_norm:
+                if any(k in q_topic_low for k in ["elektrik", "devre", "akım"]) or any(k in q_text_low for k in ["direnç", "ohm", "voltluk", "reosta"]):
+                    q["visual_svg"] = generate_dynamic_circuit_svg()
+                elif any(k in q_topic_low for k in ["kuvvet", "newton", "dinamik", "hareket yasaları", "sürtünme"]) or any(k in q_text_low for k in ["sürtünme katsayısı", "newton'luk kuvvet", "yatay sürtünmeli", "cisme f ="]):
+                    q["visual_svg"] = generate_dynamic_force_block_svg()
+                elif any(k in q_topic_low for k in ["optik", "kırılma", "ayna", "mercek", "prizma"]) or any(k in q_text_low for k in ["ışık ışını", "kırılma indisi", "snell", "cam prizma"]):
+                    q["visual_svg"] = generate_dynamic_optics_prism_svg()
+
+            # Biyoloji
+            elif "biyoloji" in subj_norm:
+                if any(k in q_topic_low for k in ["kalıtım", "genetik"]) or any(k in q_text_low for k in ["soyağacı", "otozomal", "çekinik fenotip"]):
+                    q["visual_svg"] = generate_dynamic_pedigree_svg()
+                elif any(k in q_topic_low for k in ["ekoloji", "besin"]) or any(k in q_text_low for k in ["besin piramidi", "trofik düzey", "üreticiden tüketiciye"]):
+                    q["visual_svg"] = generate_dynamic_food_pyramid_svg()
+
+            # Coğrafya
+            elif "coğrafya" in subj_norm or "cografya" in subj_norm:
+                if any(k in q_topic_low for k in ["harita", "izohips"]) or any(k in q_text_low for k in ["izohips", "eş yükselti", "topoğrafya"]):
+                    q["visual_svg"] = generate_dynamic_isohypse_svg()
+                elif any(k in q_topic_low for k in ["iklim", "sıcaklık", "yağış"]) or any(k in q_text_low for k in ["iklim grafiği", "yağış grafiği"]):
+                    q["visual_svg"] = generate_dynamic_climate_graph_svg()
 
 def enforce_strict_uniqueness(
     initial_questions: List[Dict[str, Any]],

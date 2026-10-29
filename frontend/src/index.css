@@ -83,8 +83,8 @@
 /* ================= PRINT STYLES FOR YKS PAPER EXAMS ================= */
 @media print {
   @page {
-    size: A4 portrait;
-    margin: 12mm 12mm 12mm 12mm;
+    size: auto;
+    margin: 10mm 10mm 10mm 10mm;
   }
 
   /* React ana uygulama kökünü baskıda gizle; arkaplandaki soru bankası veya önizleme cevapları asla sızmasın */

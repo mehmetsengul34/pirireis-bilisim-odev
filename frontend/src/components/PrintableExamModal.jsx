@@ -78,57 +78,49 @@ export default function PrintableExamModal({
   const [showAnswerKey, setShowAnswerKey] = useState(false); // Varsayılan kapalı (öğrenci kağıdında cevap yazmaz)
   const [showSolutions, setShowSolutions] = useState(false);
 
-  // 1. Fiziksel Yazıcılar İçin Doğrudan ve İzole Baskı Motoru (HP, Canon, Epson, Brother)
-  // SPA kökünü veya modal katmanlarını bypass ederek sadece sınav kağıdını saf HTML olarak yazıcı kuyruğuna gönderir.
-  const handleDirectPrinter = () => {
+  // 1. Fiziksel Yazıcılar İçin Garantili Standart Yazdırma Motoru (Ayrı Temiz Pencere)
+  // SPA ve modal kilitlenmelerini bypass eder; doğrudan sistem yazdırma motoruna A4 formatında iletir.
+  const handleOpenPrintWindow = () => {
     const paperElement = document.getElementById('printable-exam-paper-content');
     if (!paperElement) {
       window.print();
       return;
     }
 
-    const oldIframe = document.getElementById('direct-printer-iframe');
-    if (oldIframe) {
-      oldIframe.remove();
+    const printWin = window.open('', '_blank', 'width=1000,height=900,menubar=no,toolbar=no,location=no,status=no');
+    if (!printWin) {
+      // Pop-up engellenmişse doğrudan window.print'e düş
+      window.print();
+      return;
     }
-
-    const iframe = document.createElement('iframe');
-    iframe.id = 'direct-printer-iframe';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.visibility = 'hidden';
-    document.body.appendChild(iframe);
 
     const styleSheets = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
       .map(node => node.outerHTML)
       .join('\n');
 
-    const iframeDoc = iframe.contentWindow.document;
-    iframeDoc.open();
-    iframeDoc.write(`
+    printWin.document.open();
+    printWin.document.write(`
       <!DOCTYPE html>
       <html lang="tr">
       <head>
         <meta charset="utf-8" />
-        <title>${examTitle || 'Sınav Kağıdı'}</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>${examTitle || 'YKS Sınav Kağıdı'}</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
         ${styleSheets}
         <style>
           @page {
-            size: A4 portrait;
-            margin: 12mm 12mm 12mm 12mm;
+            size: auto;
+            margin: 10mm 10mm 10mm 10mm;
           }
           html, body {
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            background-color: #ffffff !important;
             color: #000000 !important;
             font-family: "Times New Roman", Times, Georgia, serif !important;
             font-size: 10pt !important;
+            line-height: 1.4 !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
           }
@@ -138,12 +130,89 @@ export default function PrintableExamModal({
             text-shadow: none !important;
             box-sizing: border-box !important;
           }
+          .print-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 99999;
+            background: #f1f5f9;
+            border-bottom: 2px solid #cbd5e1;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            font-family: system-ui, -apple-system, sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          }
+          @media print {
+            .print-toolbar {
+              display: none !important;
+            }
+            .printable-paper-wrapper {
+              padding: 0 !important;
+              max-width: 100% !important;
+            }
+          }
+          .btn-print {
+            background: #16a34a;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            font-weight: bold;
+            font-size: 13px;
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3);
+          }
+          .btn-print:hover {
+            background: #15803d;
+          }
+          .btn-toggle {
+            background: #0284c7;
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            font-weight: 600;
+            font-size: 12px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+          }
+          .btn-close {
+            background: #e2e8f0;
+            color: #334155 !important;
+            -webkit-text-fill-color: #334155 !important;
+            font-weight: 600;
+            font-size: 12px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+          }
+          .info-note {
+            font-size: 11px;
+            color: #475569 !important;
+            -webkit-text-fill-color: #475569 !important;
+          }
+          .printable-paper-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px 30px;
+            background: #ffffff;
+          }
           .printable-columns-2 {
             display: block !important;
             column-count: 2 !important;
             -webkit-column-count: 2 !important;
-            column-gap: 22px !important;
-            column-rule: 1px solid #000000 !important;
+            column-gap: 24px !important;
+            column-rule: 1px solid #cbd5e1 !important;
+            width: 100% !important;
+          }
+          .printable-columns-1 {
+            display: block !important;
+            column-count: 1 !important;
+            -webkit-column-count: 1 !important;
             width: 100% !important;
           }
           .printable-question-item {
@@ -152,7 +221,7 @@ export default function PrintableExamModal({
             -webkit-column-break-inside: avoid !important;
             margin-bottom: 16px !important;
             padding-bottom: 12px !important;
-            border-bottom: 1px solid #000000 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
             display: block !important;
           }
           svg {
@@ -161,8 +230,8 @@ export default function PrintableExamModal({
             max-width: 250px !important;
             height: auto !important;
             display: block !important;
-            margin: 4px auto !important;
-            border: 1px solid #000000 !important;
+            margin: 6px auto !important;
+            border: 1px solid #cbd5e1 !important;
             border-radius: 4px !important;
           }
           svg text {
@@ -172,34 +241,53 @@ export default function PrintableExamModal({
           svg line, svg rect, svg polygon, svg circle, svg path {
             stroke: #000000 !important;
           }
-          .page-break-before {
-            break-before: page !important;
-            page-break-before: always !important;
-          }
           .katex {
-            font-size: 1em !important;
+            font-size: 1.05em !important;
             color: #000000 !important;
           }
         </style>
       </head>
       <body>
-        <div style="width: 100%; max-width: 100%; margin: 0; padding: 0;">
+        <div class="print-toolbar no-print">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button class="btn-print" onclick="window.print()">🖨️ Yazıcıya Gönder (Yazdır)</button>
+            <button class="btn-toggle" onclick="toggleCols()">📐 1 / 2 Sütun Değiştir</button>
+            <button class="btn-close" onclick="window.close()">✕ Kapat</button>
+          </div>
+          <div class="info-note">
+            💡 <strong>İpucu:</strong> Önizleme beklemeden doğrudan yazdırmak için klavyeden <strong>Ctrl + Shift + P</strong> (Sistem Yazdırma) kısayolunu kullanabilirsiniz.
+          </div>
+        </div>
+
+        <div class="printable-paper-wrapper" id="paper-root">
           ${paperElement.innerHTML}
         </div>
+
+        <script>
+          function toggleCols() {
+            var el = document.querySelector('.printable-columns-2') || document.querySelector('.printable-columns-1');
+            if (el) {
+              if (el.classList.contains('printable-columns-2')) {
+                el.classList.remove('printable-columns-2');
+                el.classList.add('printable-columns-1');
+              } else {
+                el.classList.remove('printable-columns-1');
+                el.classList.add('printable-columns-2');
+              }
+            }
+          }
+          // Sayfa içeriği ve matematik fontları hazır olduğunda yazdırmayı tetikle
+          window.addEventListener('load', function() {
+            setTimeout(function() {
+              window.focus();
+              window.print();
+            }, 450);
+          });
+        </script>
       </body>
       </html>
     `);
-    iframeDoc.close();
-
-    setTimeout(() => {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-      } catch (err) {
-        console.error('Doğrudan yazdırma başarısız oldu, sistem yazdırmaya geçiliyor:', err);
-        window.print();
-      }
-    }, 300);
+    printWin.document.close();
   };
 
   // 2. Sistem Penceresi & PDF Olarak Kaydetme
@@ -216,6 +304,12 @@ export default function PrintableExamModal({
       <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl flex flex-col my-0 border border-zinc-200 dark:border-zinc-800 printable-exam-container overflow-hidden">
         
         {/* Top Control Bar (Baskıda gizlenir) */}
+        <div className="no-print mx-4 sm:mx-6 mt-3 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Printer className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span><strong>Fiziksel Masaüstü Yazıcılar İçin:</strong> "Yazıcıya Gönder" butonuyla temiz baskı penceresi açılır. Önizleme ekranı beklemeden doğrudan yazdırmak için klavyenizden <strong>Ctrl + Shift + P</strong> tuşlarına basabilirsiniz.</span>
+          </div>
+        </div>
         <div className="no-print p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-850/80 rounded-t-3xl flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
@@ -241,7 +335,7 @@ export default function PrintableExamModal({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleDirectPrinter}
+              onClick={handleOpenPrintWindow}
               disabled={displayedQuestions.length === 0}
               className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition flex items-center gap-2 cursor-pointer"
               title="Fiziksel masaüstü yazıcınıza doğrudan gönderir (HP, Canon, Epson, Brother)"
