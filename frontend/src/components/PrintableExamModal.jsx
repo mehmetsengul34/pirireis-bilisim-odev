@@ -79,363 +79,42 @@ export default function PrintableExamModal({
   const [showAnswerKey, setShowAnswerKey] = useState(false); // Varsayılan kapalı (öğrenci kağıdında cevap yazmaz)
   const [showSolutions, setShowSolutions] = useState(false);
 
-  // 1. Gizli Iframe ile Doğrudan ve Kilitlenmesiz Yazdırma Motoru
-  // Pop-up engelleyicileri bypass eder; arka plan SPA veya modal DOM'undan izole temiz A4 baskısı üretir.
-  const handlePrintViaIframe = () => {
-    const paperElement = document.getElementById('printable-exam-paper-content');
-    if (!paperElement) {
-      window.print();
-      return;
-    }
+  // Klavye Kısayolu (Ctrl+P / Cmd+P) ile doğrudan sistem yazdırma motorunu tetikle
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        handlePrint();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
+  // Doğrudan ve Kesintisiz Sistem Yazdırma / PDF Kaydetme Motoru
+  const handlePrint = () => {
+    // Varsa eski iframe veya artıkları temizle
     const oldFrame = document.getElementById('print-paper-iframe');
     if (oldFrame) {
       oldFrame.remove();
     }
-
-    const iframe = document.createElement('iframe');
-    iframe.id = 'print-paper-iframe';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.visibility = 'hidden';
-    document.body.appendChild(iframe);
-
-    const styleSheets = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map(node => node.outerHTML)
-      .join('\n');
-
-    const iframeDoc = iframe.contentWindow.document || iframe.contentDocument.document;
-    iframeDoc.open();
-    iframeDoc.write(`
-      <!DOCTYPE html>
-      <html lang="tr">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${examTitle || 'YKS Sınav Kağıdı'}</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
-        ${styleSheets}
-        <style>
-          @page {
-            size: auto;
-            margin: 10mm 10mm 10mm 10mm;
-          }
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            font-family: "Times New Roman", Times, Georgia, serif !important;
-            font-size: 10pt !important;
-            line-height: 1.4 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          * {
-            color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important;
-            box-sizing: border-box !important;
-          }
-          .printable-paper-wrapper {
-            max-width: 100% !important;
-            margin: 0 auto !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-          }
-          .printable-columns-2 {
-            display: block !important;
-            column-count: 2 !important;
-            -webkit-column-count: 2 !important;
-            column-gap: 24px !important;
-            column-rule: 1px solid #cbd5e1 !important;
-            width: 100% !important;
-          }
-          .printable-columns-1 {
-            display: block !important;
-            column-count: 1 !important;
-            -webkit-column-count: 1 !important;
-            width: 100% !important;
-          }
-          .printable-question-item {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            -webkit-column-break-inside: avoid !important;
-            margin-bottom: 16px !important;
-            padding-bottom: 12px !important;
-            border-bottom: 1px solid #cbd5e1 !important;
-            display: block !important;
-          }
-          svg {
-            background: #ffffff !important;
-            max-width: 250px !important;
-            height: auto !important;
-            display: block !important;
-            margin: 6px auto !important;
-          }
-          svg text {
-            fill: #000000 !important;
-            font-weight: bold !important;
-          }
-          svg line, svg rect, svg polygon, svg circle, svg path {
-            stroke: #000000 !important;
-          }
-          .katex {
-            font-size: 1.05em !important;
-            color: #000000 !important;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="printable-paper-wrapper">
-          ${paperElement.innerHTML}
-        </div>
-      </body>
-      </html>
-    `);
-    iframeDoc.close();
-
+    // Doğrudan sistem yazdırma / PDF motorunu tetikle
     setTimeout(() => {
-      try {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-      } catch (err) {
-        console.warn("Iframe print error, falling back to window.print():", err);
-        window.print();
-      }
-    }, 300);
-  };
-
-  // 2. Ayrı Temiz Pencerede Açma ve Yazdırma
-  const handleOpenPrintWindow = () => {
-    const paperElement = document.getElementById('printable-exam-paper-content');
-    if (!paperElement) {
       window.print();
-      return;
-    }
-
-    const printWin = window.open('', '_blank', 'width=1000,height=900,menubar=no,toolbar=no,location=no,status=no');
-    if (!printWin) {
-      // Pop-up engellenmişse doğrudan iframe yazdırma motoruna yönlendir
-      handlePrintViaIframe();
-      return;
-    }
-
-    const styleSheets = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map(node => node.outerHTML)
-      .join('\n');
-
-    printWin.document.open();
-    printWin.document.write(`
-      <!DOCTYPE html>
-      <html lang="tr">
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>${examTitle || 'YKS Sınav Kağıdı'}</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
-        ${styleSheets}
-        <style>
-          @page {
-            size: auto;
-            margin: 10mm 10mm 10mm 10mm;
-          }
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-            background: #ffffff !important;
-            color: #000000 !important;
-            font-family: "Times New Roman", Times, Georgia, serif !important;
-            font-size: 10pt !important;
-            line-height: 1.4 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          * {
-            color: #000000 !important;
-            -webkit-text-fill-color: #000000 !important;
-            text-shadow: none !important;
-            box-sizing: border-box !important;
-          }
-          .print-toolbar {
-            position: sticky;
-            top: 0;
-            z-index: 99999;
-            background: #f1f5f9;
-            border-bottom: 2px solid #cbd5e1;
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            font-family: system-ui, -apple-system, sans-serif;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-          }
-          @media print {
-            .print-toolbar {
-              display: none !important;
-            }
-            .printable-paper-wrapper {
-              padding: 0 !important;
-              max-width: 100% !important;
-            }
-          }
-          .btn-print {
-            background: #16a34a;
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
-            font-weight: bold;
-            font-size: 13px;
-            padding: 8px 18px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 2px 4px rgba(22, 163, 74, 0.3);
-          }
-          .btn-print:hover {
-            background: #15803d;
-          }
-          .btn-toggle {
-            background: #0284c7;
-            color: #ffffff !important;
-            -webkit-text-fill-color: #ffffff !important;
-            font-weight: 600;
-            font-size: 12px;
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-          }
-          .btn-close {
-            background: #e2e8f0;
-            color: #334155 !important;
-            -webkit-text-fill-color: #334155 !important;
-            font-weight: 600;
-            font-size: 12px;
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-          }
-          .info-note {
-            font-size: 11px;
-            color: #475569 !important;
-            -webkit-text-fill-color: #475569 !important;
-          }
-          .printable-paper-wrapper {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 24px 30px;
-            background: #ffffff;
-          }
-          .printable-columns-2 {
-            display: block !important;
-            column-count: 2 !important;
-            -webkit-column-count: 2 !important;
-            column-gap: 24px !important;
-            column-rule: 1px solid #cbd5e1 !important;
-            width: 100% !important;
-          }
-          .printable-columns-1 {
-            display: block !important;
-            column-count: 1 !important;
-            -webkit-column-count: 1 !important;
-            width: 100% !important;
-          }
-          .printable-question-item {
-            break-inside: avoid !important;
-            page-break-inside: avoid !important;
-            -webkit-column-break-inside: avoid !important;
-            margin-bottom: 16px !important;
-            padding-bottom: 12px !important;
-            border-bottom: 1px solid #cbd5e1 !important;
-            display: block !important;
-          }
-          svg {
-            background: #ffffff !important;
-            background-color: #ffffff !important;
-            max-width: 250px !important;
-            height: auto !important;
-            display: block !important;
-            margin: 6px auto !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 4px !important;
-          }
-          svg text {
-            fill: #000000 !important;
-            font-weight: bold !important;
-          }
-          svg line, svg rect, svg polygon, svg circle, svg path {
-            stroke: #000000 !important;
-          }
-          .katex {
-            font-size: 1.05em !important;
-            color: #000000 !important;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="print-toolbar no-print">
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <button class="btn-print" onclick="window.print()">🖨️ Yazıcıya Gönder (Yazdır)</button>
-            <button class="btn-toggle" onclick="toggleCols()">📐 1 / 2 Sütun Değiştir</button>
-            <button class="btn-close" onclick="window.close()">✕ Kapat</button>
-          </div>
-          <div class="info-note">
-            💡 <strong>İpucu:</strong> Önizleme beklemeden doğrudan yazdırmak için klavyeden <strong>Ctrl + Shift + P</strong> (Sistem Yazdırma) kısayolunu kullanabilirsiniz.
-          </div>
-        </div>
-
-        <div class="printable-paper-wrapper" id="paper-root">
-          ${paperElement.innerHTML}
-        </div>
-
-        <script>
-          function toggleCols() {
-            var el = document.querySelector('.printable-columns-2') || document.querySelector('.printable-columns-1');
-            if (el) {
-              if (el.classList.contains('printable-columns-2')) {
-                el.classList.remove('printable-columns-2');
-                el.classList.add('printable-columns-1');
-              } else {
-                el.classList.remove('printable-columns-1');
-                el.classList.add('printable-columns-2');
-              }
-            }
-          }
-          // Otomatik yazdırmayı load eventi beklemeden doğrudan tetikle
-          setTimeout(function() {
-            try {
-              window.focus();
-              window.print();
-            } catch (e) {}
-          }, 350);
-        </script>
-      </body>
-      </html>
-    `);
-    printWin.document.close();
-  };
-
-  // 3. Sistem Penceresi & PDF Olarak Kaydetme
-  const handlePrint = () => {
-    handlePrintViaIframe();
+    }, 50);
   };
 
   return createPortal(
-    <div className="printable-portal-root fixed inset-0 z-[100] overflow-y-auto bg-black/70 backdrop-blur-sm flex justify-center items-start p-2 sm:p-6 py-6 sm:py-10 printable-exam-modal-wrapper">
+    <div className="printable-portal-root fixed inset-0 z-[100] overflow-y-auto bg-black/70 backdrop-blur-sm flex justify-center items-start p-2 sm:p-6 py-6 sm:py-10 printable-exam-modal-wrapper print:!static print:!inset-auto print:!p-0 print:!m-0 print:!bg-white print:!overflow-visible print:!block print:!w-full print:!h-auto print:!backdrop-blur-none">
       
       {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl flex flex-col my-0 border border-zinc-200 dark:border-zinc-800 printable-exam-container overflow-hidden">
+      <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl flex flex-col my-0 border border-zinc-200 dark:border-zinc-800 printable-exam-container overflow-hidden print:!static print:!max-w-none print:!w-full print:!border-none print:!shadow-none print:!rounded-none print:!bg-white print:!overflow-visible print:!block print:!p-0 print:!m-0">
         
         {/* Top Control Bar (Baskıda gizlenir) */}
         <div className="no-print mx-4 sm:mx-6 mt-3 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Printer className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span><strong>Fiziksel Masaüstü Yazıcılar İçin:</strong> "Yazıcıya Gönder" butonuyla temiz baskı penceresi açılır. Önizleme ekranı beklemeden doğrudan yazdırmak için klavyenizden <strong>Ctrl + Shift + P</strong> tuşlarına basabilirsiniz.</span>
+            <span><strong>Yazdırma & PDF:</strong> Butonlara bastığınızda tarayıcının sistem yazdırma diyaloğu açılır. Buradan yazıcınızı (HP vb.) seçip yazdırabilir veya "PDF Olarak Kaydet" seçeneğini kullanabilirsiniz. (Kısayol: <strong>Ctrl + P</strong>)</span>
           </div>
         </div>
         <div className="no-print p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-850/80 rounded-t-3xl flex flex-wrap items-center justify-between gap-4">
@@ -463,28 +142,19 @@ export default function PrintableExamModal({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handlePrintViaIframe}
+              onClick={handlePrint}
               disabled={displayedQuestions.length === 0}
               className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition flex items-center gap-2 cursor-pointer"
-              title="Fiziksel masaüstü yazıcınıza veya sistem yazdırma motoruna doğrudan gönderir (HP, Canon, Epson, Brother)"
+              title="Yazıcıya gönderir veya sistem yazdırma motorunu açar"
             >
               <Printer className="w-4 h-4" />
               <span>Yazıcıya Gönder (Yazdır)</span>
             </button>
             <button
-              onClick={handleOpenPrintWindow}
-              disabled={displayedQuestions.length === 0}
-              className="px-3 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-sky-600/30 transition flex items-center gap-1.5 cursor-pointer"
-              title="Ayrı tam sayfa sekmesinde açar ve yazdırır"
-            >
-              <Sliders className="w-4 h-4" />
-              <span>Ayrı Pencere</span>
-            </button>
-            <button
               onClick={handlePrint}
               disabled={displayedQuestions.length === 0}
               className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
-              title="PDF Olarak Kaydet / Sistem Önizlemesi"
+              title="PDF Olarak Kaydet (Sistem Yazdırma Penceresinden)"
             >
               <FileText className="w-4 h-4" />
               <span>PDF Olarak Kaydet</span>
@@ -622,7 +292,7 @@ export default function PrintableExamModal({
         {/* Printable Document Paper (Önizleme ve Baskı Birebir Aynı) */}
         <div 
           id="printable-exam-paper-content"
-          className="p-6 sm:p-10 bg-white text-black font-serif printable-paper overflow-y-auto max-h-[72vh] print:max-h-none print:overflow-visible"
+          className="p-6 sm:p-10 bg-white text-black font-serif printable-paper overflow-y-auto max-h-[72vh] print:!max-h-none print:!overflow-visible print:!static print:!p-0 print:!m-0 print:!w-full print:!block"
         >
           
           {/* Sınav Başlığı / Header */}
