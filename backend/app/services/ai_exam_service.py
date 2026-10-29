@@ -313,63 +313,197 @@ def format_options(correct_str: str, distractors: List[str]) -> Dict[str, Any]:
 
 # ================= DİNAMİK VEKTÖREL SVG GÖRSEL ÜRETEÇLERİ =================
 
-def generate_dynamic_triangle_svg(a: int, b: int, c: int, label: str = "ABC Üçgeni") -> str:
-    return f"""<svg viewBox="0 0 400 240" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:440px; margin:auto; display:block;">
+def generate_dynamic_triangle_svg(a: int = 6, b: int = 8, c: int = 10, label: str = "ABC Dik Üçgeni") -> str:
+    return f'''<svg viewBox="0 0 380 230" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
   <defs>
     <linearGradient id="triGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.25"/>
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.30"/>
       <stop offset="100%" stop-color="#818cf8" stop-opacity="0.10"/>
     </linearGradient>
   </defs>
-  <polygon points="60,200 340,200 60,50" fill="url(#triGrad)" stroke="#38bdf8" stroke-width="3" stroke-linejoin="round"/>
-  <rect x="60" y="180" width="20" height="20" fill="none" stroke="#f43f5e" stroke-width="2"/>
-  <circle cx="70" cy="190" r="2.5" fill="#f43f5e"/>
-  <circle cx="60" cy="50" r="5" fill="#38bdf8"/>
-  <circle cx="60" cy="200" r="5" fill="#38bdf8"/>
-  <circle cx="340" cy="200" r="5" fill="#38bdf8"/>
-  <text x="45" y="45" fill="#f8fafc" font-size="15" font-family="sans-serif" font-weight="bold">A</text>
-  <text x="45" y="215" fill="#f8fafc" font-size="15" font-family="sans-serif" font-weight="bold">B</text>
-  <text x="350" y="215" fill="#f8fafc" font-size="15" font-family="sans-serif" font-weight="bold">C</text>
-  <text x="25" y="130" fill="#fbbf24" font-size="14" font-family="sans-serif" font-weight="bold">c = {c}</text>
-  <text x="190" y="225" fill="#fbbf24" font-size="14" font-family="sans-serif" font-weight="bold">a = {a}</text>
-  <text x="210" y="115" fill="#34d399" font-size="14" font-family="sans-serif" font-weight="bold">b = {b}</text>
-  <text x="140" y="30" fill="#94a3b8" font-size="13" font-family="sans-serif">{label}</text>
-</svg>"""
+  <polygon points="60,180 320,180 60,40" fill="url(#triGrad)" stroke="#38bdf8" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect x="60" y="162" width="18" height="18" fill="none" stroke="#f43f5e" stroke-width="2"/>
+  <circle cx="69" cy="171" r="2.5" fill="#f43f5e"/>
+  <circle cx="60" cy="40" r="4.5" fill="#38bdf8"/>
+  <circle cx="60" cy="180" r="4.5" fill="#38bdf8"/>
+  <circle cx="320" cy="180" r="4.5" fill="#38bdf8"/>
+  <text x="45" y="35" fill="#f8fafc" font-size="14" font-family="sans-serif" font-weight="bold">A</text>
+  <text x="45" y="195" fill="#f8fafc" font-size="14" font-family="sans-serif" font-weight="bold">B</text>
+  <text x="330" y="195" fill="#f8fafc" font-size="14" font-family="sans-serif" font-weight="bold">C</text>
+  <text x="25" y="115" fill="#fbbf24" font-size="13" font-family="sans-serif" font-weight="bold">{c}</text>
+  <text x="180" y="202" fill="#fbbf24" font-size="13" font-family="sans-serif" font-weight="bold">{a}</text>
+  <text x="200" y="105" fill="#34d399" font-size="13" font-family="sans-serif" font-weight="bold">{b}</text>
+  <text x="120" y="25" fill="#94a3b8" font-size="12" font-family="sans-serif">{label}</text>
+</svg>'''
 
-def generate_dynamic_circuit_svg(v: int, r1: int, r2: int, r3: int) -> str:
-    return f"""<svg viewBox="0 0 460 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:480px; margin:auto; display:block;">
-  <rect x="50" y="40" width="360" height="140" fill="none" stroke="#64748b" stroke-width="2.5" rx="6"/>
-  <line x1="200" y1="40" x2="260" y2="40" stroke="#0f172a" stroke-width="8"/>
-  <rect x="200" y="30" width="60" height="20" fill="#1e293b" stroke="#38bdf8" stroke-width="2" rx="4"/>
-  <text x="215" y="45" fill="#38bdf8" font-size="12" font-family="sans-serif" font-weight="bold">R₁={r1}Ω</text>
-  <line x1="200" y1="180" x2="260" y2="180" stroke="#0f172a" stroke-width="8"/>
-  <rect x="200" y="170" width="60" height="20" fill="#1e293b" stroke="#38bdf8" stroke-width="2" rx="4"/>
-  <text x="215" y="185" fill="#38bdf8" font-size="12" font-family="sans-serif" font-weight="bold">R₂={r2}Ω</text>
-  <line x1="410" y1="85" x2="410" y2="135" stroke="#0f172a" stroke-width="8"/>
-  <rect x="395" y="90" width="30" height="40" fill="#1e293b" stroke="#a855f7" stroke-width="2" rx="4"/>
-  <text x="375" y="115" fill="#c084fc" font-size="11" font-family="sans-serif" font-weight="bold">R₃={r3}Ω</text>
-  <line x1="50" y1="90" x2="50" y2="130" stroke="#0f172a" stroke-width="8"/>
-  <line x1="38" y1="100" x2="62" y2="100" stroke="#f43f5e" stroke-width="3"/>
-  <line x1="44" y1="120" x2="56" y2="120" stroke="#f43f5e" stroke-width="1.5"/>
-  <text x="12" y="115" fill="#f43f5e" font-size="13" font-family="sans-serif" font-weight="bold">V={v}V</text>
-  <circle cx="120" cy="40" r="14" fill="#0f172a" stroke="#fbbf24" stroke-width="2"/>
-  <text x="115" y="45" fill="#fbbf24" font-size="13" font-family="sans-serif" font-weight="bold">A</text>
-  <text x="140" y="25" fill="#94a3b8" font-size="11" font-family="sans-serif">Ana Kol Akımı (i)</text>
-</svg>"""
+def generate_dynamic_geometry_circle_svg(r: int = 6, angle: int = 60) -> str:
+    return f'''<svg viewBox="0 0 360 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:400px; margin:auto; display:block;">
+  <circle cx="180" cy="115" r="75" fill="none" stroke="#38bdf8" stroke-width="2.5"/>
+  <circle cx="180" cy="115" r="4" fill="#f43f5e"/>
+  <text x="185" y="110" fill="#f8fafc" font-size="13" font-family="sans-serif" font-weight="bold">O</text>
+  <line x1="180" y1="115" x2="255" y2="115" stroke="#fbbf24" stroke-width="2"/>
+  <line x1="180" y1="115" x2="225" y2="52" stroke="#fbbf24" stroke-width="2"/>
+  <path d="M 210,115 A 30 30 0 0 0 200,90" fill="none" stroke="#34d399" stroke-width="2"/>
+  <text x="212" y="102" fill="#34d399" font-size="12" font-family="sans-serif" font-weight="bold">α={angle}°</text>
+  <text x="210" y="130" fill="#fbbf24" font-size="12" font-family="sans-serif" font-weight="bold">r={r}</text>
+  <text x="110" y="25" fill="#94a3b8" font-size="12" font-family="sans-serif">Dairede Merkez Açı ve Yay</text>
+</svg>'''
 
-def generate_dynamic_parabola_svg(a: int, b: int, c: int, r: float, k: float) -> str:
-    return f"""<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
-  <line x1="40" y1="170" x2="350" y2="170" stroke="#475569" stroke-width="2"/>
+def generate_dynamic_circuit_svg(v: int = 24, r1: int = 4, r2: int = 6, r3: int = 2) -> str:
+    return f'''<svg viewBox="0 0 440 210" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:460px; margin:auto; display:block;">
+  <rect x="50" y="35" width="340" height="140" fill="none" stroke="#64748b" stroke-width="2.5" rx="6"/>
+  <line x1="180" y1="35" x2="250" y2="35" stroke="#0f172a" stroke-width="8"/>
+  <rect x="185" y="25" width="60" height="20" fill="#1e293b" stroke="#38bdf8" stroke-width="2" rx="4"/>
+  <text x="195" y="39" fill="#38bdf8" font-size="11" font-family="sans-serif" font-weight="bold">R₁={r1}Ω</text>
+  <line x1="180" y1="175" x2="250" y2="175" stroke="#0f172a" stroke-width="8"/>
+  <rect x="185" y="165" width="60" height="20" fill="#1e293b" stroke="#38bdf8" stroke-width="2" rx="4"/>
+  <text x="195" y="179" fill="#38bdf8" font-size="11" font-family="sans-serif" font-weight="bold">R₂={r2}Ω</text>
+  <line x1="390" y1="80" x2="390" y2="130" stroke="#0f172a" stroke-width="8"/>
+  <rect x="375" y="85" width="30" height="40" fill="#1e293b" stroke="#a855f7" stroke-width="2" rx="4"/>
+  <text x="350" y="110" fill="#c084fc" font-size="11" font-family="sans-serif" font-weight="bold">R₃={r3}Ω</text>
+  <line x1="50" y1="85" x2="50" y2="125" stroke="#0f172a" stroke-width="8"/>
+  <line x1="38" y1="95" x2="62" y2="95" stroke="#f43f5e" stroke-width="3"/>
+  <line x1="44" y1="115" x2="56" y2="115" stroke="#f43f5e" stroke-width="1.5"/>
+  <text x="12" y="110" fill="#f43f5e" font-size="12" font-family="sans-serif" font-weight="bold">V={v}V</text>
+  <circle cx="110" cy="35" r="13" fill="#0f172a" stroke="#fbbf24" stroke-width="2"/>
+  <text x="105" y="40" fill="#fbbf24" font-size="12" font-family="sans-serif" font-weight="bold">A</text>
+  <text x="135" y="22" fill="#94a3b8" font-size="11" font-family="sans-serif">Elektrik Devresi (Ana Kol Akımı)</text>
+</svg>'''
+
+def generate_dynamic_force_block_svg(m: int = 4, f_uyg: int = 20, f_s: int = 8, a: int = 3) -> str:
+    return f'''<svg viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:440px; margin:auto; display:block;">
+  <line x1="30" y1="150" x2="370" y2="150" stroke="#94a3b8" stroke-width="3"/>
+  <line x1="40" y1="150" x2="30" y2="165" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="80" y1="150" x2="70" y2="165" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="120" y1="150" x2="110" y2="165" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="160" y1="150" x2="150" y2="165" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="200" y1="150" x2="190" y2="165" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="240" y1="150" x2="230" y2="165" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="280" y1="150" x2="270" y2="165" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="320" y1="150" x2="310" y2="165" stroke="#64748b" stroke-width="1.5"/>
+  <rect x="150" y="80" width="90" height="70" fill="#1e293b" stroke="#38bdf8" stroke-width="2.5" rx="4"/>
+  <text x="175" y="122" fill="#38bdf8" font-size="15" font-family="sans-serif" font-weight="bold">m={m} kg</text>
+  <line x1="240" y1="115" x2="320" y2="115" stroke="#34d399" stroke-width="3"/>
+  <polygon points="320,115 310,110 310,120" fill="#34d399"/>
+  <text x="270" y="105" fill="#34d399" font-size="12" font-family="sans-serif" font-weight="bold">F={f_uyg} N</text>
+  <line x1="150" y1="135" x2="90" y2="135" stroke="#f43f5e" stroke-width="2.5"/>
+  <polygon points="90,135 100,130 100,140" fill="#f43f5e"/>
+  <text x="95" y="125" fill="#f43f5e" font-size="11" font-family="sans-serif" font-weight="bold">fs={f_s} N</text>
+  <line x1="160" y1="55" x2="210" y2="55" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4,3"/>
+  <polygon points="210,55 204,52 204,58" fill="#fbbf24"/>
+  <text x="160" y="45" fill="#fbbf24" font-size="11" font-family="sans-serif">İvme: a={a} m/s²</text>
+  <text x="80" y="22" fill="#94a3b8" font-size="12" font-family="sans-serif">Sürtünmeli Yatay Düzlemde Kuvvet Diyagramı</text>
+</svg>'''
+
+def generate_dynamic_optics_prism_svg() -> str:
+    return '''<svg viewBox="0 0 380 210" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <polygon points="190,40 100,170 280,170" fill="#38bdf8" fill-opacity="0.15" stroke="#38bdf8" stroke-width="2"/>
+  <line x1="40" y1="140" x2="130" y2="125" stroke="#fbbf24" stroke-width="2.5"/>
+  <polygon points="100,130 90,127 92,135" fill="#fbbf24"/>
+  <line x1="130" y1="125" x2="225" y2="140" stroke="#f43f5e" stroke-width="2"/>
+  <line x1="225" y1="140" x2="330" y2="165" stroke="#34d399" stroke-width="2.5"/>
+  <polygon points="290,155 280,150 283,158" fill="#34d399"/>
+  <line x1="105" y1="100" x2="155" y2="150" stroke="#94a3b8" stroke-width="1" stroke-dasharray="3,3"/>
+  <text x="45" y="130" fill="#fbbf24" font-size="11" font-family="sans-serif" font-weight="bold">Gelen Işın</text>
+  <text x="260" y="180" fill="#34d399" font-size="11" font-family="sans-serif" font-weight="bold">Kırılan Işın</text>
+  <text x="180" y="110" fill="#f43f5e" font-size="11" font-family="sans-serif">Cam (n₂)</text>
+  <text x="75" y="80" fill="#94a3b8" font-size="11" font-family="sans-serif">Hava (n₁)</text>
+  <text x="115" y="25" fill="#94a3b8" font-size="12" font-family="sans-serif">Prizmada Işığın Kırılması</text>
+</svg>'''
+
+def generate_dynamic_parabola_svg(a: int = 1, b: int = -4, c: int = 3, r: float = 2.0, k: float = -1.0) -> str:
+    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <line x1="40" y1="160" x2="350" y2="160" stroke="#475569" stroke-width="2"/>
   <line x1="190" y1="20" x2="190" y2="200" stroke="#475569" stroke-width="2"/>
-  <polygon points="350,170 342,166 342,174" fill="#475569"/>
+  <polygon points="350,160 342,156 342,164" fill="#475569"/>
   <polygon points="190,20 186,28 194,28" fill="#475569"/>
-  <text x="355" y="174" fill="#94a3b8" font-size="12" font-family="sans-serif">x</text>
+  <text x="355" y="164" fill="#94a3b8" font-size="12" font-family="sans-serif">x</text>
   <text x="182" y="15" fill="#94a3b8" font-size="12" font-family="sans-serif">y</text>
-  <path d="M 80,185 Q 190,40 300,185" fill="none" stroke="#38bdf8" stroke-width="3"/>
-  <circle cx="190" cy="65" r="5" fill="#f43f5e"/>
-  <text x="198" y="65" fill="#f43f5e" font-size="12" font-family="sans-serif" font-weight="bold">T(r={r:.0f}, k={k:.0f})</text>
+  <path d="M 80,180 Q 190,30 300,180" fill="none" stroke="#38bdf8" stroke-width="3"/>
+  <circle cx="190" cy="55" r="5" fill="#f43f5e"/>
+  <text x="200" y="55" fill="#f43f5e" font-size="12" font-family="sans-serif" font-weight="bold">T(r={r:.0f}, k={k:.0f})</text>
   <text x="70" y="208" fill="#34d399" font-size="12" font-family="sans-serif">f(x) = {a}x² + {b}x + {c}</text>
-</svg>"""
+</svg>'''
+
+def generate_dynamic_pedigree_svg(trait_name: str = "Otozomal Çekinik Kalıtım") -> str:
+    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <text x="90" y="25" fill="#94a3b8" font-size="12" font-family="sans-serif">Kalıtım Soyağacı ({trait_name})</text>
+  <rect x="100" y="45" width="28" height="28" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+  <text x="109" y="63" fill="#38bdf8" font-size="11" font-family="sans-serif">1</text>
+  <line x1="128" y1="59" x2="210" y2="59" stroke="#94a3b8" stroke-width="2"/>
+  <circle cx="224" cy="59" r="14" fill="#f43f5e" stroke="#f43f5e" stroke-width="2"/>
+  <text x="220" y="64" fill="#ffffff" font-size="11" font-family="sans-serif" font-weight="bold">2</text>
+  <line x1="169" y1="59" x2="169" y2="105" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="70" y1="105" x2="270" y2="105" stroke="#94a3b8" stroke-width="2"/>
+  <line x1="70" y1="105" x2="70" y2="135" stroke="#94a3b8" stroke-width="2"/>
+  <circle cx="70" cy="149" r="14" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+  <text x="66" y="154" fill="#38bdf8" font-size="11" font-family="sans-serif">3</text>
+  <line x1="169" y1="105" x2="169" y2="135" stroke="#94a3b8" stroke-width="2"/>
+  <rect x="155" y="135" width="28" height="28" fill="#f43f5e" stroke="#f43f5e" stroke-width="2"/>
+  <text x="165" y="153" fill="#ffffff" font-size="11" font-family="sans-serif" font-weight="bold">4</text>
+  <line x1="270" y1="105" x2="270" y2="135" stroke="#94a3b8" stroke-width="2"/>
+  <rect x="256" y="135" width="28" height="28" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+  <text x="266" y="153" fill="#38bdf8" font-size="11" font-family="sans-serif">5</text>
+  <rect x="60" y="190" width="12" height="12" fill="#f43f5e"/>
+  <text x="78" y="200" fill="#94a3b8" font-size="10" font-family="sans-serif">: Özelliği Gösteren Birey</text>
+  <rect x="220" y="190" width="12" height="12" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+  <text x="238" y="200" fill="#94a3b8" font-size="10" font-family="sans-serif">: Normal Birey</text>
+</svg>'''
+
+def generate_dynamic_food_pyramid_svg() -> str:
+    return '''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <polygon points="190,30 230,70 150,70" fill="#f43f5e" stroke="#0f172a" stroke-width="2"/>
+  <text x="170" y="56" fill="#ffffff" font-size="9" font-family="sans-serif" font-weight="bold">3. Tüketici</text>
+  <polygon points="150,70 230,70 260,115 120,115" fill="#fbbf24" stroke="#0f172a" stroke-width="2"/>
+  <text x="160" y="98" fill="#0f172a" font-size="10" font-family="sans-serif" font-weight="bold">2. Tüketici</text>
+  <polygon points="120,115 260,115 290,160 90,160" fill="#38bdf8" stroke="#0f172a" stroke-width="2"/>
+  <text x="155" y="142" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">1. Tüketici (Otçul)</text>
+  <polygon points="90,160 290,160 320,200 60,200" fill="#34d399" stroke="#0f172a" stroke-width="2"/>
+  <text x="145" y="185" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">Üreticiler (Bitkiler)</text>
+  <line x1="335" y1="195" x2="335" y2="45" stroke="#c084fc" stroke-width="2"/>
+  <polygon points="335,40 330,50 340,50" fill="#c084fc"/>
+  <text x="345" y="115" fill="#c084fc" font-size="9" font-family="sans-serif" transform="rotate(90 345,115)">Biyolojik Birikim Artar ↑</text>
+  <text x="115" y="20" fill="#94a3b8" font-size="11" font-family="sans-serif">Ekolojik Besin Piramidi</text>
+</svg>'''
+
+def generate_dynamic_isohypse_svg(h_val: int = 100) -> str:
+    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <ellipse cx="190" cy="115" rx="140" ry="75" fill="none" stroke="#475569" stroke-width="1.5"/>
+  <text x="65" y="120" fill="#94a3b8" font-size="10" font-family="sans-serif">0m (Deniz)</text>
+  <ellipse cx="190" cy="115" rx="100" ry="55" fill="none" stroke="#38bdf8" stroke-width="2"/>
+  <text x="100" y="118" fill="#38bdf8" font-size="10" font-family="sans-serif">{h_val}m</text>
+  <ellipse cx="190" cy="115" rx="60" ry="35" fill="none" stroke="#fbbf24" stroke-width="2"/>
+  <text x="145" y="118" fill="#fbbf24" font-size="10" font-family="sans-serif">{h_val*2}m</text>
+  <circle cx="190" cy="115" r="4" fill="#f43f5e"/>
+  <text x="198" y="113" fill="#f43f5e" font-size="11" font-family="sans-serif" font-weight="bold">Δ Doruk ({h_val*2 + 80}m)</text>
+  <path d="M 190,115 Q 230,150 280,180" fill="none" stroke="#34d399" stroke-width="2" stroke-dasharray="3,3"/>
+  <text x="240" y="170" fill="#34d399" font-size="10" font-family="sans-serif">Akarsu Vadisi</text>
+  <text x="110" y="20" fill="#94a3b8" font-size="11" font-family="sans-serif">Topografya / Eş Yükselti (İzohips) Haritası</text>
+</svg>'''
+
+def generate_dynamic_climate_graph_svg(climate_name: str = "Akdeniz İklimi") -> str:
+    return f'''<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg" style="background:#0f172a; border-radius:12px; width:100%; max-width:420px; margin:auto; display:block;">
+  <line x1="45" y1="180" x2="340" y2="180" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="45" y1="35" x2="45" y2="180" stroke="#38bdf8" stroke-width="1.5"/>
+  <line x1="340" y1="35" x2="340" y2="180" stroke="#f43f5e" stroke-width="1.5"/>
+  <text x="20" y="30" fill="#38bdf8" font-size="9" font-family="sans-serif">Yağış (mm)</text>
+  <text x="310" y="30" fill="#f43f5e" font-size="9" font-family="sans-serif">Sıcaklık (°C)</text>
+  <rect x="55" y="70" width="14" height="110" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="75" y="80" width="14" height="100" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="95" y="100" width="14" height="80" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="115" y="120" width="14" height="60" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="135" y="145" width="14" height="35" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="155" y="170" width="14" height="10" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="175" y="175" width="14" height="5" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="195" y="172" width="14" height="8" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="215" y="160" width="14" height="20" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="235" y="130" width="14" height="50" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="255" y="90" width="14" height="90" fill="#38bdf8" fill-opacity="0.6"/>
+  <rect x="275" y="65" width="14" height="115" fill="#38bdf8" fill-opacity="0.6"/>
+  <path d="M 62,145 Q 185,60 282,148" fill="none" stroke="#f43f5e" stroke-width="3"/>
+  <text x="110" y="20" fill="#f8fafc" font-size="12" font-family="sans-serif" font-weight="bold">{climate_name} Grafiği</text>
+  <text x="80" y="200" fill="#94a3b8" font-size="10" font-family="sans-serif">O  Ş  M  N  M  H  T  A  E  E  K  A (Aylar)</text>
+</svg>'''
 
 # ================= TEMEL MATEMATİK & AYT MATEMATİK ÜRETEÇLERİ =================
 
@@ -1157,41 +1291,341 @@ def q_religion() -> Dict[str, Any]:
         **opts
     }
 
-# ================= AKILLI SORU HAVUZU VE GÖREVLENDİRİCİ =================
 
-MATH_GENERATOR_REGISTRY = [
-    q_cargo_tariff, q_function, q_parabola_max, q_derivative_tangent,
-    q_integral_area, q_age_problem, q_percentage_profit, q_speed_motion,
-    q_combinations, q_probability_dice, q_ebob_ekok, q_logarithm,
-    q_trigonometry, q_polynomial, q_limit
-]
+# ================= DİN KÜLTÜRÜ VE AHLAK BİLGİSİ ÜRETEÇLERİ (MEB & ÖSYM KAZANIMLARI) =================
 
-GEOMETRY_GENERATOR_REGISTRY = [
-    q_geometry_triangle, q_geometry_pythagoras_euclid, q_geometry_circle,
-    q_geometry_analytic, q_geometry_polygon, q_geometry_solid
-]
+def q_religion_zekat_infak() -> Dict[str, Any]:
+    opts = format_options("Sadaka-i Cariye", ["Fitre (Sadaka-i Fıtır)", "Öşür", "Kefaret", "Adak Kurbanı"])
+    return {
+        "question_text": "Maddi durumu iyi olan bir hayırsever, yaşadığı ilçede herkesin ücretsiz yararlanabileceği bir sağlık ocağı ve su kuyusu yaptırmıştır. Peygamber Efendimiz (s.a.v.), insanın vefatından sonra da amel defterinin kapanmamasına vesile olan bu tür kalıcı hayırları aşağıdaki kavramlardan hangisiyle nitelendirmiştir?",
+        "visual_svg": None,
+        "explanation": "Kişinin vefatından sonra da sevabı devam eden okul, cami, çeşme, köprü gibi kalıcı sadakalara 'Sadaka-i Cariye' denir.",
+        "topic": "İslam ve İbadetler",
+        "subtopic": "Zekat, İnfak ve Sadaka-i Cariye",
+        **opts
+    }
 
-PHYSICS_GENERATOR_REGISTRY = [
-    q_physics_circuit, q_physics_newton, q_physics_optics,
-    q_physics_thermodynamics, q_physics_waves, q_physics_energy,
-    q_physics_buoyancy
-]
+def q_religion_kader_tevekkul() -> Dict[str, Any]:
+    opts = format_options("Tevekkül anlayışının yanlış yorumlanması; tedbirsiz tevekkül olamayacağı gerçeği", [
+        "Ecel kavramının tamamen rastlantılara bağlı olduğu inancı",
+        "Külli iradenin insanın tüm eylemlerini zorunlu kıldığı yanılgısı",
+        "İbadetlerin sadece cami ve mescitlerde yapılabileceği düşüncesi",
+        "Toplumsal yasaların fiziksel yasalardan daha önemsiz olduğu kabulü"
+    ])
+    return {
+        "question_text": "Tarlasını sürmeyen, tohum ekmeyen ve gerekli sulamayı yapmayan bir çiftçinin, 'Ben Allah'a güvendim, kaderimde ne varsa o çıkar' diyerek verimli bir hasat beklemesi, İslam inancındaki hangi temel kavramın yanlış anlaşılmasına örnektir?",
+        "visual_svg": None,
+        "explanation": "Tevekkül, bir amaca ulaşmak için insanın elinden gelen tüm maddi ve manevi sebeplere başvurup tedbir aldıktan sonra Allah'a güvenmesidir. Sebeplere sarılmadan beklemek tembelliktir.",
+        "topic": "Kader İnancı",
+        "subtopic": "Tevekkül ve İnsan İradesi",
+        **opts
+    }
 
-CHEMISTRY_GENERATOR_REGISTRY = [
-    q_chemistry_mole, q_chemistry_molarity, q_chemistry_gas_laws,
-    q_chemistry_acid_base, q_chemistry_periodic_table
-]
+def q_religion_bilgi_kaynaklari() -> Dict[str, Any]:
+    opts = format_options("Selim Akıl, Sadık Haber (Vahiy) ve Salim Duyular", [
+        "Sezgiler, Rüya ve Astroloji",
+        "Gelenekler, Mitoloji ve Doğa Olayları",
+        "Sadece Salim Duyular ve Deney",
+        "Felsefi Şüphecilik ve Varsayımlar"
+    ])
+    return {
+        "question_text": "İslam epistemolojisinde (bilgi felsefesinde) insanın doğru ve bağlayıcı bilgiye ulaşmasını sağlayan üç temel kaynak aşağıdakilerin hangisinde birlikte ve eksiksiz verilmiştir?",
+        "visual_svg": None,
+        "explanation": "İslam düşüncesine göre doğru bilginin üç temel kaynağı vardır: Selim akıl (önyargısız akıl yürütme), Sadık haber (vahiy ve mütevatir haber) ve Salim duyular (sağlam duyu organları).",
+        "topic": "İnanç ve Bilgi",
+        "subtopic": "İslam'da Bilginin Kaynakları",
+        **opts
+    }
 
-BIOLOGY_GENERATOR_REGISTRY = [
-    q_biology_genetics, q_biology_cell_division, q_biology_ecology,
-    q_biology_photosynthesis, q_biology_dna_protein
-]
+def q_religion_ahlak_kulhakki() -> Dict[str, Any]:
+    opts = format_options("Kul Hakkı ve Sosyal Adalet", [
+        "Kader ve Kaza",
+        "Taassup ve Taklit",
+        "Mübah ve Mekruh Hükümleri",
+        "Teyemmüm ve Temizlik"
+    ])
+    return {
+        "question_text": "'Ey iman edenler! Mallarınızı aranızda batıl ve haksız yollarla yemeyin; ancak karşılıklı rızaya dayanan ticaretle yiyin...' (Nisâ Suresi, 29)\n\nBu ayet-i kerimede bireysel ve toplumsal hayatta öncelikle hangi ahlaki ve hukuki ilkenin korunması emredilmektedir?",
+        "visual_svg": None,
+        "explanation": "Ayet; gasp, hırsızlık, rüşvet, hile ve aldatmayı yasaklayarak 'Kul Hakkı'nın korunmasını ve ekonomik adaleti tesis etmeyi hedeflemektedir.",
+        "topic": "Ahlak ve Değerler",
+        "subtopic": "İslam Ahlakı ve Kul Hakkı",
+        **opts
+    }
 
-TURKISH_GENERATOR_REGISTRY = [
-    q_turkish_reading, q_turkish_spelling, q_turkish_punctuation,
-    q_turkish_sound_events, q_literature_divan
-]
+def q_religion_peygamber_usve() -> Dict[str, Any]:
+    opts = format_options("İstişareye (Şûra) verdiği önem ve ortak akla başvurması", [
+        "Kişisel kararlarını vahyin dahi üzerinde tutması",
+        "Sadece yaşlı ve kabile reislerinin fikrini dinlemesi",
+        "Her türlü askeri kararı tek başına alması",
+        "Toplumsal kuralları geleneklere göre esnetmesi"
+    ])
+    return {
+        "question_text": "Hz. Muhammed (s.a.v.), Hendek Savaşı öncesinde Selman-ı Farisi'nin hendek kazma teklifini kabul etmiş, Bedir Savaşı'nda ise ordunun konaklayacağı yer konusunda sahabenin görüşüne uyarak karargâh yerini değiştirmiştir. Bu durum Hz. Peygamber'in hangi yönetimsel ve ahlaki ilkeye bağlılığını kanıtlar?",
+        "visual_svg": None,
+        "explanation": "Hz. Peygamber vahyin bulunmadığı hususlarda ashabıyla görüş alışverişinde bulunur (şûra / istişare) ve en isabetli ortak karara uyardı.",
+        "topic": "Hz. Muhammed ve Örnekliği",
+        "subtopic": "Üsve-i Hasene ve İstişare (Şura)",
+        **opts
+    }
 
+def q_religion_kuran_kavramlar() -> Dict[str, Any]:
+    opts = format_options("İhsan", ["İhlas", "Takva", "Hidayet", "Sırat-ı Müstakim"])
+    return {
+        "question_text": "Meşhur 'Cebrail Hadisi'nde Peygamber Efendimiz (s.a.v.) tarafından 'Allah'ı görüyormuş gibi ibadet etmendir; her ne kadar sen O'nu görmesen de O seni görmektedir' şeklinde tarif edilen yüce manevi makam aşağıdakilerden hangisidir?",
+        "visual_svg": None,
+        "explanation": "Kişinin her an Allah'ın gözetimi altında olduğu bilinciyle samimi ve kaliteli yaşamasına 'İhsan' denir. Bunu gerçekleştiren kula 'muhsin' adı verilir.",
+        "topic": "Kur'an'da Bazı Kavramlar",
+        "subtopic": "İhsan, İhlas ve Takva",
+        **opts
+    }
+
+def q_religion_mezhepler() -> Dict[str, Any]:
+    opts = format_options("Maturidilik ve Eş'arilik", [
+        "Hanefilik ve Şafilik",
+        "Malikilik ve Hanbelilik",
+        "Mutezile ve Cebriye",
+        "Caferilik ve Zeydilik"
+    ])
+    return {
+        "question_text": "İslam tarihinde inanç (itikad) alanında ortaya çıkan, ayet ve hadisleri akıl ilkeleriyle destekleyerek Ehl-i Sünnet omurgasını oluşturan iki büyük itikadi mezhep aşağıdakilerden hangisinde doğru verilmiştir?",
+        "visual_svg": None,
+        "explanation": "Ehl-i Sünnet'in iki temel itikadi ekolü İmam Maturidi'nin kurduğu Maturidilik ile İmam Eş'ari'nin kurduğu Eş'ariliktir. (Hanefilik ve Şafilik ise ameli/fıkhi mezheplerdir).",
+        "topic": "İslam Düşüncesinde Yorumlar",
+        "subtopic": "İtikadi ve Fıkhi Mezhepler",
+        **opts
+    }
+
+def q_religion_ibadetler_hukumler() -> Dict[str, Any]:
+    opts = format_options("Farz-ı Kifaye", ["Farz-ı Ayn", "Vacip", "Sünnet-i Müekkede", "Mübah"])
+    return {
+        "question_text": "Müslümanların bir kısmı tarafından yerine getirildiğinde diğerlerinin üzerinden sorumluluğu kalkan, ancak hiç kimse yapmazsa tüm toplumun sorumlu sayıldığı ibadet çeşidi (örneğin cenaze namazı) fıkıhta hangi kavramla adlandırılır?",
+        "visual_svg": None,
+        "explanation": "Cenaze namazı, ilim öğrenmek gibi toplumsal mükellefiyetler 'Farz-ı Kifaye'dir. Beş vakit namaz ve oruç gibi herkesin bizzat yapması gerekenler ise 'Farz-ı Ayn'dır.",
+        "topic": "İslam ve İbadetler",
+        "subtopic": "Ef'al-i Mükellefin Hükümleri",
+        **opts
+    }
+
+def q_religion_gonul_cografyasi() -> Dict[str, Any]:
+    opts = format_options("Hoca Ahmed Yesevi - Divan-ı Hikmet", [
+        "Yusuf Has Hacib - Kutadgu Bilig",
+        "Kaşgarlı Mahmud - Divanu Lugati't-Türk",
+        "Edip Ahmet Yükneki - Atabetü'l-Hakayık",
+        "Ali Şir Nevai - Muhakemetü'l-Lugateyn"
+    ])
+    return {
+        "question_text": "Türkistan'da yetişip yetiştirdiği dervişleri Anadolu ve Balkanlar'a göndererek Türklerin İslamlaşmasına ve gönül coğrafyamızın mayalanmasına öncülük eden 'Pîr-i Türkistan' lakaplı mutasavvıf ve en önemli eseri hangisidir?",
+        "visual_svg": None,
+        "explanation": "Pir-i Türkistan olarak bilinen Hoca Ahmed Yesevi'nin hikmet dolu şiirlerinin toplandığı eser 'Divan-ı Hikmet'tir.",
+        "topic": "Din, Kültür ve Medeniyet",
+        "subtopic": "Gönül Coğrafyamızın Öncüleri",
+        **opts
+    }
+
+def q_religion_cevre_israf() -> Dict[str, Any]:
+    opts = format_options("Kainattaki hassas ekolojik dengenin korunması ve kaynakların israf edilmemesi", [
+        "Doğal kaynakların sınırsızca tüketilmesinin serbest oluşu",
+        "Sadece ibadet esnasında temizliğe riayet edilmesinin yeterli olması",
+        "Tüm canlı türlerinin insana tamamen boyun eğdirilmesinin emredilmesi",
+        "Maddi zenginliğin her türlü ahlaki kuralın önünde tutulması"
+    ])
+    return {
+        "question_text": "'Göğü yükseltti ve ölçüyü (dengeyi) koydu. Sakın ölçü ve dengede haddi aşmayın!' (Rahmân Suresi, 7-8)\n\nBu ayet-i kerime günümüz dünyasında yaşanan küresel sorunlardan öncelikle hangisine karşı ilahi bir ikaz niteliğindedir?",
+        "visual_svg": None,
+        "explanation": "Ayet kainattaki ilahi ölçü ve ekolojik dengenin gözetilmesini, doğal kaynakların sorumsuzca ifrat ve tefrite düşülerek israf edilmemesini emreder.",
+        "topic": "Din ve Hayat",
+        "subtopic": "İslam ve Çevre Ahlakı",
+        **opts
+    }
+
+# ================= FELSEFE ÜRETEÇLERİ =================
+
+def q_philosophy_epistemology() -> Dict[str, Any]:
+    opts = format_options("Kritisizm (Eleştiricilik - Kant)", [
+        "Rasyonalizm (Akılcılık - Descartes)",
+        "Empirizm (Deneycilik - John Locke)",
+        "Pozitivizm (Olguculuk - Auguste Comte)",
+        "Entüisyonizm (Sezgicilik - Bergson)"
+    ])
+    return {
+        "question_text": "'Görüsüz kavramlar boş, kavramsız görüler kördür.' sözüyle bilginin hem duyusal deneyden hem de zihnin a priori formlarından meydana geldiğini savunan felsefi akım ve düşünür aşağıdakilerden hangisidir?",
+        "visual_svg": None,
+        "explanation": "Immanuel Kant hem akılcılığı hem de deneyciliği uzlaştırarak bilginin deneyle başladığını fakat deneyden ibaret olmadığını savunan 'Kritisizm' akımını kurmuştur.",
+        "topic": "Bilgi Felsefesi (Epistemoloji)",
+        "subtopic": "Kant ve Kritisizm",
+        **opts
+    }
+
+def q_philosophy_ethics() -> Dict[str, Any]:
+    opts = format_options("Ödev Ahlakı (Deontoloji / Koşulsuz Buyruk)", [
+        "Faydacılık (Utilitarizm)",
+        "Hazcılık (Hedonizm)",
+        "Bencillik (Egoizm)",
+        "Hiççilik (Nihilizm)"
+    ])
+    return {
+        "question_text": "Bir eylemin ahlaki değerini doğuracağı sonuçlara, getireceği çıkara veya hazza göre değil; yalnızca 'ödev duygusuyla ve iyi niyetle' yapılmış olmasına bağlayan etik yaklaşım aşağıdakilerden hangisidir?",
+        "visual_svg": None,
+        "explanation": "Kant'ın 'Ödev Ahlakı'na (Kategorik İmperatif) göre bir eylem çıkar veya korku gözetilmeksizin sırf ahlak yasasına saygıdan dolayı yapılmışsa ahlakidir.",
+        "topic": "Ahlak Felsefesi (Etik)",
+        "subtopic": "Kant'ın Ödev Ahlakı",
+        **opts
+    }
+
+def q_philosophy_ontology() -> Dict[str, Any]:
+    opts = format_options("Düalizm (İkicilik - Madde ve Ruh)", [
+        "Materyalizm (Özdekçilik)",
+        "İdealizm (Fikirçilik)",
+        "Oluşçuluk (Herakleitos)",
+        "Fenomenoloji (Görüngübilim)"
+    ])
+    return {
+        "question_text": "Varlığın temelinde birbirine indirgenemeyen iki tözün olduğunu; ruhun düşünen (res cogitans), maddenin ise yer kaplayan (res extensa) nitelikte bulunduğunu öne süren Descartes'ın ontolojik yaklaşımı hangisidir?",
+        "visual_svg": None,
+        "explanation": "Descartes varlığı madde ve ruh olmak üzere iki ayrı cevherle açıklayan 'Düalizm' (ikicilik) yaklaşımının en önemli temsilcisidir.",
+        "topic": "Varlık Felsefesi (Ontoloji)",
+        "subtopic": "Düalizm ve Töz Problemi",
+        **opts
+    }
+
+def q_philosophy_nature_thinking() -> Dict[str, Any]:
+    opts = format_options("Refleksif (düşünce üzerine düşünme) ve kümülatif (yığılımlı) olması", [
+        "Bitmiş, kesin ve mutlak doğrular sunması",
+        "Yalnızca deneysel metotlarla doğrulanabilir olması",
+        "Teknolojiye doğrudan pratik ürün sağlaması",
+        "Toplumun geneli tarafından oybirliğiyle benimsenmesi"
+    ])
+    return {
+        "question_text": "Felsefi bilginin bilimsel bilgiden ayrılan en temel niteliği; düşüncenin kendi üzerine dönerek sorgulama yapması ve çağlar boyunca bilgilerin birbirine eklenerek birikmesidir. Bu nitelikler sırasıyla hangi kavramlarla adlandırılır?",
+        "visual_svg": None,
+        "explanation": "Zihnin kendi bilgi ve düşünceleri üzerine düşünmesine 'refleksif olma', felsefi birikimin art arda yığılmasına ise 'kümülatif olma' denir.",
+        "topic": "Felsefeyi Tanıma",
+        "subtopic": "Felsefi Düşüncenin Nitelikleri",
+        **opts
+    }
+
+def q_philosophy_politics() -> Dict[str, Any]:
+    opts = format_options("Ütopya (İstenen / Tasarlanan İdeal Devlet)", [
+        "Distopya (Korku Ütopyası)",
+        "Bürokrasi",
+        "Otokrasi",
+        "Meşruiyet Krizi"
+    ])
+    return {
+        "question_text": "Gerçekte var olmayan ancak filozofların toplumsal adaleti ve mükemmel düzeni sağlamak amacıyla zihinlerinde kurguladıkları hayali devlet tasarımlarına (örneğin Thomas More'un eseri) ne ad verilir?",
+        "visual_svg": None,
+        "explanation": "Gerçekleşmesi arzulanan kusursuz toplumsal düzen tasarımlarına 'Ütopya' denir.",
+        "topic": "Siyaset Felsefesi",
+        "subtopic": "İdeal Düzen Arayışları ve Ütopyalar",
+        **opts
+    }
+
+def q_philosophy_religion() -> Dict[str, Any]:
+    opts = format_options("Agnostisizm (Bilinemezcilik)", [
+        "Deizm (Yaradanancılık)",
+        "Teizm (Tanrıcılık)",
+        "Panteizm (Tüm-tanrıcılık)",
+        "Ateizm (Tanrıtanımazlık)"
+    ])
+    return {
+        "question_text": "'Tanrı'nın varlığı veya yokluğu insan zihninin sınırlı yapısı ve deneysel yetersizliği nedeniyle kesin olarak bilinemez ve kanıtlanamaz.' tezini savunan felsefi görüş aşağıdakilerden hangisidir?",
+        "visual_svg": None,
+        "explanation": "Tanrı'nın varlığına ilişkin akli ve mantıki yargıda bulunmaktan kaçınan 'bilinemezcilik' yaklaşımı Agnostisizm'dir.",
+        "topic": "Din Felsefesi",
+        "subtopic": "Tanrı'nın Varlığına Yaklaşımlar",
+        **opts
+    }
+
+# ================= COĞRAFYA ÜRETEÇLERİ (VEKTÖREL SVG GÖRSELLİ) =================
+
+def q_geography_climate() -> Dict[str, Any]:
+    svg = generate_dynamic_climate_graph_svg("Akdeniz İklimi")
+    opts = format_options("Yazları sıcak ve kurak, kışları ılık ve yağışlıdır.", [
+        "Her mevsim düzenli ve bol yağış alır.",
+        "Kış aylarında sıcaklık daima eksi değerlerdedir.",
+        "En fazla yağış ilkbahar konveksiyonel yağışları şeklindedir.",
+        "Yıllık sıcaklık farkı 50 derecenin üzerindedir."
+    ])
+    return {
+        "question_text": "Yukarıda aylık sıcaklık ve yağış grafiği verilen iklim bölgesi (Antalya, İzmir yöresi) için aşağıdaki değerlendirmelerden hangisi kesinlikle doğrudur?",
+        "visual_svg": svg,
+        "explanation": "Grafikte yaz aylarında sıcaklığın yüksek ve yağışın minimum olduğu, kış aylarında ise sıcaklığın 10°C civarında kalıp yağışın tavan yaptığı Akdeniz iklim karakteri açıkça görülmektedir.",
+        "topic": "İklim Bilgisi",
+        "subtopic": "Büyük İklim Tipleri ve Grafikleri",
+        **opts
+    }
+
+def q_geography_isohypse() -> Dict[str, Any]:
+    h = random.choice([100, 200, 250])
+    svg = generate_dynamic_isohypse_svg(h)
+    opts = format_options(f"{h} metre", [f"{h//2} metre", f"{h*2} metre", f"{h+50} metre", "50 metre"])
+    return {
+        "question_text": f"Yukarıdaki topografya haritasında deniz seviyesinden başlayan ilk eş yükselti eğrisi ile sonraki eğriler gösterilmiştir. Buna göre, bu haritadaki izohips eğrileri kaç metre aralıkla (eküidistans) çizilmiştir?",
+        "visual_svg": svg,
+        "explanation": f"Deniz seviyesi 0 metredir. Bir sonraki eğri {h} metre olduğuna göre izohips aralığı (eküidistans) {h} metredir.",
+        "topic": "Harita Bilgisi ve İzohipsler",
+        "subtopic": "Eküidistans ve Yükselti Hesabı",
+        **opts
+    }
+
+def q_geography_coordinates() -> Dict[str, Any]:
+    boylam = random.choice([15, 30, 45, 60])
+    saat_farki = boylam // 15
+    opts = format_options(f"{saat_farki} saat ileri", [f"{saat_farki} saat geri", f"{saat_farki * 2} saat ileri", "Yerel saatler aynıdır", f"{saat_farki + 1} saat geri"])
+    return {
+        "question_text": f"$30^\\circ$ Doğu meridyeninde yerel saat 12.00 iken, aynı anda ${30 + boylam}^\\circ$ Doğu meridyeninde yer alan bir merkezde yerel saat batıdakine göre nasıl bir farklılık gösterir?",
+        "visual_svg": None,
+        "explanation": f"Doğudaki merkezlerde güneş daha erken doğar ve yerel saat daima ileridir. İki meridyen arasındaki {boylam}° boylam farkı {boylam} x 4 = {boylam*4} dakika, yani {saat_farki} saat ileri demektir.",
+        "topic": "Coğrafi Konum",
+        "subtopic": "Meridyenler ve Yerel Saat",
+        **opts
+    }
+
+def q_geography_population() -> Dict[str, Any]:
+    opts = format_options("Doğum oranlarının hızla düşmesi ve ortalama yaşam süresinin uzayarak yaşlı nüfusun artması", [
+        "Nüfusun büyük bölümünün tarım sektöründe çalışması",
+        "Bebek ölüm oranlarının aşırı yüksek seyretmesi",
+        "Ülkenin sürekli dışarıya niteliksiz beyin göçü vermesi",
+        "İç göçlerin sadece kırsal alanlara doğru yönelmesi"
+    ])
+    return {
+        "question_text": "Tabanı giderek daralan ve üst kısmı genişleyen (arı kovanı veya çan şeklindeki) bir nüfus piramidine sahip gelişmiş bir ülke hakkında aşağıdakilerden hangisi söylenebilir?",
+        "visual_svg": None,
+        "explanation": "Gelişmiş ülkelerde eğitim ve refah düzeyi yükseldikçe doğum oranları düşer (piramit tabanı daralır), sağlık hizmetleri geliştikçe ortalama ömür uzar (piramidin zirvesi genişler).",
+        "topic": "Nüfus ve Yerleşme",
+        "subtopic": "Nüfus Piramitleri ve Gelişmişlik",
+        **opts
+    }
+
+def q_geography_natural_hazards() -> Dict[str, Any]:
+    opts = format_options("Levha sınırları (fay hatları), volkanik kuşaklar ve genç oluşumlu araziler", [
+        "Eski masif araziler ve birinci jeolojik zaman kalkanları",
+        "Sadece çöl ikliminin etkili olduğu iç havzalar",
+        "Kutuplara yakın donmuş tundra bölgeleri",
+        "Sırf derin akarsu vadilerinin bulunduğu platolar"
+    ])
+    return {
+        "question_text": "Dünya genelinde tektonik depremler, volkanik faaliyetler ve sıcak su kaynaklarının (gayzer ve kaplıcaların) coğrafi dağılımı incelendiğinde, bu doğa olaylarının en yoğun paralellik gösterdiği alanlar hangisidir?",
+        "visual_svg": None,
+        "explanation": "Deprem, volkanizma ve sıcak su kaynakları litosferdeki aktif levha sınırları ve kırık (fay) hatları boyunca paralellik gösterir.",
+        "topic": "İç ve Dış Kuvvetler",
+        "subtopic": "Levha Tektoniği ve Doğal Afetler",
+        **opts
+    }
+
+def q_geography_winds() -> Dict[str, Any]:
+    opts = format_options("Fön Rüzgarı", ["Meltem Rüzgarı", "Alize Rüzgarı", "Bora", "Sirokko"])
+    return {
+        "question_text": "Dağ yamacını aşarak diğer taraftan aşağıya doğru alçalan havanın her 100 metrede yaklaşık 1°C ısınmasıyla oluşan; kışın karları erken eriten, yazın ise tarım ürünlerini kurutan sıcak ve kuru rüzgar hangisidir?",
+        "visual_svg": None,
+        "explanation": "Yamaçtan aşağıya sürtünerek hızla inen havanın adyabatik ısınmasıyla 'Fön rüzgarı' meydana gelir.",
+        "topic": "Atmosfer ve Rüzgarlar",
+        "subtopic": "Yerel Rüzgarlar ve Fön Etkisi",
+        **opts
+    }
+
+# ================= TARİH ÜRETEÇLERİ (MEB KAZANIMLARI) =================
 
 def q_history_seljuk() -> Dict[str, Any]:
     opts = format_options("Malazgirt Meydan Muharebesi (1071)", [
@@ -1201,7 +1635,7 @@ def q_history_seljuk() -> Dict[str, Any]:
         "Yassıçemen Savaşı (1230)"
     ])
     return {
-        "question_text": "Büyük Selçuklu Hükümdarı Sultan Alparslan'ın Bizans İmparatoru Romen Diyojen'i mağlup ederek **'Anadolu'nun kapılarını Türklere kesin olarak açtığı'** tarihi zafer hangisidir?",
+        "question_text": "Büyük Selçuklu Hükümdarı Sultan Alparslan'ın Bizans İmparatoru Romen Diyojen'i mağlup ederek 'Anadolu'nun kapılarını Türklere kesin olarak açtığı' tarihi zafer hangisidir?",
         "visual_svg": None,
         "explanation": "1071 Malazgirt Zaferi ile Bizans'ın Anadolu'daki direnci kırılmış ve Anadolu'nun fethi ile Türkleşme süreci hız kazanmıştır.",
         "topic": "Selçuklu Türkiyesi",
@@ -1217,7 +1651,7 @@ def q_history_inkilap() -> Dict[str, Any]:
         "Milliyetçilik"
     ])
     return {
-        "question_text": "Halifeliğin kaldırılması (1924), Medreselerin kapatılması ve Medeni Kanun'un kabulü (1926) doğrudan **Atatürk'ün hangi ilkesi doğrultusunda gerçekleştirilmiştir**?",
+        "question_text": "Halifeliğin kaldırılması (1924), Medreselerin kapatılması ve Medeni Kanun'un kabulü (1926) doğrudan Atatürk'ün hangi ilkesi doğrultusunda gerçekleştirilmiştir?",
         "visual_svg": None,
         "explanation": "Din ile devlet işlerinin ayrılmasını, vicdan özgürlüğünü ve akılcı hukuk düzenini tesis eden bu devrimler Laiklik ilkesinin temel adımlarıdır.",
         "topic": "Atatürkçülük ve Türk İnkılabı",
@@ -1233,7 +1667,7 @@ def q_history_ww1() -> Dict[str, Any]:
         "Galiçya Cephesi"
     ])
     return {
-        "question_text": "I. Dünya Savaşı'nda Osmanlı Devleti'nin İtilaf Devletleri donanmasını püskürterek **zafer kazandığı ve Çarlık Rusya'sına yardım gitmesini engelleyerek Rusya'da Bolşevik İhtilali'nin çıkmasında etkili olduğu savunma cephesi** hangisidir?",
+        "question_text": "I. Dünya Savaşı'nda Osmanlı Devleti'nin İtilaf Devletleri donanmasını püskürterek zafer kazandığı ve Çarlık Rusya'sına yardım gitmesini engelleyerek Rusya'da Bolşevik İhtilali'nin çıkmasında etkili olduğu savunma cephesi hangisidir?",
         "visual_svg": None,
         "explanation": "Çanakkale Cephesi Osmanlı'nın I. Dünya Savaşı'nda net bir zafer elde ettiği, savaşın uzamasına ve Rusya'da çarlığın çökmesine yol açan cephedir.",
         "topic": "XX. Yüzyıl Başlarında Osmanlı Devleti",
@@ -1241,47 +1675,269 @@ def q_history_ww1() -> Dict[str, Any]:
         **opts
     }
 
-def q_geography_population() -> Dict[str, Any]:
-    opts = format_options("İklim şartlarının elverişli olması ve sanayi-ticaret olanaklarının gelişmiş olması", [
-        "Doğal bitki örtüsünün sık ormanlarla kaplı olması",
-        "Yükseltinin ve engebenin oldukça fazla olması",
-        "Maden rezervlerinin tüm diğer bölgelerden zengin olması",
-        "Volkanik arazilerin geniş yer kaplaması"
+def q_history_ottoman_reforms() -> Dict[str, Any]:
+    opts = format_options("Kanun üstünlüğü ilkesi kabul edilmiş ve padişah kendi yetkilerini kanunla sınırlandırmıştır.", [
+        "Cumhuriyet yönetimine resmen geçilmiştir.",
+        "Osmanlı ordusu tamamen feshedilerek yerine milis kuvvetler kurulmuştur.",
+        "Kapitülasyonlar tek taraflı olarak kaldırılmıştır.",
+        "Yabancı okulların tamamı kapatılmıştır."
     ])
     return {
-        "question_text": "Türkiye'de Çatalca-Kocaeli Bölümü, Kıyı Ege ve Çukurova yörelerinin **yoğun nüfuslu olmasının en temel ortak sebebi** aşağıdakilerden hangisidir?",
+        "question_text": "3 Kasım 1839'da Sultan Abdülmecid döneminde Hariciye Nazırı Mustafa Reşit Paşa tarafından ilan edilen Tanzimat Fermanı'nın Osmanlı hukuk tarihindeki en temel önemi nedir?",
         "visual_svg": None,
-        "explanation": "Bu bölgeler elverişli iklim şartları, ulaşım kolaylığı ve gelişmiş tarım/sanayi/ticaret imkânları sayesinde yoğun göç almaktadır.",
-        "topic": "Nüfus ve Yerleşme",
-        "subtopic": "Türkiye'de Nüfusun Dağılışı",
+        "explanation": "Tanzimat Fermanı ile padişah ilk kez hukukun ve kanunların üstünlüğünü tanımış, can, mal ve namus güvenliğini anayasal güvenceye bağlamıştır.",
+        "topic": "Değişen Dünya Dengeleri Karşısında Osmanlı",
+        "subtopic": "Tanzimat Fermanı ve Hukukun Üstünlüğü",
         **opts
     }
 
-SOCIAL_GENERATOR_REGISTRY = [
+def q_history_national_struggle() -> Dict[str, Any]:
+    opts = format_options("Amasya Genelgesi", [
+        "Havza Genelgesi",
+        "Erzurum Kongresi",
+        "Sivas Kongresi",
+        "Misak-ı Milli Kararları"
+    ])
+    return {
+        "question_text": "'Milletin bağımsızlığını yine milletin azim ve kararı kurtaracaktır.' maddesiyle Kurtuluş Savaşı'nın gerekçesini, amacını ve yöntemini ilk kez belirten tarihi belge hangisidir?",
+        "visual_svg": None,
+        "explanation": "22 Haziran 1919 tarihli Amasya Genelgesi, milli egemenliğe dayalı ihtilal beyannamesi niteliğindedir.",
+        "topic": "Milli Mücadele",
+        "subtopic": "Amasya Genelgesi ve Kurtuluş Savaşı Yöntemi",
+        **opts
+    }
+
+def q_history_treaties() -> Dict[str, Any]:
+    opts = format_options("Osmanlı Devleti hukuken sona ermiştir.", [
+        "TBMM Sevr Antlaşması'nı onaylamıştır.",
+        "Yunanistan tazminat olarak İzmir'i Türkiye'ye devretmiştir.",
+        "İstanbul ve Boğazlar İngiltere'ye kalıcı olarak bırakılmıştır.",
+        "Düzenli ordu tamamen dağıtılmıştır."
+    ])
+    return {
+        "question_text": "11 Ekim 1922'de imzalanan Mudanya Ateşkes Antlaşması'nda İstanbul ve Boğazlar bölgesinin yönetiminin TBMM Hükümeti'ne bırakılması kararlaştırılmıştır. Bu gelişmenin Osmanlı Devleti açısından en kritik sonucu nedir?",
+        "visual_svg": None,
+        "explanation": "Başkenti TBMM'ye devredilen Osmanlı Devleti, Mudanya Ateşkesi ile hukuken sona ermiş sayılmıştır.",
+        "topic": "Milli Mücadele",
+        "subtopic": "Mudanya Ateşkesi ve Hukuken Sona Erme",
+        **opts
+    }
+
+# ================= BİYOLOJİ VE FİZİK GÖRSELLİ ÜRETEÇLERİ =================
+
+def q_biology_pedigree() -> Dict[str, Any]:
+    svg = generate_dynamic_pedigree_svg("Otozomal Çekinik Kalıtım")
+    opts = format_options("Otozomal çekinik (örneğin kistik fibrozis veya orak hücre anemisi)", [
+        "Y kromozomuna bağlı baskın",
+        "Mitokondriyal kalıtım",
+        "X kromozomuna bağlı tam baskın",
+        "Sadece erkeklerde görülen holandrik kalıtım"
+    ])
+    return {
+        "question_text": "Yukarıdaki soyağacında koyu renkle gösterilen bireyler (4 numaralı birey gibi) belirli bir kalıtsal özelliği fenotipinde göstermektedir. Buna göre, bu özelliğin kalıtılma biçimi aşağıdakilerden hangisiyle en uyumludur?",
+        "visual_svg": svg,
+        "explanation": "Anne ve baba sağlıklı fenotipte olmasına rağmen çocuklarında (4 numara) bu özelliğin ortaya çıkması, özelliğin çekinik olduğunu ve anne-babanın heterozigot (Aa x Aa) taşıyıcı olduğunu kanıtlar.",
+        "topic": "Kalıtımın Genel İlkeleri",
+        "subtopic": "Soyağacı Analizi ve Çekinik Genler",
+        **opts
+    }
+
+def q_biology_food_pyramid() -> Dict[str, Any]:
+    svg = generate_dynamic_food_pyramid_svg()
+    opts = format_options("Üreticilerden 3. derece tüketicilere doğru biyolojik birikim (zehir birikimi) artar.", [
+        "Her basamakta enerji aktarımı %90 oranında gerçekleşir.",
+        "Toplam biyokütle en üst basamakta en fazladır.",
+        "Birey sayısı üreticilerden tüketicilere doğru sürekli çoğalır.",
+        "Ayrıştırıcılar besin zincirinden tamamen bağımsızdır."
+    ])
+    return {
+        "question_text": "Yukarıda şematize edilen karasal ekolojik besin piramidi ile ilgili olarak aşağıdaki yargılardan hangisi doğrudur?",
+        "visual_svg": svg,
+        "explanation": "Besin piramidinde yukarı çıkıldıkça trofik basamaklar arasında enerji kaybı yaşanır (yalnızca %10 aktarılır) ve ayrışmayan toksik maddelerin dokulardaki biyolojik birikimi artar.",
+        "topic": "Ekosistem Ekolojisi",
+        "subtopic": "Besin Zinciri ve Enerji Akışı",
+        **opts
+    }
+
+def q_physics_force_block() -> Dict[str, Any]:
+    m = random.choice([2, 4, 5])
+    a = random.choice([2, 3, 4])
+    f_net = m * a
+    f_s = random.choice([4, 6, 8])
+    f_uyg = f_net + f_s
+    svg = generate_dynamic_force_block_svg(m, f_uyg, f_s, a)
+    opts = format_options(f"{a}", [f"{a+1}", f"{max(1, a-1)}", f"{a+2}", f"{a*2}"])
+    return {
+        "question_text": f"Yatay bir düzlemde $m = {m}\\text{{ kg}}$ kütleli cisme $F = {f_uyg}\\text{{ N}}$ kuvvet uygulandığında zemin ile cisim arasındaki sürtünme kuvveti $f_s = {f_s}\\text{{ N}}$ olarak ölçülüyor. Buna göre, cismin ivmesi kaç $\\text{{m/s}}^2$'dir?",
+        "visual_svg": svg,
+        "explanation": f"Net kuvvet $F_{{net}} = F - f_s = {f_uyg} - {f_s} = {f_net}\\text{{ N}}$. Newton'ın 2. Yasası gereği $a = F_{{net}} / m = {f_net} / {m} = {a}\\text{{ m/s}}^2$ bulunur.",
+        "topic": "Kuvvet ve Hareket",
+        "subtopic": "Sürtünmeli Düzlemde İvme Hesabı",
+        **opts
+    }
+
+def q_physics_optics_prism() -> Dict[str, Any]:
+    svg = generate_dynamic_optics_prism_svg()
+    opts = format_options("Işık az yoğun ortamdan (hava) çok yoğun ortama (cam) geçerken normale yaklaşarak kırılır.", [
+        "Işığın cam ortamındaki yayılma hızı havadakinden daha fazladır.",
+        "Işığın frekansı cam prizmaya girdiğinde yarıya iner.",
+        "Kırılma açısı her zaman gelme açısından daha büyüktür.",
+        "Işığın hiçbir rengi cam ortamında sapmaya uğramaz."
+    ])
+    return {
+        "question_text": "Yukarıda tek renkli bir ışık ışınının hava ortamından cam prizmaya girişi ve kırılması gösterilmiştir. Bu optik olay için hangisi temel fizik kuralıdır?",
+        "visual_svg": svg,
+        "explanation": "Snell Kanunu gereği ışık kırıcılık indisi küçük olan ortamdan büyük olan ortama geçerken normale yaklaşır ve ortamdaki yayılma sürati ($v=c/n$) azalır.",
+        "topic": "Optik",
+        "subtopic": "Prizmalarda Işığın Kırılması",
+        **opts
+    }
+
+# ================= AKILLI SORU HAVUZU VE GÖREVLENDİRİCİ =================
+
+MATH_GENERATOR_REGISTRY = [
+    q_cargo_tariff, q_function, q_parabola_max, q_derivative_tangent,
+    q_integral_area, q_age_problem, q_percentage_profit, q_speed_motion,
+    q_combinations, q_probability_dice, q_ebob_ekok, q_logarithm,
+    q_trigonometry, q_polynomial, q_limit
+]
+
+GEOMETRY_GENERATOR_REGISTRY = [
+    q_geometry_triangle, q_geometry_pythagoras_euclid, q_geometry_circle,
+    q_geometry_analytic, q_geometry_polygon, q_geometry_solid
+]
+
+PHYSICS_GENERATOR_REGISTRY = [
+    q_physics_circuit, q_physics_force_block, q_physics_optics_prism,
+    q_physics_newton, q_physics_optics, q_physics_thermodynamics,
+    q_physics_waves, q_physics_energy, q_physics_buoyancy
+]
+
+CHEMISTRY_GENERATOR_REGISTRY = [
+    q_chemistry_mole, q_chemistry_molarity, q_chemistry_gas_laws,
+    q_chemistry_acid_base, q_chemistry_periodic_table
+]
+
+BIOLOGY_GENERATOR_REGISTRY = [
+    q_biology_genetics, q_biology_pedigree, q_biology_food_pyramid,
+    q_biology_cell_division, q_biology_ecology, q_biology_photosynthesis,
+    q_biology_dna_protein
+]
+
+TURKISH_GENERATOR_REGISTRY = [
+    q_turkish_reading, q_turkish_spelling, q_turkish_punctuation,
+    q_turkish_sound_events, q_literature_divan
+]
+
+HISTORY_GENERATOR_REGISTRY = [
     q_history_early_turks, q_history_ottoman, q_history_republic,
     q_history_seljuk, q_history_inkilap, q_history_ww1,
-    q_geography_climate, q_geography_coordinates, q_geography_population,
-    q_philosophy, q_religion
+    q_history_ottoman_reforms, q_history_national_struggle, q_history_treaties
 ]
+
+GEOGRAPHY_GENERATOR_REGISTRY = [
+    q_geography_climate, q_geography_isohypse, q_geography_coordinates,
+    q_geography_population, q_geography_natural_hazards, q_geography_winds
+]
+
+PHILOSOPHY_GENERATOR_REGISTRY = [
+    q_philosophy, q_philosophy_epistemology, q_philosophy_ethics,
+    q_philosophy_ontology, q_philosophy_nature_thinking, q_philosophy_politics,
+    q_philosophy_religion
+]
+
+RELIGION_GENERATOR_REGISTRY = [
+    q_religion_zekat_infak, q_religion_kader_tevekkul, q_religion_bilgi_kaynaklari,
+    q_religion_ahlak_kulhakki, q_religion_peygamber_usve, q_religion_kuran_kavramlar,
+    q_religion_mezhepler, q_religion_ibadetler_hukumler, q_religion_gonul_cografyasi,
+    q_religion_cevre_israf
+]
+
+SOCIAL_GENERATOR_REGISTRY = (
+    HISTORY_GENERATOR_REGISTRY +
+    GEOGRAPHY_GENERATOR_REGISTRY +
+    PHILOSOPHY_GENERATOR_REGISTRY +
+    RELIGION_GENERATOR_REGISTRY
+)
 
 def get_procedural_candidates_pool(exam_type: str, subject: str, topic: str = "Karma") -> List[Any]:
     subj = (subject or "").lower()
     top = (topic or "").lower()
 
-    if "geometri" in subj:
+    if "din" in subj:
+        if "zekat" in top or "ibadet" in top or "infak" in top:
+            return [q_religion_zekat_infak, q_religion_ibadetler_hukumler, q_religion_cevre_israf]
+        if "kader" in top or "kaza" in top or "tevekkül" in top:
+            return [q_religion_kader_tevekkul, q_religion_bilgi_kaynaklari]
+        if "ahlak" in top or "hak" in top or "değer" in top:
+            return [q_religion_ahlak_kulhakki, q_religion_kuran_kavramlar]
+        if "peygamber" in top or "siyer" in top or "örnek" in top:
+            return [q_religion_peygamber_usve, q_religion_gonul_cografyasi]
+        if "mezhep" in top or "yorum" in top:
+            return [q_religion_mezhepler, q_religion_bilgi_kaynaklari]
+        return list(RELIGION_GENERATOR_REGISTRY)
+
+    elif "felsefe" in subj:
+        if "bilgi" in top or "epistemoloji" in top:
+            return [q_philosophy_epistemology, q_philosophy]
+        if "ahlak" in top or "etik" in top:
+            return [q_philosophy_ethics, q_philosophy]
+        if "varlık" in top or "ontoloji" in top:
+            return [q_philosophy_ontology, q_philosophy]
+        if "siyaset" in top:
+            return [q_philosophy_politics, q_philosophy]
+        if "din" in top:
+            return [q_philosophy_religion, q_philosophy]
+        return list(PHILOSOPHY_GENERATOR_REGISTRY)
+
+    elif "coğrafya" in subj:
+        if "iklim" in top or "hava" in top:
+            return [q_geography_climate, q_geography_winds]
+        if "harita" in top or "izohips" in top:
+            return [q_geography_isohypse, q_geography_coordinates]
+        if "konum" in top or "saat" in top or "koordinat" in top:
+            return [q_geography_coordinates, q_geography_isohypse]
+        if "nüfus" in top or "göç" in top or "yerleşme" in top:
+            return [q_geography_population, q_geography_natural_hazards]
+        if "afet" in top or "iç kuvvet" in top or "deprem" in top:
+            return [q_geography_natural_hazards, q_geography_isohypse]
+        return list(GEOGRAPHY_GENERATOR_REGISTRY)
+
+    elif "tarih" in subj:
+        if "türk" in top or "orta çağ" in top or "selçuklu" in top:
+            return [q_history_early_turks, q_history_seljuk]
+        if "osmanlı" in top:
+            return [q_history_ottoman, q_history_ottoman_reforms, q_history_ww1]
+        if "inkılap" in top or "atatürk" in top:
+            return [q_history_inkilap, q_history_treaties, q_history_republic]
+        if "milli mücadele" in top or "kurtuluş" in top or "kongre" in top:
+            return [q_history_national_struggle, q_history_treaties, q_history_republic]
+        if "savaş" in top or "lozan" in top:
+            return [q_history_ww1, q_history_treaties, q_history_republic]
+        return list(HISTORY_GENERATOR_REGISTRY)
+
+    elif "geometri" in subj:
+        if "çember" in top or "daire" in top:
+            return [q_geometry_circle, q_geometry_triangle]
+        if "üçgen" in top:
+            return [q_geometry_triangle, q_geometry_pythagoras_euclid]
+        if "analitik" in top:
+            return [q_geometry_analytic, q_geometry_triangle]
+        if "çokgen" in top:
+            return [q_geometry_polygon, q_geometry_solid]
         return list(GEOMETRY_GENERATOR_REGISTRY)
 
     elif "fizik" in subj:
         if "elektrik" in top or "devre" in top:
             return [q_physics_circuit, q_physics_energy, q_physics_newton]
-        if "optik" in top or "ayna" in top or "kırılma" in top:
-            return [q_physics_optics, q_physics_waves]
+        if "optik" in top or "ayna" in top or "kırılma" in top or "prizma" in top:
+            return [q_physics_optics_prism, q_physics_optics, q_physics_waves]
+        if "kuvvet" in top or "hareket" in top or "newton" in top or "sürtünme" in top:
+            return [q_physics_force_block, q_physics_newton, q_physics_energy]
         if "ısı" in top or "sıcaklık" in top:
             return [q_physics_thermodynamics, q_physics_energy]
         if "dalga" in top:
             return [q_physics_waves, q_physics_optics]
-        if "kuvvet" in top or "hareket" in top or "newton" in top:
-            return [q_physics_newton, q_physics_energy]
         if "basınç" in top or "kaldırma" in top:
             return [q_physics_buoyancy, q_physics_newton]
         return list(PHYSICS_GENERATOR_REGISTRY)
@@ -1300,12 +1956,12 @@ def get_procedural_candidates_pool(exam_type: str, subject: str, topic: str = "K
         return list(CHEMISTRY_GENERATOR_REGISTRY)
 
     elif "biyoloji" in subj:
-        if "kalıtım" in top or "genetik" in top:
-            return [q_biology_genetics, q_biology_dna_protein]
+        if "kalıtım" in top or "genetik" in top or "soyağacı" in top:
+            return [q_biology_pedigree, q_biology_genetics, q_biology_dna_protein]
+        if "ekoloji" in top or "besin" in top or "ekosistem" in top:
+            return [q_biology_food_pyramid, q_biology_ecology, q_biology_photosynthesis]
         if "bölünme" in top or "mitoz" in top or "mayoz" in top:
             return [q_biology_cell_division, q_biology_genetics]
-        if "ekoloji" in top or "ekosistem" in top:
-            return [q_biology_ecology, q_biology_photosynthesis]
         if "fotosentez" in top or "solunum" in top or "enerji" in top:
             return [q_biology_photosynthesis, q_biology_ecology]
         if "protein" in top or "dna" in top:
@@ -1322,15 +1978,6 @@ def get_procedural_candidates_pool(exam_type: str, subject: str, topic: str = "K
         if "divan" in top:
             return [q_literature_divan, q_turkish_reading]
         return list(TURKISH_GENERATOR_REGISTRY)
-
-    elif "tarih" in subj:
-        return [q_history_early_turks, q_history_ottoman, q_history_republic, q_history_seljuk, q_history_inkilap, q_history_ww1]
-
-    elif "coğrafya" in subj:
-        return [q_geography_climate, q_geography_coordinates, q_geography_population]
-
-    elif "felsefe" in subj or "din" in subj:
-        return [q_philosophy, q_religion]
 
     elif "sosyal" in subj:
         return list(SOCIAL_GENERATOR_REGISTRY)
@@ -1370,8 +2017,8 @@ async def generate_questions_with_gemini(
     training_guidelines: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
-    Google Gemini Pro / Flash API ile o anda dinamik olarak %100 özgün, 
-    birbirinden bağımsız yeni nesil YKS soruları üretir.
+    Google Gemini API ile MEB müfredatı ve ÖSYM geçmiş sınav kalıplarına tam uyumlu,
+    %100 özgün yeni nesil YKS soruları üretir.
     """
     key = api_key or os.getenv("GEMINI_API_KEY")
     if not key:
@@ -1380,85 +2027,87 @@ async def generate_questions_with_gemini(
 
     unique_session_seed = f"{time.time()}_{uuid.uuid4().hex[:8]}"
 
-    system_instruction = f"""Sen Türkiye'nin en seçkin ÖSYM ve MEB YKS ({exam_type}) soru hazırlama komisyonu başkanısın.
+    system_instruction = f"""Sen Türkiye'nin en seçkin ÖSYM ve Millî Eğitim Bakanlığı (MEB) YKS ({exam_type}) Soru Hazırlama Komisyonu Başkanısın.
 Ders: {subject}
 Konu: {topic}
-Zorluk: {difficulty}
+Zorluk Seviyesi: {difficulty}
 İstenen Soru Sayısı: {question_count}
-Benzersiz Oturum Kodu: {unique_session_seed}"""
+Oturum Benzersizlik Kodu: {unique_session_seed}
+
+PEDAGOJİK VE MÜFREDAT ESASLARI (ÖSYM & MEB STANDARTLARI):
+1. MEB güncel müfredat kazanımlarına ve ÖSYM geçmiş YKS (TYT/AYT) soru üslubuna KESİNLİKLE SADIK KAL.
+2. Basit ezberden kaçın; soru kökleri gerçek yaşam senaryosu, bilimsel deney/düzenek, veri/tablo yorumlama, harita/grafik muhakemesi ve adım adım çıkarım gerektirsin.
+3. Din Kültürü ve Ahlak Bilgisi için: Ayet, hadis ve paragraf metinlerinden yola çıkan, kavramsal derinliği olan (İhsan, İhlas, Tevekkül, Adalet, Bilgi Kaynakları vb.) ÖSYM kalıbında sorular üret. Asla tekdüze 1-2 soru kalıbına sıkışma.
+4. Felsefe, Tarih ve Coğrafya için: Paragraf analizi, kavram eşleştirme, harita/iklim ve neden-sonuç örgülü yeni nesil sorular kurgula.
+5. Matematik ve Fen (Fizik, Kimya, Biyoloji) için: Formül ezberletmek yerine formülü problem bağlamında uygulatan yeni nesil akıl yürütme soruları üret.
+
+GÖRSEL VE VEKTÖREL ŞEKİL DESTEĞİ:
+- Geometri (üçgen, çember, analitik), Fizik (devre, kuvvet, prizma/optik), Kimya (kap, periyodik sistem), Biyoloji (soyağacı, besin piramidi) ve Coğrafya (izohips, iklim grafiği) gibi derslerde soru bir görsel gerektiriyorsa:
+- 'visual_svg' alanına temiz, inline, viewBox'lı modern bir SVG stringi ekle (örneğin: <svg viewBox="0 0 380 200" ...>...</svg>).
+- Eğer uygun SVG üretemiyorsan 'visual_svg': null bırak; sistem otomatik vektörel diyagram bağlayacaktır.
+
+MATEMATİK VE KATEX STANDARDI:
+- Matematik, fen ve derece sembolleri her zaman standart LaTeX $ ... $ içine alınmalıdır.
+- Derece için DAİMA $30^\circ$, $45^\circ$, $60^\circ$ yaz.
+- Şıklarda tek bir sayı veya formül olsa bile MUTLAKA $ ... $ içine al (örn. $36\pi$, $x^2 + 1$).
+- Türkçe karakterleri temiz UTF-8 olarak doğrudan yaz (ç, ğ, ı, İ, ö, ş, ü)."""
 
     if training_guidelines:
         system_instruction += f"""
 
-ÖĞRETMENİN YÜKLEDİĞİ ÖRNEK SORU PDF'LERİNDEN ÖĞRENİLEN SORU TARZI VE ÜSLUP REHBERİ:
+ÖĞRETMENİN YÜKLEDİĞİ ÖRNEK VE TAM SINAV PDF'LERİNDEN ÇIKARILAN SORU TARZI REHBERİ:
 {training_guidelines}
-ÖNEMLİ KURAL: Bu sorular tamamen tarz, zorluk ve pedagojik yaklaşım eğitimi içindir. Bu soruları ASLA birebir sorma veya kopyalama; sadece bu soru kökü kalıplarını, dil derinliğini ve zorluk düzeyini rehber alarak YEPYENİ, TAMAMEN FARKLI ve ÖZGÜN sorular türet!"""
+ÖNEMLİ: Bu dökümanlar tamamen stil, soru derinliği ve dil eğitimi içindir. Soruları ASLA birebir kopyalama; bu soru köklerini ve zorluk düzeyini rehber alarak YEPYENİ ve ÖZGÜN sorular türet!"""
 
     system_instruction += f"""
 
-KATI VE DEĞİŞMEZ KURALLAR:
-1. Üreteceğin {question_count} sorunun TAMAMI birbirinden ve piyasadaki tüm klasik sorulardan KESİNLİKLE FARKLI VE ÖZGÜN OLMALIDIR.
-2. AYNI TESTTE ASLA BENZER KALIP VEYA AYNI SORU KULLANILAMAZ. Her soru farklı bir senaryo, farklı bir kurgu veya farklı bir alt kazanımı test etmelidir.
-3. Sorular güncel ÖSYM yeni nesil formatında olmalıdır: Gerçek hayat problemi, akıl yürütme, mantık, tablo/grafik analizi veya adım adım düşünme gerektirmelidir.
-4. MATEMATİK VE GEOMETRİ İFADELERİ (KUSURSUZ KATEX STANDARD):
-   - Kare, küp, üslü ifadeler ve derece işaretleri her zaman standart LaTeX ($ ... $) içinde yazılmalıdır.
-   - Soru metninde, açıklamalarda ve TÜM ŞIKLARDA (A, B, C, D, E) matematiksel ifadeleri MUTLAKA $ ... $ içine al.
-   - Derece için HER ZAMAN: $30\\circ$, $45\\circ$, $90\\circ$, $108\\circ$ kullan (asla ham 30^0 veya işaretsiz 30 derece yazma).
-   - Kare için: $x^2$, $\\text{cm}^2$, $\\text{m}^2$ kullan.
-   - Küp için: $x^3$, $\\text{cm}^3$, $\\text{m}^3$ kullan.
-   - Pi sayısı için: $2\\\\pi$, $36\\\\pi$ vb. her zaman $ içine al.
-   - Köklü sayılar ve kesirler için: $\\sqrt{3}$, $\\frac{a}{b}$ vb. her zaman $ içine al.
-   - Şıklarda tek bir formül veya sayı olsa bile (örn. $108\\circ$ veya $36\\\\pi$ veya $x^2 + 1$) MUTLAKA $ sembolü ile sar.
-5. Türkçe karakterleri hatasız, temiz UTF-8 olarak doğrudan yaz (ç, ğ, ı, İ, ö, ş, ü).
-6. Her soru için 5 seçenek (A, B, C, D, E), doğru cevap harfi ve öğrencinin hatasını anlamasını sağlayacak detaylı bir çözüm adımı (explanation) ekle.
-7. Çıktı SADECE ve SADECE geçerli bir JSON dizisi olmalıdır. Markdown süslemesi dışında hiçbir metin yazma.
+KATI KURALLAR:
+1. Üreteceğin {question_count} sorunun TAMAMI birbirinden KESİNLİKLE FARKLI ve ÖZGÜN olmalıdır.
+2. Her soru için 5 dengeli şık (option_a, option_b, option_c, option_d, option_e), doğru cevap harfi (correct_answer) ve öğrencinin öğrenmesini sağlayacak detaylı bir açıklama (explanation) ekle.
+3. Çıktı SADECE ve SADECE geçerli bir JSON dizisi olmalıdır.
 
-Örnek JSON Şeması:
+Örnek JSON Formatı:
 [
   {{
     "question_number": 1,
     "question_text": "Özgün soru metni...",
-    "option_a": "A seçeneği",
-    "option_b": "B seçeneği",
-    "option_c": "C seçeneği",
-    "option_d": "D seçeneği",
-    "option_e": "E seçeneği",
+    "option_a": "A şıkkı",
+    "option_b": "B şıkkı",
+    "option_c": "C şıkkı",
+    "option_d": "D şıkkı",
+    "option_e": "E şıkkı",
     "correct_answer": "C",
-    "explanation": "Detaylı çözüm adımları...",
+    "explanation": "Adım adım detaylı çözüm...",
     "topic": "{topic}",
-    "subtopic": "Kazanım alt başlığı",
+    "subtopic": "Kazanım",
     "visual_svg": null
   }}
 ]"""
 
     user_msg = (
         f"{exam_type} - {subject} dersi, '{topic}' konusu için {difficulty} zorluk seviyesinde {question_count} adet "
-        f"tamamen birbirinden farklı, özgün yeni nesil soru üret. "
-        f"Tüm sorular o anda sıfırdan kurgulanmış olsun."
+        f"tamamen birbirinden farklı, özgün MEB/ÖSYM tarzı yeni nesil soru üret."
     )
     if custom_prompt:
         user_msg += f" Öğretmenin özel notu: {custom_prompt}"
 
-    # Öncelikli olarak Gemini 1.5 Pro, ardından Gemini 2.0 Flash ve Gemini 1.5 Flash modelleri denenir
     candidate_models = [
-        "gemini-3.8-flash",
-        "gemini-3.5-flash",
         "gemini-3-flash-preview",
-        "gemini-3.5-flash-lite",
-        "gemini-flash-latest",
-        "gemini-pro-latest"
+        "gemini-flash-lite-latest",
+        "gemini-3.1-flash-lite-preview",
+        "gemini-flash-latest"
     ]
 
     payload = {
         "contents": [{"parts": [{"text": f"{system_instruction}\n\nTalep: {user_msg}"}]}],
         "generationConfig": {
-            "temperature": 0.88,
+            "temperature": 0.85,
             "topP": 0.95,
             "responseMimeType": "application/json"
         }
     }
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=35.0) as client:
         for model_name in candidate_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
             try:
@@ -1469,7 +2118,6 @@ KATI VE DEĞİŞMEZ KURALLAR:
                     candidates = data.get("candidates", [])
                     if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
                         raw_text = candidates[0]["content"]["parts"][0]["text"].strip()
-                        # Markdown ```json temizliği
                         if raw_text.startswith("```"):
                             raw_text = re.sub(r"^```(?:json)?", "", raw_text)
                             raw_text = re.sub(r"```$", "", raw_text).strip()
@@ -1478,66 +2126,50 @@ KATI VE DEĞİŞMEZ KURALLAR:
                             parsed = parsed["questions"]
                         if isinstance(parsed, list) and len(parsed) > 0:
                             for q in parsed:
-                                q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""))
-                                q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""))
+                                q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""), is_option=False)
+                                q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""), is_option=False)
+                                for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
+                                    if opt_k in q:
+                                        q[opt_k] = sanitize_math_and_turkish(q[opt_k], is_option=True)
                             print(f"[AI Exam Service] {model_name} ile {len(parsed)} adet özgün soru başarıyla üretildi.")
                             return parsed
                 else:
-                    print(f"[AI Exam Service] {model_name} yanıt kodu: {res.status_code}, bir sonraki model deneniyor...")
+                    print(f"[AI Exam Service] {model_name} yanıt kodu: {res.status_code}, alternatif model deneniyor...")
             except Exception as e:
                 print(f"[AI Exam Service] {model_name} çağrısında hata: {e}")
 
     return []
 
-    system_instruction = f"""Sen Türkiye'nin en seçkin ÖSYM ve MEB YKS ({exam_type}) soru hazırlama komisyonu başkanısın.
-Ders: {subject}
-Konu: {topic}
-Zorluk: {difficulty}
-İstenen Soru Sayısı: {question_count}
-
-ÖNEMLİ KURALLAR:
-1. Üreteceğin {question_count} sorunun TAMAMI birbirinden kesinlikle farklı olmalıdır. Aynı soru veya benzer şablon asla tekrarlanmamalıdır!
-2. Her soru güncel MEB kazanımlarına ve ÖSYM'nin yeni nesil tarzına uygun olmalıdır.
-3. Matematik ve fen formülleri için KaTeX uyumlu standart LaTeX kullan ($ ve $$).
-4. Türkçe karakter problemi yaşanmaması için UTF-8 Türkçe metinleri doğrudan yaz (ç, ğ, ı, İ, ö, ş, ü).
-5. Her soru için 5 şık (A, B, C, D, E) ve doğru cevap ('A', 'B', 'C', 'D' veya 'E') belirtilmelidir.
-6. Çıktı SADECE geçerli bir JSON dizisi olmalıdır."""
-
-    user_msg = f"{exam_type} {subject} dersi, {topic} konusu için {difficulty} zorlukta {question_count} adet tamamen birbirinden farklı, yeni nesil soru üret."
-    if custom_prompt:
-        user_msg += f" Not: {custom_prompt}"
-
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
-    payload = {
-        "contents": [{"parts": [{"text": f"{system_instruction}\n\nTalep: {user_msg}"}]}],
-        "generationConfig": {
-            "temperature": 0.75,
-            "topP": 0.95,
-            "responseMimeType": "application/json"
-        }
-    }
-
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        res = await client.post(url, json=payload)
-        if res.status_code != 200:
-            return []
-        
-        data = res.json()
-        raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-        parsed = json.loads(raw_text)
-        if isinstance(parsed, dict) and "questions" in parsed:
-            parsed = parsed["questions"]
-        if isinstance(parsed, list):
-            for q in parsed:
-                q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""), is_option=False)
-                q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""), is_option=False)
-                for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
-                    if opt_k in q:
-                        q[opt_k] = sanitize_math_and_turkish(q[opt_k], is_option=True)
-            return parsed
-    return []
-
 # ================= KATI BENZERSİZLİK VE DENETİM SİSTEMİ =================
+
+def decorate_question_visuals(questions: List[Dict[str, Any]], subject: str):
+    """Görsel gerektiren ders ve konularda sorunun visual_svg alanı boşsa otomatik uygun vektörel SVG bağlar."""
+    for q in questions:
+        if not q.get("visual_svg"):
+            q_text_low = (q.get("question_text") or "").lower()
+            q_topic_low = (q.get("topic") or "").lower()
+            q_subj_low = (subject or "").lower()
+
+            if "geometri" in q_subj_low or "üçgen" in q_topic_low or "pisagor" in q_text_low or "hipotenüs" in q_text_low:
+                q["visual_svg"] = generate_dynamic_triangle_svg()
+            elif "çember" in q_topic_low or "daire" in q_topic_low or "yay" in q_text_low:
+                q["visual_svg"] = generate_dynamic_geometry_circle_svg()
+            elif "parabol" in q_topic_low or ("fonksiyon" in q_topic_low and "grafik" in q_text_low):
+                q["visual_svg"] = generate_dynamic_parabola_svg()
+            elif "fizik" in q_subj_low and ("devre" in q_topic_low or "direnç" in q_text_low or "akım" in q_text_low or "ohm" in q_text_low):
+                q["visual_svg"] = generate_dynamic_circuit_svg()
+            elif "fizik" in q_subj_low and ("kuvvet" in q_topic_low or "ivme" in q_text_low or "sürtünme" in q_text_low or "newton" in q_topic_low):
+                q["visual_svg"] = generate_dynamic_force_block_svg()
+            elif "fizik" in q_subj_low and ("optik" in q_topic_low or "kırılma" in q_topic_low or "prizma" in q_text_low or "ışın" in q_text_low):
+                q["visual_svg"] = generate_dynamic_optics_prism_svg()
+            elif "biyoloji" in q_subj_low and ("kalıtım" in q_topic_low or "soyağacı" in q_text_low or "genetik" in q_topic_low or "çekinik" in q_text_low):
+                q["visual_svg"] = generate_dynamic_pedigree_svg()
+            elif "biyoloji" in q_subj_low and ("ekoloji" in q_topic_low or "besin" in q_text_low or "piramit" in q_text_low or "trofik" in q_text_low):
+                q["visual_svg"] = generate_dynamic_food_pyramid_svg()
+            elif "coğrafya" in q_subj_low and ("harita" in q_topic_low or "izohips" in q_topic_low or "yükselti" in q_text_low or "topografya" in q_text_low):
+                q["visual_svg"] = generate_dynamic_isohypse_svg()
+            elif "coğrafya" in q_subj_low and ("iklim" in q_topic_low or "sıcaklık" in q_text_low or "yağış" in q_text_low or "grafiği" in q_text_low):
+                q["visual_svg"] = generate_dynamic_climate_graph_svg()
 
 def enforce_strict_uniqueness(
     initial_questions: List[Dict[str, Any]],
@@ -1567,10 +2199,12 @@ def enforce_strict_uniqueness(
     pool_funcs = get_procedural_candidates_pool(exam_type, subject, topic)
     all_subject_funcs = get_procedural_candidates_pool(exam_type, subject, "Karma")
     combined_pool = list(dict.fromkeys(pool_funcs + all_subject_funcs))
+    if not combined_pool:
+        combined_pool = list(MATH_GENERATOR_REGISTRY)
     random.shuffle(combined_pool)
 
     func_index = 0
-    max_attempts = target_count * 25
+    max_attempts = target_count * 30
     attempts = 0
 
     while len(unique_questions) < target_count and attempts < max_attempts:
@@ -1578,17 +2212,20 @@ def enforce_strict_uniqueness(
         gen_func = combined_pool[func_index % len(combined_pool)]
         func_index += 1
 
-        new_q = gen_func()
-        q_text = new_q.get("question_text", "").strip()
+        try:
+            new_q = gen_func()
+            q_text = new_q.get("question_text", "").strip()
 
-        is_duplicate = False
-        for existing in unique_questions:
-            if are_questions_too_similar(q_text, existing.get("question_text", "")):
-                is_duplicate = True
-                break
+            is_duplicate = False
+            for existing in unique_questions:
+                if are_questions_too_similar(q_text, existing.get("question_text", "")):
+                    is_duplicate = True
+                    break
 
-        if not is_duplicate:
-            unique_questions.append(new_q)
+            if not is_duplicate:
+                unique_questions.append(new_q)
+        except Exception as e:
+            print(f"[enforce_strict_uniqueness] Üreteç hatası: {e}")
 
     for idx, q in enumerate(unique_questions, start=1):
         q["question_number"] = idx
@@ -1597,6 +2234,9 @@ def enforce_strict_uniqueness(
         q["correct_answer"] = q["correct_option"]
         if not q.get("topic") or q["topic"] == "Karma":
             q["topic"] = topic if topic != "Karma" else q.get("topic", subject)
+
+    # Otomatik görsel denetimi ve süslemesi
+    decorate_question_visuals(unique_questions, subject)
 
     return unique_questions[:target_count]
 

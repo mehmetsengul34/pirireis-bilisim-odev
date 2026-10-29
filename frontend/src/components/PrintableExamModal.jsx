@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Printer, X, FileText, CheckCircle2, Columns } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Printer, X, FileText, CheckCircle2, Columns, ShieldCheck, EyeOff, KeyRound } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 
 export default function PrintableExamModal({ 
@@ -50,8 +51,8 @@ export default function PrintableExamModal({
     window.print();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex justify-center p-2 sm:p-4 printable-exam-modal-wrapper">
+  return createPortal(
+    <div className="printable-portal-root fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex justify-center p-2 sm:p-4 printable-exam-modal-wrapper">
       
       {/* Modal Dialog Card */}
       <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl flex flex-col my-auto border border-zinc-200 dark:border-zinc-800 printable-exam-container">
@@ -100,61 +101,100 @@ export default function PrintableExamModal({
         </div>
 
         {/* Print Configuration Bar (Baskıda gizlenir) */}
-        <div className="no-print p-4 bg-zinc-100/60 dark:bg-zinc-850/40 border-b border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center gap-4 text-xs">
-          <div className="flex-1 min-w-[240px]">
-            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-              Okul Adı:
-            </label>
-            <input
-              type="text"
-              value={schoolName}
-              onChange={(e) => setSchoolName(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+        <div className="no-print p-4 bg-zinc-100/60 dark:bg-zinc-850/40 border-b border-zinc-200 dark:border-zinc-800 space-y-3 text-xs">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex-1 min-w-[240px]">
+              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                Okul Adı:
+              </label>
+              <input
+                type="text"
+                value={schoolName}
+                onChange={(e) => setSchoolName(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                Sınav Başlığı:
+              </label>
+              <input
+                type="text"
+                value={examTitle}
+                onChange={(e) => setExamTitle(e.target.value)}
+                className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
           </div>
 
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-              Sınav Başlığı:
-            </label>
-            <input
-              type="text"
-              value={examTitle}
-              onChange={(e) => setExamTitle(e.target.value)}
-              className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+          {/* Sınav Baskı Modu & Cevap Anahtarı Güvenlik Butonları */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mr-1">Baskı Türü:</span>
+              <div className="inline-flex p-1 rounded-xl bg-zinc-200/80 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700">
+                <button
+                  type="button"
+                  onClick={() => setShowAnswerKey(false)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    !showAnswerKey
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                  }`}
+                >
+                  <EyeOff className="w-3.5 h-3.5" />
+                  <span>Öğrenci Sınavı (Cevaplar Gizli)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAnswerKey(true)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                    showAnswerKey
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
+                  }`}
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>+ Cevap Anahtarı (Ek Sayfa)</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={twoColumns}
+                  onChange={(e) => setTwoColumns(e.target.checked)}
+                  className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="font-semibold text-zinc-700 dark:text-zinc-300">2 Sütun (Kitapçık Düzeni)</span>
+              </label>
+
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={showSolutions}
+                  onChange={(e) => setShowSolutions(e.target.checked)}
+                  className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="font-semibold text-zinc-700 dark:text-zinc-300">Çözüm Kitapçığı</span>
+              </label>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 flex-wrap pt-4 sm:pt-0">
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={twoColumns}
-                onChange={(e) => setTwoColumns(e.target.checked)}
-                className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="font-semibold text-zinc-700 dark:text-zinc-300">2 Sütun (Kitapçık Düzeni)</span>
-            </label>
-
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showAnswerKey}
-                onChange={(e) => setShowAnswerKey(e.target.checked)}
-                className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="font-semibold text-zinc-700 dark:text-zinc-300">Cevap Anahtarı (Ayrı Sayfa)</span>
-            </label>
-
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showSolutions}
-                onChange={(e) => setShowSolutions(e.target.checked)}
-                className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="font-semibold text-zinc-700 dark:text-zinc-300">Ayrıntılı Çözüm Kitapçığı</span>
-            </label>
+          <div className="text-[11px] flex items-center gap-2 pt-1">
+            {!showAnswerKey ? (
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Öğrenci Sınav Kağıdı: Cevaplar ve çözümler hiçbir sayfada basılmaz.</span>
+              </span>
+            ) : (
+              <span className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Öğretmen Modu: Cevap anahtarı öğrenci sorularından sonra ayrı bir sayfada basılacaktır.</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -317,6 +357,7 @@ export default function PrintableExamModal({
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

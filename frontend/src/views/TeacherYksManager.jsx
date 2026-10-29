@@ -892,16 +892,25 @@ export default function TeacherYksManager({ classrooms = [], user }) {
             <form onSubmit={handleUploadTrainingPdf} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-1.5">
-                  Branş / Ders:
+                  Branş / Format:
                 </label>
                 <select
                   value={trainSubject}
                   onChange={(e) => setTrainSubject(e.target.value)}
                   className="w-full text-xs rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3.5 py-2.5 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
-                  {['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Türkçe', 'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü'].map(sub => (
-                    <option key={sub} value={sub}>{sub}</option>
-                  ))}
+                  <optgroup label="📋 Tam Sınav & Karışık Kitapçıklar (Tüm Branşlar Eğitilir)">
+                    <option value="Tam Deneme (Karışık Tüm Dersler)">Tam Deneme (Karışık Tüm Dersler)</option>
+                    <option value="TYT Tam Deneme Kitapçığı">TYT Tam Deneme Kitapçığı</option>
+                    <option value="AYT Sayısal Deneme Kitapçığı">AYT Sayısal Deneme Kitapçığı</option>
+                    <option value="AYT Eşit Ağırlık Deneme Kitapçığı">AYT Eşit Ağırlık Deneme Kitapçığı</option>
+                    <option value="AYT Sözel Deneme Kitapçığı">AYT Sözel Deneme Kitapçığı</option>
+                  </optgroup>
+                  <optgroup label="📚 Tekil Branşlar">
+                    {['Türkçe', 'Matematik', 'Geometri', 'Fizik', 'Kimya', 'Biyoloji', 'Tarih', 'Coğrafya', 'Felsefe', 'Din Kültürü'].map(sub => (
+                      <option key={sub} value={sub}>{sub}</option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
 
@@ -1006,10 +1015,16 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                             <h5 className="font-bold text-xs sm:text-sm text-zinc-900 dark:text-zinc-100 truncate max-w-[220px]">
                               {doc.filename}
                             </h5>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
-                                {doc.subject}
-                              </span>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              {analysisData?.is_full_exam || doc.subject?.includes('Tam Deneme') ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300">
+                                  🎯 Tam Sınav Formatı
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                                  {doc.subject}
+                                </span>
+                              )}
                               <span className="text-[11px] text-zinc-400">
                                 {doc.exam_type} • {doc.page_count} Sayfa • ~{doc.sample_question_count} Soru
                               </span>
@@ -1025,6 +1040,24 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
+
+                      {analysisData?.detected_sections && analysisData.detected_sections.length > 1 && (
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider block">
+                            Eğitilen Branşlar ({analysisData.detected_sections.length}):
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {analysisData.detected_sections.map((sec, i) => (
+                              <span
+                                key={i}
+                                className="px-1.5 py-0.5 rounded bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 text-[10px] font-semibold"
+                              >
+                                {sec}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {analysisData?.detected_stem_types && analysisData.detected_stem_types.length > 0 && (
                         <div className="space-y-1">

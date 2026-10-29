@@ -130,19 +130,43 @@ async def generate_questions_endpoint(
         try:
             training_docs = db.query(AIQuestionTrainingDoc).filter(
                 AIQuestionTrainingDoc.is_active == True,
-                (AIQuestionTrainingDoc.subject == req.subject) | (AIQuestionTrainingDoc.subject == "Genel")
-            ).all()
+                (
+                    (AIQuestionTrainingDoc.subject == req.subject) |
+                    (AIQuestionTrainingDoc.subject == "Genel") |
+                    (AIQuestionTrainingDoc.subject.ilike("%Tam Deneme%")) |
+                    (AIQuestionTrainingDoc.subject.ilike("%Karışık%")) |
+                    (AIQuestionTrainingDoc.subject.ilike("%Deneme Kitapçığı%"))
+                )
+            ).order_by(AIQuestionTrainingDoc.created_at.desc()).all()
             if training_docs:
                 style_notes = []
-                for doc in training_docs[:4]:
+                for doc in training_docs[:6]:
                     if doc.analyzed_patterns:
                         try:
                             p = json.loads(doc.analyzed_patterns)
                             stems = p.get("detected_stem_types", [])
-                            if stems:
-                                style_notes.append(f"- '{doc.filename}' ({doc.subject}) modelinden: Soru kökü üslupları: {', '.join(stems)}")
+                            sections = p.get("detected_sections", [])
+                            is_full = p.get("is_full_exam", False)
+                            
+                            doc_label = f"'{doc.filename}' ({doc.subject} - {doc.exam_type})"
+                            if is_full:
+                                doc_label += f" [Tam Sınav / İçerilen Branşlar: {', '.join(sections[:5])}]"
+                            
+                            note = f"- {doc_label}: Soru kökü ve zorluk üslubu: {', '.join(stems[:6])}"
+                            style_notes.append(note)
                         except Exception:
                             pass
+                    
+                    # Eğer tam sınav ise veya branş uyuşuyorsa metinden ilgili örnek pasaj ekle
+                    try:
+                        d_text = doc.extracted_text or ""
+                        # İlgili derse ait başlık veya soru bloğu bulmaya çalış
+                        m_sec = re.search(rf"(?:{req.subject}[^\n]*\n)([\s\S]{{100,1000}})", d_text, re.IGNORECASE)
+                        if m_sec:
+                            style_notes.append(f"  [Örnek {req.subject} Soru Bloğu]:\n{m_sec.group(1).strip()[:600]}")
+                    except Exception:
+                        pass
+
                 if style_notes:
                     training_guidelines = "\n".join(style_notes)
         except Exception as tr_err:
@@ -562,11 +586,19 @@ async def upload_training_pdf(
         question_numbers = re.findall(r'(?:^|\n)\s*([0-9]{1,2})\s*[\.\)]\s*(?=[A-ZÇĞİÖŞÜ])', full_text)
         est_count = max(len(stem_matches), len(question_numbers), 1)
 
-        # Analiz özeti
+        # Tam Deneme kontrolü ve içerilen branşların tespiti
+        is_full_exam = any(k in (subject or "").lower() for k in ["tam deneme", "karışık", "kitapçık", "deneme sınavı"])
+        detected_sections = []
+        for sec in ["Türkçe", "Edebiyat", "Matematik", "Geometri", "Fizik", "Kimya", "Biyoloji", "Tarih", "Coğrafya", "Felsefe", "Din Kültürü"]:
+            if re.search(rf"\b{sec}\b", full_text, re.IGNORECASE):
+                detected_sections.append(sec)
+
         clean_stems = list(dict.fromkeys([m.strip()[:40] for m in stem_matches]))[:8]
         analysis_summary = {
             "page_count": page_count,
             "est_questions": est_count,
+            "is_full_exam": is_full_exam,
+            "detected_sections": detected_sections if (is_full_exam or len(detected_sections) > 1) else [subject],
             "detected_stem_types": clean_stems if clean_stems else ["ÖSYM Standart soru kökü", "Kazanım değerlendirme"],
             "has_math_formulas": bool(re.search(r'[\\^_+=\-/*√π≤≥≠]', full_text)),
             "purpose": "Eğitim amaçlı soru tarzı rehberi (Tekrar sorulmaz)"
@@ -588,6 +620,12 @@ async def upload_training_pdf(
         db.commit()
         db.refresh(training_doc)
 
+        success_msg = f"'{file.filename}' başarıyla yüklendi. "
+        if is_full_exam:
+            success_msg += f"Yapay zeka bu tam deneme kitapçığındaki tüm branşların ({', '.join(detected_sections[:6])}) soru tarzını ve derinliğini kavradı. İlgili tüm test üretimlerinde rehber olarak kullanılacaktır."
+        else:
+            success_msg += f"Yapay zeka {subject} branşındaki bu soru tarzını öğrendi ve artık bu doğrultuda özgün sorular üretecek."
+
         return {
             "id": training_doc.id,
             "filename": training_doc.filename,
@@ -596,7 +634,7 @@ async def upload_training_pdf(
             "page_count": training_doc.page_count,
             "sample_question_count": training_doc.sample_question_count,
             "analysis": analysis_summary,
-            "message": f"'{file.filename}' başarıyla yüklendi. Yapay zeka {subject} branşındaki bu soru tarzını öğrendi ve artık bu doğrultuda özgün sorular üretecek."
+            "message": success_msg
         }
     except HTTPException:
         raise
