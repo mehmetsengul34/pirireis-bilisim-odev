@@ -1872,7 +1872,7 @@ def q_geography_climate() -> Dict[str, Any]:
     ])
     return {
         "question_text": "Yukarıda aylık sıcaklık ve yağış grafiği verilen iklim bölgesi (Antalya, İzmir yöresi) için aşağıdaki değerlendirmelerden hangisi kesinlikle doğrudur?",
-        "visual_svg": svg,
+        "visual_svg": None,
         "explanation": "Grafikte yaz aylarında sıcaklığın yüksek ve yağışın minimum olduğu, kış aylarında ise sıcaklığın 10°C civarında kalıp yağışın tavan yaptığı Akdeniz iklim karakteri açıkça görülmektedir.",
         "topic": "İklim Bilgisi",
         "subtopic": "Büyük İklim Tipleri ve Grafikleri",
@@ -1885,7 +1885,7 @@ def q_geography_isohypse() -> Dict[str, Any]:
     opts = format_options(f"{h} metre", [f"{h//2} metre", f"{h*2} metre", f"{h+50} metre", "50 metre"])
     return {
         "question_text": f"Yukarıdaki topografya haritasında deniz seviyesinden başlayan ilk eş yükselti eğrisi ile sonraki eğriler gösterilmiştir. Buna göre, bu haritadaki izohips eğrileri kaç metre aralıkla (eküidistans) çizilmiştir?",
-        "visual_svg": svg,
+        "visual_svg": None,
         "explanation": f"Deniz seviyesi 0 metredir. Bir sonraki eğri {h} metre olduğuna göre izohips aralığı (eküidistans) {h} metredir.",
         "topic": "Harita Bilgisi ve İzohipsler",
         "subtopic": "Eküidistans ve Yükselti Hesabı",
@@ -2184,29 +2184,48 @@ SOCIAL_GENERATOR_REGISTRY = (
     RELIGION_GENERATOR_REGISTRY
 )
 
+def normalize_text_for_branch(val: str) -> str:
+    if not val:
+        return ""
+    s = str(val).lower()
+    replacements = {
+        'ç': 'c', 'ğ': 'g', 'ı': 'i', 'i̇': 'i', 'ö': 'o', 'ş': 's', 'ü': 'u'
+    }
+    for k, v in replacements.items():
+        s = s.replace(k, v)
+    return s
+
+def is_verbal_branch(subject: str = "", topic: str = "") -> bool:
+    s = f"{normalize_text_for_branch(subject)} {normalize_text_for_branch(topic)}"
+    verbal_terms = [
+        "turkce", "edebiyat", "tarih", "cografya", "felsefe", "din",
+        "inkilap", "sosyal", "ingilizce", "sozel", "paragraf", "dil bilgisi", "metin"
+    ]
+    return any(term in s for term in verbal_terms)
+
 def get_procedural_candidates_pool(exam_type: str, subject: str, topic: str = "Karma") -> List[Any]:
-    subj = (subject or "").lower()
-    top = (topic or "").lower()
+    subj = normalize_text_for_branch(subject)
+    top = normalize_text_for_branch(topic)
 
     if "din" in subj:
-        if "zekat" in top or "ibadet" in top or "infak" in top:
+        if any(k in top for k in ["zekat", "ibadet", "infak"]):
             return [q_religion_zekat_infak, q_religion_ibadetler_hukumler, q_religion_cevre_israf]
-        if "kader" in top or "kaza" in top or "tevekkül" in top:
+        if any(k in top for k in ["kader", "kaza", "tevekkul"]):
             return [q_religion_kader_tevekkul, q_religion_bilgi_kaynaklari]
-        if "ahlak" in top or "hak" in top or "değer" in top:
+        if any(k in top for k in ["ahlak", "hak", "deger"]):
             return [q_religion_ahlak_kulhakki, q_religion_kuran_kavramlar]
-        if "peygamber" in top or "siyer" in top or "örnek" in top:
+        if any(k in top for k in ["peygamber", "siyer", "ornek"]):
             return [q_religion_peygamber_usve, q_religion_gonul_cografyasi]
-        if "mezhep" in top or "yorum" in top:
+        if any(k in top for k in ["mezhep", "yorum"]):
             return [q_religion_mezhepler, q_religion_bilgi_kaynaklari]
         return list(RELIGION_GENERATOR_REGISTRY)
 
     elif "felsefe" in subj:
-        if "bilgi" in top or "epistemoloji" in top:
+        if any(k in top for k in ["bilgi", "epistemoloji"]):
             return [q_philosophy_epistemology, q_philosophy]
-        if "ahlak" in top or "etik" in top:
+        if any(k in top for k in ["ahlak", "etik"]):
             return [q_philosophy_ethics, q_philosophy]
-        if "varlık" in top or "ontoloji" in top:
+        if any(k in top for k in ["varlik", "ontoloji"]):
             return [q_philosophy_ontology, q_philosophy]
         if "siyaset" in top:
             return [q_philosophy_politics, q_philosophy]
@@ -2214,86 +2233,34 @@ def get_procedural_candidates_pool(exam_type: str, subject: str, topic: str = "K
             return [q_philosophy_religion, q_philosophy]
         return list(PHILOSOPHY_GENERATOR_REGISTRY)
 
-    elif "coğrafya" in subj:
-        if "iklim" in top or "hava" in top:
+    elif "cografya" in subj:
+        if any(k in top for k in ["iklim", "hava"]):
             return [q_geography_climate, q_geography_winds]
-        if "harita" in top or "izohips" in top:
+        if any(k in top for k in ["harita", "izohips"]):
             return [q_geography_isohypse, q_geography_coordinates]
-        if "konum" in top or "saat" in top or "koordinat" in top:
+        if any(k in top for k in ["konum", "saat", "koordinat"]):
             return [q_geography_coordinates, q_geography_isohypse]
-        if "nüfus" in top or "göç" in top or "yerleşme" in top:
+        if any(k in top for k in ["nufus", "goc", "yerlesme"]):
             return [q_geography_population, q_geography_natural_hazards]
-        if "afet" in top or "iç kuvvet" in top or "deprem" in top:
+        if any(k in top for k in ["afet", "ic kuvvet", "deprem"]):
             return [q_geography_natural_hazards, q_geography_isohypse]
         return list(GEOGRAPHY_GENERATOR_REGISTRY)
 
-    elif "tarih" in subj:
-        if "türk" in top or "orta çağ" in top or "selçuklu" in top:
+    elif "tarih" in subj or "inkilap" in subj:
+        if any(k in top for k in ["turk", "orta cag", "selcuklu"]):
             return [q_history_early_turks, q_history_seljuk]
-        if "osmanlı" in top:
+        if "osmanli" in top:
             return [q_history_ottoman, q_history_ottoman_reforms, q_history_ww1]
-        if "inkılap" in top or "atatürk" in top:
+        if any(k in top for k in ["inkilap", "ataturk"]):
             return [q_history_inkilap, q_history_treaties, q_history_republic]
-        if "milli mücadele" in top or "kurtuluş" in top or "kongre" in top:
+        if any(k in top for k in ["milli mucadele", "kurtulus", "kongre"]):
             return [q_history_national_struggle, q_history_treaties, q_history_republic]
-        if "savaş" in top or "lozan" in top:
+        if any(k in top for k in ["savas", "lozan"]):
             return [q_history_ww1, q_history_treaties, q_history_republic]
         return list(HISTORY_GENERATOR_REGISTRY)
 
-    elif "geometri" in subj:
-        if "çember" in top or "daire" in top:
-            return [q_geometry_circle, q_geometry_triangle]
-        if "üçgen" in top:
-            return [q_geometry_triangle, q_geometry_pythagoras_euclid]
-        if "analitik" in top:
-            return [q_geometry_analytic, q_geometry_triangle]
-        if "çokgen" in top:
-            return [q_geometry_polygon, q_geometry_solid]
-        return list(GEOMETRY_GENERATOR_REGISTRY)
-
-    elif "fizik" in subj:
-        if "elektrik" in top or "devre" in top:
-            return [q_physics_circuit, q_physics_energy, q_physics_newton]
-        if "optik" in top or "ayna" in top or "kırılma" in top or "prizma" in top:
-            return [q_physics_optics_prism, q_physics_optics, q_physics_waves]
-        if "kuvvet" in top or "hareket" in top or "newton" in top or "sürtünme" in top:
-            return [q_physics_force_block, q_physics_newton, q_physics_energy]
-        if "ısı" in top or "sıcaklık" in top:
-            return [q_physics_thermodynamics, q_physics_energy]
-        if "dalga" in top:
-            return [q_physics_waves, q_physics_optics]
-        if "basınç" in top or "kaldırma" in top:
-            return [q_physics_buoyancy, q_physics_newton]
-        return list(PHYSICS_GENERATOR_REGISTRY)
-
-    elif "kimya" in subj:
-        if "mol" in top:
-            return [q_chemistry_mole, q_chemistry_gas_laws, q_chemistry_molarity]
-        if "çözelti" in top or "derişim" in top:
-            return [q_chemistry_molarity, q_chemistry_acid_base]
-        if "gaz" in top:
-            return [q_chemistry_gas_laws, q_chemistry_mole]
-        if "asit" in top or "baz" in top:
-            return [q_chemistry_acid_base, q_chemistry_molarity]
-        if "periyodik" in top or "atom" in top:
-            return [q_chemistry_periodic_table, q_chemistry_mole]
-        return list(CHEMISTRY_GENERATOR_REGISTRY)
-
-    elif "biyoloji" in subj:
-        if "kalıtım" in top or "genetik" in top or "soyağacı" in top:
-            return [q_biology_pedigree, q_biology_genetics, q_biology_dna_protein]
-        if "ekoloji" in top or "besin" in top or "ekosistem" in top:
-            return [q_biology_food_pyramid, q_biology_ecology, q_biology_photosynthesis]
-        if "bölünme" in top or "mitoz" in top or "mayoz" in top:
-            return [q_biology_cell_division, q_biology_genetics]
-        if "fotosentez" in top or "solunum" in top or "enerji" in top:
-            return [q_biology_photosynthesis, q_biology_ecology]
-        if "protein" in top or "dna" in top:
-            return [q_biology_dna_protein, q_biology_genetics]
-        return list(BIOLOGY_GENERATOR_REGISTRY)
-
-    elif "türkçe" in subj or "edebiyat" in subj:
-        if "yazım" in top:
+    elif "turkce" in subj or "edebiyat" in subj:
+        if "yazim" in top:
             return [q_turkish_spelling, q_turkish_punctuation, q_turkish_reading]
         if "noktalama" in top:
             return [q_turkish_punctuation, q_turkish_spelling, q_turkish_reading]
@@ -2303,24 +2270,81 @@ def get_procedural_candidates_pool(exam_type: str, subject: str, topic: str = "K
             return [q_literature_divan, q_turkish_reading]
         return list(TURKISH_GENERATOR_REGISTRY)
 
-    elif "sosyal" in subj:
+    elif "sosyal" in subj or "sozel" in subj:
         return list(SOCIAL_GENERATOR_REGISTRY)
 
+    elif "geometri" in subj:
+        if any(k in top for k in ["cember", "daire"]):
+            return [q_geometry_circle, q_geometry_triangle]
+        if "ucgen" in top:
+            return [q_geometry_triangle, q_geometry_pythagoras_euclid]
+        if "analitik" in top:
+            return [q_geometry_analytic, q_geometry_triangle]
+        if "cokgen" in top:
+            return [q_geometry_polygon, q_geometry_solid]
+        return list(GEOMETRY_GENERATOR_REGISTRY)
+
+    elif "fizik" in subj:
+        if any(k in top for k in ["elektrik", "devre"]):
+            return [q_physics_circuit, q_physics_energy, q_physics_newton]
+        if any(k in top for k in ["optik", "ayna", "kirilma", "prizma"]):
+            return [q_physics_optics_prism, q_physics_optics, q_physics_waves]
+        if any(k in top for k in ["kuvvet", "hareket", "newton", "surtunme"]):
+            return [q_physics_force_block, q_physics_newton, q_physics_energy]
+        if any(k in top for k in ["isi", "sicaklik"]):
+            return [q_physics_thermodynamics, q_physics_energy]
+        if "dalga" in top:
+            return [q_physics_waves, q_physics_optics]
+        if any(k in top for k in ["basinc", "kaldirma"]):
+            return [q_physics_buoyancy, q_physics_newton]
+        return list(PHYSICS_GENERATOR_REGISTRY)
+
+    elif "kimya" in subj:
+        if "mol" in top:
+            return [q_chemistry_mole, q_chemistry_gas_laws, q_chemistry_molarity]
+        if any(k in top for k in ["cozelti", "derisim"]):
+            return [q_chemistry_molarity, q_chemistry_acid_base]
+        if "gaz" in top:
+            return [q_chemistry_gas_laws, q_chemistry_mole]
+        if any(k in top for k in ["asit", "baz"]):
+            return [q_chemistry_acid_base, q_chemistry_molarity]
+        if any(k in top for k in ["periyodik", "atom"]):
+            return [q_chemistry_periodic_table, q_chemistry_mole]
+        return list(CHEMISTRY_GENERATOR_REGISTRY)
+
+    elif "biyoloji" in subj:
+        if any(k in top for k in ["kalitim", "genetik", "soyagaci"]):
+            return [q_biology_pedigree, q_biology_genetics, q_biology_dna_protein]
+        if any(k in top for k in ["ekoloji", "besin", "ekosistem"]):
+            return [q_biology_food_pyramid, q_biology_ecology, q_biology_photosynthesis]
+        if any(k in top for k in ["bolunme", "mitoz", "mayoz"]):
+            return [q_biology_cell_division, q_biology_genetics]
+        if any(k in top for k in ["fotosentez", "solunum", "enerji"]):
+            return [q_biology_photosynthesis, q_biology_ecology]
+        if any(k in top for k in ["protein", "dna"]):
+            return [q_biology_dna_protein, q_biology_genetics]
+        return list(BIOLOGY_GENERATOR_REGISTRY)
+
     elif "matematik" in subj:
-        if "türev" in top: return [q_derivative_tangent, q_function, q_parabola_max]
+        if "turev" in top: return [q_derivative_tangent, q_function, q_parabola_max]
         if "integral" in top: return [q_integral_area, q_parabola_max, q_derivative_tangent]
         if "parabol" in top: return [q_parabola_max, q_function, q_polynomial]
         if "fonksiyon" in top: return [q_function, q_cargo_tariff, q_parabola_max]
-        if "yaş" in top: return [q_age_problem, q_percentage_profit, q_speed_motion]
-        if "yüzde" in top or "kâr" in top: return [q_percentage_profit, q_cargo_tariff, q_speed_motion]
-        if "hız" in top: return [q_speed_motion, q_cargo_tariff, q_age_problem]
-        if "kombinasyon" in top or "olasılık" in top: return [q_combinations, q_probability_dice]
+        if "yas" in top: return [q_age_problem, q_percentage_profit, q_speed_motion]
+        if any(k in top for k in ["yuzde", "kar"]): return [q_percentage_profit, q_cargo_tariff, q_speed_motion]
+        if "hiz" in top: return [q_speed_motion, q_cargo_tariff, q_age_problem]
+        if any(k in top for k in ["kombinasyon", "olasilik"]): return [q_combinations, q_probability_dice]
         if "logaritma" in top: return [q_logarithm, q_function]
         if "trigonometri" in top: return [q_trigonometry, q_function]
         if "polinom" in top: return [q_polynomial, q_function]
         if "limit" in top: return [q_limit, q_function]
         if "ebob" in top: return [q_ebob_ekok, q_cargo_tariff]
         return list(MATH_GENERATOR_REGISTRY)
+
+    if is_verbal_branch(subject, topic):
+        return list(TURKISH_GENERATOR_REGISTRY + SOCIAL_GENERATOR_REGISTRY)
+
+    return list(MATH_GENERATOR_REGISTRY)
 
     return list(MATH_GENERATOR_REGISTRY)
 
@@ -2372,6 +2396,7 @@ PEDAGOJİK VE MÜFREDAT ESASLARI (ÖSYM & MEB STANDARTLARI):
 
 GÖRSEL VE VEKTÖREL ŞEKİL DESTEĞİ:
 - Geometri (üçgen, çember, analitik), Fizik (devre, kuvvet, prizma/optik), Kimya (kap, periyodik sistem), Biyoloji (soyağacı, besin piramidi) ve Coğrafya (izohips, iklim grafiği) gibi derslerde soru bir görsel gerektiriyorsa:
+- SÖZEL DERSLERDE (Türkçe, Edebiyat, Tarih, Coğrafya, Felsefe, Din Kültürü, İnkılap) 'visual_svg' KESİNLİKLE null olmalıdır! Sayısal/şekilli görsel eklenemez.
 - 'visual_svg' alanına temiz, inline, viewBox'lı modern bir SVG stringi ekle (örneğin: <svg viewBox="0 0 380 200" ...>...</svg>).
 - Eğer uygun SVG üretemiyorsan 'visual_svg': null bırak; sistem otomatik vektörel diyagram bağlayacaktır.
 
@@ -2477,6 +2502,9 @@ KATI KURALLAR:
                                 for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
                                     if opt_k in q:
                                         q[opt_k] = sanitize_math_and_turkish(q[opt_k], is_option=True)
+                            if is_verbal_branch(subject, topic):
+                                for q in parsed:
+                                    q["visual_svg"] = None
                             print(f"[AI Exam Service] {model_name} ile {len(parsed)} adet özgün soru başarıyla üretildi.")
                             return parsed
                 else:
@@ -2521,56 +2549,47 @@ def ensure_underlined_word_formatting(questions: List[Dict[str, Any]]):
                                     q[opt_k] = f"<u>{val}</u>"
 
 def decorate_question_visuals(questions: List[Dict[str, Any]], subject: str):
-    """Görsel gerektiren ders ve konularda sorunun visual_svg alanı boşsa yalnızca ilgili branşa uygun vektörel SVG bağlar.
-    Sözel branşlara (Türkçe, Edebiyat, Tarih, Felsefe, Din Kültürü vb.) kesinlikle geometri/fizik görselleri bağlanmaz.
+    """Görsel gerektiren sayısal ders ve konularda sorunun visual_svg alanı boşsa yalnızca ilgili branşa uygun vektörel SVG bağlar.
+    Sözel branşlara (Türkçe, Edebiyat, Tarih, Coğrafya, Felsefe, Din Kültürü, İnkılap Tarihi vb.) KESİNLİKLE hiçbir geometri/fizik/sayısal görsel bağlanmaz.
     """
-    verbal_subjects = [
-        "türkçe", "turkce", "edebiyat", "tarih", "t.c. inkılap", "inkilap",
-        "felsefe", "din kültürü", "din kulturu"
-    ]
-    
-    subj_norm = (subject or "").lower()
-    if any(v in subj_norm for v in verbal_subjects):
-        for q in questions:
-            q["visual_svg"] = None
-        return
-
     for q in questions:
-        if not q.get("visual_svg"):
-            q_text_low = (q.get("question_text") or "").lower()
-            q_topic_low = (q.get("topic") or "").lower()
+        q_subj = q.get("subject") or subject or ""
+        q_topic = q.get("topic") or ""
 
-            # Geometri veya Matematik
+        # Sözel branş kontrolü: Kesinlikle SVG bağlanamaz!
+        if is_verbal_branch(q_subj, q_topic):
+            q["visual_svg"] = None
+            continue
+
+        if not q.get("visual_svg"):
+            q_text_low = normalize_text_for_branch(q.get("question_text") or "")
+            q_topic_low = normalize_text_for_branch(q_topic)
+            subj_norm = normalize_text_for_branch(q_subj)
+
+            # Geometri veya Matematik (yalnızca sayısal branşsa)
             if "geometri" in subj_norm or "matematik" in subj_norm:
-                if any(k in q_topic_low for k in ["üçgen", "pisagor", "trigonometri"]) or any(k in q_text_low for k in ["üçgen", "pisagor", "hipotenüs"]):
+                if any(k in q_topic_low for k in ["ucgen", "pisagor", "trigonometri"]) or any(k in q_text_low for k in ["ucgen", "pisagor", "hipotenus"]):
                     q["visual_svg"] = generate_dynamic_triangle_svg()
-                elif any(k in q_topic_low for k in ["çember", "daire"]) or any(k in q_text_low for k in ["çemberde açı", "dairede alan", "yarıçapı r =", "merkez açı"]):
+                elif any(k in q_topic_low for k in ["cember", "daire"]) or any(k in q_text_low for k in ["cemberde aci", "dairede alan", "yaricapi r =", "merkez aci"]):
                     q["visual_svg"] = generate_dynamic_geometry_circle_svg()
                 elif any(k in q_topic_low for k in ["parabol", "ikinci dereceden fonksiyon"]):
                     q["visual_svg"] = generate_dynamic_parabola_svg()
 
             # Fizik
             elif "fizik" in subj_norm:
-                if any(k in q_topic_low for k in ["elektrik", "devre", "akım"]) or any(k in q_text_low for k in ["direnç", "ohm", "voltluk", "reosta"]):
+                if any(k in q_topic_low for k in ["elektrik", "devre", "akim"]) or any(k in q_text_low for k in ["direnc", "ohm", "voltluk", "reosta"]):
                     q["visual_svg"] = generate_dynamic_circuit_svg()
-                elif any(k in q_topic_low for k in ["kuvvet", "newton", "dinamik", "hareket yasaları", "sürtünme"]) or any(k in q_text_low for k in ["sürtünme katsayısı", "newton'luk kuvvet", "yatay sürtünmeli", "cisme f ="]):
+                elif any(k in q_topic_low for k in ["kuvvet", "newton", "dinamik", "hareket yasalari", "surtunme"]) or any(k in q_text_low for k in ["surtunme katsayisi", "newton'luk kuvvet", "yatay surtunmeli", "cisme f ="]):
                     q["visual_svg"] = generate_dynamic_force_block_svg()
-                elif any(k in q_topic_low for k in ["optik", "kırılma", "ayna", "mercek", "prizma"]) or any(k in q_text_low for k in ["ışık ışını", "kırılma indisi", "snell", "cam prizma"]):
+                elif any(k in q_topic_low for k in ["optik", "kirilma", "ayna", "mercek", "prizma"]) or any(k in q_text_low for k in ["isik isini", "kirilma indisi", "snell", "cam prizma"]):
                     q["visual_svg"] = generate_dynamic_optics_prism_svg()
 
             # Biyoloji
             elif "biyoloji" in subj_norm:
-                if any(k in q_topic_low for k in ["kalıtım", "genetik"]) or any(k in q_text_low for k in ["soyağacı", "otozomal", "çekinik fenotip"]):
+                if any(k in q_topic_low for k in ["kalitim", "genetik"]) or any(k in q_text_low for k in ["soyagaci", "otozomal", "cekinik fenotip"]):
                     q["visual_svg"] = generate_dynamic_pedigree_svg()
-                elif any(k in q_topic_low for k in ["ekoloji", "besin"]) or any(k in q_text_low for k in ["besin piramidi", "trofik düzey", "üreticiden tüketiciye"]):
+                elif any(k in q_topic_low for k in ["ekoloji", "besin"]) or any(k in q_text_low for k in ["besin piramidi", "trofik duzey", "ureticiden tuketiciye"]):
                     q["visual_svg"] = generate_dynamic_food_pyramid_svg()
-
-            # Coğrafya
-            elif "coğrafya" in subj_norm or "cografya" in subj_norm:
-                if any(k in q_topic_low for k in ["harita", "izohips"]) or any(k in q_text_low for k in ["izohips", "eş yükselti", "topoğrafya"]):
-                    q["visual_svg"] = generate_dynamic_isohypse_svg()
-                elif any(k in q_topic_low for k in ["iklim", "sıcaklık", "yağış"]) or any(k in q_text_low for k in ["iklim grafiği", "yağış grafiği"]):
-                    q["visual_svg"] = generate_dynamic_climate_graph_svg()
 
 def enforce_strict_uniqueness(
     initial_questions: List[Dict[str, Any]],
@@ -2601,7 +2620,10 @@ def enforce_strict_uniqueness(
     all_subject_funcs = get_procedural_candidates_pool(exam_type, subject, "Karma")
     combined_pool = list(dict.fromkeys(pool_funcs + all_subject_funcs))
     if not combined_pool:
-        combined_pool = list(MATH_GENERATOR_REGISTRY)
+        if is_verbal_branch(subject, topic):
+            combined_pool = list(TURKISH_GENERATOR_REGISTRY + SOCIAL_GENERATOR_REGISTRY)
+        else:
+            combined_pool = list(MATH_GENERATOR_REGISTRY)
     random.shuffle(combined_pool)
 
     func_index = 0
@@ -2655,6 +2677,11 @@ def enforce_strict_uniqueness(
     # Otomatik görsel denetimi ve süslemesi
     decorate_question_visuals(unique_questions, subject)
     ensure_underlined_word_formatting(unique_questions)
+
+    # Sözel derslerde visual_svg kesinlikle temizlenir
+    for q in unique_questions:
+        if is_verbal_branch(q.get("subject") or subject, q.get("topic") or topic):
+            q["visual_svg"] = None
 
     return unique_questions[:target_count]
 

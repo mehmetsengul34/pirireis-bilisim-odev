@@ -4,6 +4,7 @@ import {
   Edit3, Save, RefreshCw, Layers, Award, Target, Brain, BarChart2, Activity 
 } from 'lucide-react';
 import MathRenderer from './MathRenderer';
+import { isVerbalBranch } from '../utils/branchUtils';
 import { examService } from '../services/api';
 
 export default function QuestionDetailModal({ isOpen, onClose, question, onUpdated }) {

@@ -10,6 +10,7 @@ import { examService, notificationService } from '../services/api';
 import YksExamGeneratorModal from '../components/YksExamGeneratorModal';
 import ExamAnalyticsModal from '../components/ExamAnalyticsModal';
 import PrintableExamModal from '../components/PrintableExamModal';
+import { isVerbalBranch } from '../utils/branchUtils';
 import MathRenderer from '../components/MathRenderer';
 import QuestionDetailModal from '../components/QuestionDetailModal';
 
@@ -336,10 +337,16 @@ export default function TeacherYksManager({ classrooms = [], user }) {
     }
   };
 
-  // Questions to print
-  const questionsToPrint = selectedQuestionIds.length > 0
-    ? bankQuestions.filter(q => selectedQuestionIds.includes(q.id))
-    : bankQuestions;
+  // Questions to print (seçili soru yoksa mevcut filtreli branşı esas alır)
+  const questionsToPrint = useMemo(() => {
+    let list = bankQuestions;
+    if (selectedQuestionIds.length > 0) {
+      list = bankQuestions.filter(q => selectedQuestionIds.includes(q.id));
+    } else if (filterBankSubject && filterBankSubject !== 'Tümü') {
+      list = bankQuestions.filter(q => q.subject === filterBankSubject || (filterBankSubject === 'Türkçe' && isVerbalBranch(q.subject, q.topic)));
+    }
+    return list;
+  }, [bankQuestions, selectedQuestionIds, filterBankSubject]);
 
   // Toplam istatistikler
   const totalExams = exams.length;

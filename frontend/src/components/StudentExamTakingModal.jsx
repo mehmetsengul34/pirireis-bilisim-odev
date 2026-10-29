@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { examService } from '../services/api';
 import MathRenderer from './MathRenderer';
+import { isVerbalBranch } from '../utils/branchUtils';
 
 export default function StudentExamTakingModal({ examId, onClose, onSubmitted }) {
   const [exam, setExam] = useState(null);

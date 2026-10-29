@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { examService, classroomService } from '../services/api';
 import MathRenderer from './MathRenderer';
+import { isVerbalBranch } from '../utils/branchUtils';
 
 // MEB ve ÖSYM Güncel Müfredat Kataloğu (Her an hazır, sıfır gecikme)
 export const DEFAULT_YKS_CURRICULUM = {

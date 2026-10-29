@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { examService, notificationService } from '../services/api';
 import MathRenderer from './MathRenderer';
+import { isVerbalBranch } from '../utils/branchUtils';
 
 export default function ExamAnalyticsModal({ examId, onClose }) {
   const [analytics, setAnalytics] = useState(null);

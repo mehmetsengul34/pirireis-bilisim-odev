@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Printer, X, CheckCircle2, ShieldCheck, EyeOff, KeyRound, Sliders, FileText } from 'lucide-react';
 import MathRenderer from './MathRenderer';
+import { isVerbalBranch } from '../utils/branchUtils';
 
 export default function PrintableExamModal({ 
   questions = [], 
@@ -78,8 +79,137 @@ export default function PrintableExamModal({
   const [showAnswerKey, setShowAnswerKey] = useState(false); // Varsayılan kapalı (öğrenci kağıdında cevap yazmaz)
   const [showSolutions, setShowSolutions] = useState(false);
 
-  // 1. Fiziksel Yazıcılar İçin Garantili Standart Yazdırma Motoru (Ayrı Temiz Pencere)
-  // SPA ve modal kilitlenmelerini bypass eder; doğrudan sistem yazdırma motoruna A4 formatında iletir.
+  // 1. Gizli Iframe ile Doğrudan ve Kilitlenmesiz Yazdırma Motoru
+  // Pop-up engelleyicileri bypass eder; arka plan SPA veya modal DOM'undan izole temiz A4 baskısı üretir.
+  const handlePrintViaIframe = () => {
+    const paperElement = document.getElementById('printable-exam-paper-content');
+    if (!paperElement) {
+      window.print();
+      return;
+    }
+
+    const oldFrame = document.getElementById('print-paper-iframe');
+    if (oldFrame) {
+      oldFrame.remove();
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-paper-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.visibility = 'hidden';
+    document.body.appendChild(iframe);
+
+    const styleSheets = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map(node => node.outerHTML)
+      .join('\n');
+
+    const iframeDoc = iframe.contentWindow.document || iframe.contentDocument.document;
+    iframeDoc.open();
+    iframeDoc.write(`
+      <!DOCTYPE html>
+      <html lang="tr">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>${examTitle || 'YKS Sınav Kağıdı'}</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+        ${styleSheets}
+        <style>
+          @page {
+            size: auto;
+            margin: 10mm 10mm 10mm 10mm;
+          }
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-family: "Times New Roman", Times, Georgia, serif !important;
+            font-size: 10pt !important;
+            line-height: 1.4 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          * {
+            color: #000000 !important;
+            -webkit-text-fill-color: #000000 !important;
+            box-sizing: border-box !important;
+          }
+          .printable-paper-wrapper {
+            max-width: 100% !important;
+            margin: 0 auto !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+          .printable-columns-2 {
+            display: block !important;
+            column-count: 2 !important;
+            -webkit-column-count: 2 !important;
+            column-gap: 24px !important;
+            column-rule: 1px solid #cbd5e1 !important;
+            width: 100% !important;
+          }
+          .printable-columns-1 {
+            display: block !important;
+            column-count: 1 !important;
+            -webkit-column-count: 1 !important;
+            width: 100% !important;
+          }
+          .printable-question-item {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+            -webkit-column-break-inside: avoid !important;
+            margin-bottom: 16px !important;
+            padding-bottom: 12px !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+            display: block !important;
+          }
+          svg {
+            background: #ffffff !important;
+            max-width: 250px !important;
+            height: auto !important;
+            display: block !important;
+            margin: 6px auto !important;
+          }
+          svg text {
+            fill: #000000 !important;
+            font-weight: bold !important;
+          }
+          svg line, svg rect, svg polygon, svg circle, svg path {
+            stroke: #000000 !important;
+          }
+          .katex {
+            font-size: 1.05em !important;
+            color: #000000 !important;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="printable-paper-wrapper">
+          ${paperElement.innerHTML}
+        </div>
+      </body>
+      </html>
+    `);
+    iframeDoc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (err) {
+        console.warn("Iframe print error, falling back to window.print():", err);
+        window.print();
+      }
+    }, 300);
+  };
+
+  // 2. Ayrı Temiz Pencerede Açma ve Yazdırma
   const handleOpenPrintWindow = () => {
     const paperElement = document.getElementById('printable-exam-paper-content');
     if (!paperElement) {
@@ -89,8 +219,8 @@ export default function PrintableExamModal({
 
     const printWin = window.open('', '_blank', 'width=1000,height=900,menubar=no,toolbar=no,location=no,status=no');
     if (!printWin) {
-      // Pop-up engellenmişse doğrudan window.print'e düş
-      window.print();
+      // Pop-up engellenmişse doğrudan iframe yazdırma motoruna yönlendir
+      handlePrintViaIframe();
       return;
     }
 
@@ -276,13 +406,13 @@ export default function PrintableExamModal({
               }
             }
           }
-          // Sayfa içeriği ve matematik fontları hazır olduğunda yazdırmayı tetikle
-          window.addEventListener('load', function() {
-            setTimeout(function() {
+          // Otomatik yazdırmayı load eventi beklemeden doğrudan tetikle
+          setTimeout(function() {
+            try {
               window.focus();
               window.print();
-            }, 450);
-          });
+            } catch (e) {}
+          }, 350);
         </script>
       </body>
       </html>
@@ -290,11 +420,9 @@ export default function PrintableExamModal({
     printWin.document.close();
   };
 
-  // 2. Sistem Penceresi & PDF Olarak Kaydetme
+  // 3. Sistem Penceresi & PDF Olarak Kaydetme
   const handlePrint = () => {
-    setTimeout(() => {
-      window.print();
-    }, 50);
+    handlePrintViaIframe();
   };
 
   return createPortal(
@@ -335,13 +463,22 @@ export default function PrintableExamModal({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={handleOpenPrintWindow}
+              onClick={handlePrintViaIframe}
               disabled={displayedQuestions.length === 0}
               className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition flex items-center gap-2 cursor-pointer"
-              title="Fiziksel masaüstü yazıcınıza doğrudan gönderir (HP, Canon, Epson, Brother)"
+              title="Fiziksel masaüstü yazıcınıza veya sistem yazdırma motoruna doğrudan gönderir (HP, Canon, Epson, Brother)"
             >
               <Printer className="w-4 h-4" />
-              <span>Yazıcıya Gönder (Fiziksel)</span>
+              <span>Yazıcıya Gönder (Yazdır)</span>
+            </button>
+            <button
+              onClick={handleOpenPrintWindow}
+              disabled={displayedQuestions.length === 0}
+              className="px-3 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-sky-600/30 transition flex items-center gap-1.5 cursor-pointer"
+              title="Ayrı tam sayfa sekmesinde açar ve yazdırır"
+            >
+              <Sliders className="w-4 h-4" />
+              <span>Ayrı Pencere</span>
             </button>
             <button
               onClick={handlePrint}
@@ -565,8 +702,8 @@ export default function PrintableExamModal({
                       )}
                     </div>
 
-                    {/* Vektörel SVG Çizimi (Açık Zemin / Yüksek Kontrast) */}
-                    {q.visual_svg && (
+                    {/* Vektörel SVG Çizimi (Açık Zemin / Yüksek Kontrast - Yalnızca Sayısal Branşlar) */}
+                    {q.visual_svg && !isVerbalBranch(q.subject || defaultSubject, q.topic) && (
                       <div className="my-2 p-1.5 bg-white flex justify-center overflow-hidden printable-svg-container">
                         <div className="max-w-[260px] w-full" dangerouslySetInnerHTML={{ __html: q.visual_svg }} />
                       </div>

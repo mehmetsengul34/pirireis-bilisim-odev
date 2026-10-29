@@ -23,7 +23,7 @@ from app.schemas import (
     AIAgentStatusOut, AIAgentActivityOut, AIAgentRunRequest
 )
 from app.auth import get_current_user, require_teacher
-from app.services.ai_exam_service import YKS_CURRICULUM, generate_questions_smart, sanitize_math_and_turkish
+from app.services.ai_exam_service import YKS_CURRICULUM, generate_questions_smart, sanitize_math_and_turkish, is_verbal_branch
 from app.services.ai_agent_service import (
     AutonomousCoordinator, JudgeAgent, NightlyPoolSynthesizer,
     DistractorAuditAgent, ContinuousLearningAgent
@@ -53,6 +53,8 @@ def save_questions_to_bank(db: Session, questions: list, exam_type: str, subject
             q_sub = getattr(q, "subtopic", None) or (q.get("subtopic") if isinstance(q, dict) else None)
             q_diff = getattr(q, "difficulty", None) or (q.get("difficulty") if isinstance(q, dict) else "ÖSYM / Yeni Nesil")
             q_svg = getattr(q, "visual_svg", None) or (q.get("visual_svg") if isinstance(q, dict) else None)
+            if is_verbal_branch(subject, q_top):
+                q_svg = None
             q_a = getattr(q, "option_a", None) or (q.get("option_a") if isinstance(q, dict) else "")
             q_b = getattr(q, "option_b", None) or (q.get("option_b") if isinstance(q, dict) else "")
             q_c = getattr(q, "option_c", None) or (q.get("option_c") if isinstance(q, dict) else "")
@@ -130,7 +132,7 @@ def sync_exam_questions_to_bank(db: Session):
                 subtopic=eq.subtopic,
                 difficulty=(exam.difficulty if exam and exam.difficulty else "ÖSYM / Yeni Nesil"),
                 question_text=clean_q_text,
-                visual_svg=eq.visual_svg,
+                visual_svg=(None if is_verbal_branch(exam.subject if exam else "Genel", eq.topic) else eq.visual_svg),
                 option_a=sanitize_math_and_turkish(eq.option_a, is_option=True) if eq.option_a else "-",
                 option_b=sanitize_math_and_turkish(eq.option_b, is_option=True) if eq.option_b else "-",
                 option_c=sanitize_math_and_turkish(eq.option_c, is_option=True) if eq.option_c else "-",
@@ -270,7 +272,7 @@ def create_exam(
             exam_id=exam.id,
             question_number=q.question_number,
             question_text=q.question_text,
-            visual_svg=q.visual_svg,
+            visual_svg=(None if is_verbal_branch(exam.subject, q.topic) else q.visual_svg),
             option_a=q.option_a,
             option_b=q.option_b,
             option_c=q.option_c,
@@ -507,7 +509,7 @@ def create_exam_from_bank(
             exam_id=exam.id,
             question_number=idx,
             question_text=bq.question_text,
-            visual_svg=bq.visual_svg,
+            visual_svg=(None if is_verbal_branch(req.subject or bq.subject, bq.topic) else bq.visual_svg),
             option_a=bq.option_a,
             option_b=bq.option_b,
             option_c=bq.option_c,
@@ -865,7 +867,7 @@ def get_exam_detail(
                 exam_id=q.exam_id,
                 question_number=q.question_number,
                 question_text=q.question_text,
-                visual_svg=q.visual_svg,
+                visual_svg=(None if is_verbal_branch(exam.subject, q.topic) else q.visual_svg),
                 option_a=q.option_a,
                 option_b=q.option_b,
                 option_c=q.option_c,
@@ -884,7 +886,7 @@ def get_exam_detail(
                 exam_id=q.exam_id,
                 question_number=q.question_number,
                 question_text=q.question_text,
-                visual_svg=q.visual_svg,
+                visual_svg=(None if is_verbal_branch(exam.subject, q.topic) else q.visual_svg),
                 option_a=q.option_a,
                 option_b=q.option_b,
                 option_c=q.option_c,
@@ -1098,7 +1100,7 @@ def get_exam_analytics(
             question_id=q.id,
             topic=q.topic,
             question_text=q.question_text,
-            visual_svg=q.visual_svg,
+            visual_svg=(None if is_verbal_branch(exam.subject, q.topic) else q.visual_svg),
             option_a=q.option_a,
             option_b=q.option_b,
             option_c=q.option_c,
