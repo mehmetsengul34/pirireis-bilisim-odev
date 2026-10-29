@@ -109,10 +109,9 @@ def run_synthesis():
 
                 q_text = repaired_q["question_text"].strip()
 
-                # Soru metnini benzersiz kılmak için ufak varyasyon indexi (eğer tekrar ediyorsa)
+                # Soru metninin birebir kopyasını engelle (Asla yapay başlık/prefix ekleme)
                 if q_text in existing_texts:
-                    q_text = f"**[MEB/OSYM Soru ID #{attempts:03d}]** {q_text}"
-                    repaired_q["question_text"] = q_text
+                    continue
 
                 existing_texts.add(q_text)
                 is_lgs = (exam_type == "LGS")

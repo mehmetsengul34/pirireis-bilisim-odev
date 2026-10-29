@@ -1423,6 +1423,7 @@ def gen_tyt_din(index: int) -> Dict[str, Any]:
 TYT_DISPATCHER = {
     "Türkçe": gen_tyt_turkce,
     "Temel Matematik": gen_tyt_matematik,
+    "Matematik": gen_tyt_matematik,
     "Geometri": gen_tyt_geometri,
     "Fizik": gen_tyt_fizik,
     "Kimya": gen_tyt_kimya,
@@ -1431,6 +1432,7 @@ TYT_DISPATCHER = {
     "Coğrafya": gen_tyt_cografya,
     "Felsefe": gen_tyt_felsefe,
     "Din Kültürü ve Ahlak Bilgisi": gen_tyt_din,
+    "Din Kültürü": gen_tyt_din,
 }
 
 def generate_tyt_question(subject: str, index: int) -> Dict[str, Any]:

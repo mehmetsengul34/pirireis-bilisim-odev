@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, X, FileText, CheckCircle2, Columns, ShieldCheck, EyeOff, KeyRound } from 'lucide-react';
+import { Printer, X, CheckCircle2, ShieldCheck, EyeOff, KeyRound, Layers, Sliders } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 
 export default function PrintableExamModal({ 
@@ -9,53 +9,86 @@ export default function PrintableExamModal({
   defaultTitle = '',
   onClose 
 }) {
-  // Tekrar eden soruları filtrele (Aynı sorunun birden fazla kez yer almasını engelle)
+  // Güvenli Soru Listesi ve Tekilleştirme (Soru kökü benzer diye geçerli soruları asla silme)
   const uniqueQuestions = useMemo(() => {
-    const seenTexts = new Set();
+    if (!Array.isArray(questions) || questions.length === 0) return [];
     const seenIds = new Set();
+    const seenSignatures = new Set();
     const result = [];
+
     for (const q of questions) {
       if (!q) continue;
-      if (q.id && seenIds.has(q.id)) continue;
       
-      const rawText = (q.question_text || '').trim();
-      if (!rawText) continue;
-      
-      const textKey = rawText.toLowerCase().replace(/[^a-z0-9ğüşıöç]/g, '');
-      if (!textKey || seenTexts.has(textKey)) continue;
+      // 1. ID varsa ID üzerinden tekilleştir
+      if (q.id !== undefined && q.id !== null) {
+        if (seenIds.has(q.id)) continue;
+        seenIds.add(q.id);
+        result.push(q);
+        continue;
+      }
 
-      if (q.id) seenIds.add(q.id);
-      seenTexts.add(textKey);
+      // 2. ID yoksa soru metni + şıklar üzerinden tam parmak iziyle tekilleştir
+      const rawText = (q.question_text || q.text || '').trim();
+      const sig = `${rawText}:::${q.option_a || ''}:::${q.option_b || ''}:::${q.option_c || ''}`;
+      if (seenSignatures.has(sig)) continue;
+      seenSignatures.add(sig);
       result.push(q);
     }
     return result;
   }, [questions]);
 
-  const duplicatesFiltered = questions.length - uniqueQuestions.length;
+  const [questionLimit, setQuestionLimit] = useState(
+    uniqueQuestions.length > 40 ? 20 : uniqueQuestions.length
+  );
+
+  // Görüntülenecek ve basılacak soru alt kümesi
+  const displayedQuestions = useMemo(() => {
+    if (questionLimit <= 0 || questionLimit >= uniqueQuestions.length) {
+      return uniqueQuestions;
+    }
+    return uniqueQuestions.slice(0, questionLimit);
+  }, [uniqueQuestions, questionLimit]);
 
   const [schoolName, setSchoolName] = useState('Piri Reis Ticaret Mesleki ve Teknik Anadolu Lisesi');
-  const [examTitle, setExamTitle] = useState(defaultTitle || `${defaultSubject} YKS Kazanım ve Deneme Sınavı`);
+  const [examTitle, setExamTitle] = useState(
+    defaultTitle || `${defaultSubject} Sınavı`
+  );
   const [academicYear, setAcademicYear] = useState('2025 - 2026 Eğitim Öğretim Yılı');
   const [examDuration, setExamDuration] = useState(
-    uniqueQuestions.length > 0 
-      ? (uniqueQuestions.length * 2.5 > 120 ? 120 : Math.max(30, Math.round(uniqueQuestions.length * 2.5))) 
+    displayedQuestions.length > 0 
+      ? Math.min(180, Math.max(20, Math.round(displayedQuestions.length * 2.5)))
       : 40
   );
-  
+
+  useEffect(() => {
+    if (defaultTitle) {
+      setExamTitle(defaultTitle);
+    }
+  }, [defaultTitle]);
+
+  useEffect(() => {
+    if (displayedQuestions.length > 0) {
+      const autoDur = Math.min(180, Math.max(20, Math.round(displayedQuestions.length * 2.5)));
+      setExamDuration(autoDur);
+    }
+  }, [displayedQuestions.length]);
+
   // Toggles (Varsayılan olarak öğrenci test kağıdı temiz ve sade gelir)
   const [twoColumns, setTwoColumns] = useState(true);
   const [showAnswerKey, setShowAnswerKey] = useState(false); // Varsayılan kapalı (öğrenci kağıdında cevap yazmaz)
   const [showSolutions, setShowSolutions] = useState(false);
 
   const handlePrint = () => {
-    window.print();
+    setTimeout(() => {
+      window.print();
+    }, 50);
   };
 
   return createPortal(
-    <div className="printable-portal-root fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex justify-center p-2 sm:p-4 printable-exam-modal-wrapper">
+    <div className="printable-portal-root fixed inset-0 z-[100] overflow-y-auto bg-black/70 backdrop-blur-sm flex justify-center items-start p-2 sm:p-6 py-6 sm:py-10 printable-exam-modal-wrapper">
       
       {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl flex flex-col my-auto border border-zinc-200 dark:border-zinc-800 printable-exam-container">
+      <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl flex flex-col my-0 border border-zinc-200 dark:border-zinc-800 printable-exam-container overflow-hidden">
         
         {/* Top Control Bar (Baskıda gizlenir) */}
         <div className="no-print p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-850/80 rounded-t-3xl flex flex-wrap items-center justify-between gap-4">
@@ -65,13 +98,13 @@ export default function PrintableExamModal({
             </div>
             <div>
               <h3 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <span>A4 Kağıt Sınav Baskı Modülü</span>
-                <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold">
-                  {uniqueQuestions.length} Özgün Soru
+                <span>A4 Kağıt Sınav Baskı & Önizleme</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold">
+                  {displayedQuestions.length} Soru Baskıya Hazır
                 </span>
-                {duplicatesFiltered > 0 && (
-                  <span className="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[11px] font-bold">
-                    {duplicatesFiltered} Tekrar Eden Soru Elendi
+                {uniqueQuestions.length > displayedQuestions.length && (
+                  <span className="px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-[11px] font-semibold">
+                    (Toplam {uniqueQuestions.length} sorudan seçildi)
                   </span>
                 )}
               </h3>
@@ -84,15 +117,15 @@ export default function PrintableExamModal({
           <div className="flex items-center gap-2">
             <button
               onClick={handlePrint}
-              disabled={uniqueQuestions.length === 0}
-              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2"
+              disabled={displayedQuestions.length === 0}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>Yazdır / PDF Olarak Kaydet</span>
             </button>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition"
+              className="p-2 rounded-xl text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition cursor-pointer"
               title="Kapat"
             >
               <X className="w-5 h-5" />
@@ -103,7 +136,7 @@ export default function PrintableExamModal({
         {/* Print Configuration Bar (Baskıda gizlenir) */}
         <div className="no-print p-4 bg-zinc-100/60 dark:bg-zinc-850/40 border-b border-zinc-200 dark:border-zinc-800 space-y-3 text-xs">
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[240px]">
+            <div className="flex-1 min-w-[220px]">
               <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                 Okul Adı:
               </label>
@@ -126,6 +159,28 @@ export default function PrintableExamModal({
                 className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
+
+            {/* Soru Sayısı Sınırlandırıcısı (Soru bankasından toplu baskı alırken kolaylık) */}
+            {uniqueQuestions.length > 20 && (
+              <div className="min-w-[170px]">
+                <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
+                  <Sliders className="w-3 h-3 text-indigo-500" />
+                  <span>Basılacak Soru Sayısı:</span>
+                </label>
+                <select
+                  value={questionLimit}
+                  onChange={(e) => setQuestionLimit(Number(e.target.value))}
+                  className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+                >
+                  <option value={uniqueQuestions.length}>Tüm Sorular ({uniqueQuestions.length})</option>
+                  <option value={10}>İlk 10 Soru (Hızlı Test)</option>
+                  <option value={20}>İlk 20 Soru (Deneme Boyutu)</option>
+                  {uniqueQuestions.length >= 40 && (
+                    <option value={40}>İlk 40 Soru (Tam Format)</option>
+                  )}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Sınav Baskı Modu & Cevap Anahtarı Güvenlik Butonları */}
@@ -199,7 +254,7 @@ export default function PrintableExamModal({
         </div>
 
         {/* Printable Document Paper (Önizleme ve Baskı Birebir Aynı) */}
-        <div className="p-6 sm:p-10 bg-white text-black font-serif printable-paper overflow-y-auto max-h-[75vh] print:max-h-none print:overflow-visible">
+        <div className="p-6 sm:p-10 bg-white text-black font-serif printable-paper overflow-y-auto max-h-[72vh] print:max-h-none print:overflow-visible">
           
           {/* Sınav Başlığı / Header */}
           <div className="border-b-2 border-black pb-3 mb-4 text-center space-y-1">
@@ -229,7 +284,7 @@ export default function PrintableExamModal({
               <span className="font-bold">Ders:</span> {defaultSubject}
             </div>
             <div>
-              <span className="font-bold">Soru Sayısı:</span> {uniqueQuestions.length} Soru
+              <span className="font-bold">Soru Sayısı:</span> {displayedQuestions.length} Soru
             </div>
             <div>
               <span className="font-bold">Süre:</span> {examDuration} Dakika
@@ -243,11 +298,11 @@ export default function PrintableExamModal({
           <div className="border-b border-black pb-2 mb-5 text-[11px] font-sans flex items-center justify-between text-black">
             <span className="font-bold">SINAV YÖNERGESİ:</span>
             <span className="italic">
-              * Bu sınavda {uniqueQuestions.length} soru bulunmaktadır. Her sorunun tek bir doğru cevabı vardır. Başarılar dileriz.
+              * Bu sınavda {displayedQuestions.length} soru bulunmaktadır. Her sorunun tek bir doğru cevabı vardır. Başarılar dileriz.
             </span>
           </div>
 
-          {uniqueQuestions.length === 0 ? (
+          {displayedQuestions.length === 0 ? (
             <div className="py-12 text-center text-black font-sans space-y-2 border-2 border-dashed border-zinc-300 rounded-xl p-8">
               <p className="font-bold text-sm">Yazdırılacak soru bulunamadı.</p>
               <p className="text-xs text-zinc-600">Lütfen soru bankasından en az bir soru seçiniz veya bir sınav kartı üzerindeki "Yazdır" butonuna basınız.</p>
@@ -255,8 +310,10 @@ export default function PrintableExamModal({
           ) : (
             /* Questions Layout (2 Sütun ÖSYM Kitapçık Düzeni) */
             <div className={twoColumns ? 'printable-columns-2' : 'space-y-6'}>
-              {uniqueQuestions.map((q, idx) => {
+              {displayedQuestions.map((q, idx) => {
                 const qNum = idx + 1;
+                const isLgsQuestion = q.exam_type === 'LGS' || defaultSubject === 'LGS' || (!q.option_e && q.exam_type !== 'AYT' && q.exam_type !== 'TYT');
+
                 return (
                   <div 
                     key={q.id || idx} 
@@ -285,14 +342,16 @@ export default function PrintableExamModal({
 
                     {/* Soru Metni (MathRenderer) */}
                     <div className="text-xs sm:text-[13px] leading-relaxed mb-3 text-black font-serif">
-                      <MathRenderer text={q.question_text} content={q.question_text} />
+                      <MathRenderer text={q.question_text || q.text || ''} content={q.question_text || q.text || ''} />
                     </div>
 
                     {/* Şıklar (A, B, C, D, E) - Asla doğru cevap işareti barındırmaz */}
                     <div className="space-y-1.5 text-xs font-sans text-black">
                       {['A', 'B', 'C', 'D', 'E'].map((opt) => {
                         const optText = q[`option_${opt.toLowerCase()}`];
-                        if (opt === 'E' && (!optText || optText.trim() === '' || optText.trim() === '-' || q.exam_type === 'LGS' || defaultSubject === 'LGS')) return null;
+                        if (opt === 'E' && isLgsQuestion) return null;
+                        if (opt === 'E' && (!optText || optText.trim() === '' || optText.trim() === '-')) return null;
+
                         return (
                           <div key={opt} className="flex items-start gap-1.5">
                             <span className="font-bold text-xs shrink-0 w-4 text-black">
@@ -312,7 +371,7 @@ export default function PrintableExamModal({
           )}
 
           {/* Öğretmen Cevap Anahtarı (Öğrenci kağıdında yer almaz, sadece seçilirse AYRI SAYFADA çıkar) */}
-          {showAnswerKey && uniqueQuestions.length > 0 && (
+          {showAnswerKey && displayedQuestions.length > 0 && (
             <div className="page-break-before break-before-page mt-8 pt-6 border-t-2 border-black font-sans text-black">
               <div className="font-bold text-sm uppercase tracking-wide mb-3 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-black" />
@@ -322,10 +381,10 @@ export default function PrintableExamModal({
                 Not: Bu sayfa öğretmen kontrolü içindir, öğrenci test kağıdından ayrı bir sayfada basılır.
               </p>
               <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 text-xs font-mono">
-                {uniqueQuestions.map((q, idx) => (
+                {displayedQuestions.map((q, idx) => (
                   <div key={idx} className="p-1.5 border border-black rounded text-center">
                     <span className="text-zinc-600 mr-1">{idx + 1}:</span>
-                    <span className="font-bold text-black">{q.correct_option}</span>
+                    <span className="font-bold text-black">{q.correct_option || q.correct_answer || '-'}</span>
                   </div>
                 ))}
               </div>
@@ -333,17 +392,17 @@ export default function PrintableExamModal({
           )}
 
           {/* Ayrıntılı Çözüm Kitapçığı (Sadece seçilirse AYRI SAYFADA çıkar) */}
-          {showSolutions && uniqueQuestions.length > 0 && (
+          {showSolutions && displayedQuestions.length > 0 && (
             <div className="page-break-before break-before-page mt-8 pt-6 border-t-2 border-black font-sans text-black">
               <div className="text-sm font-black uppercase tracking-wide mb-4 text-center">
                 {schoolName} - AYRINTILI SORU VE ÇÖZÜM KİTAPÇIĞI
               </div>
               <div className="space-y-4 text-xs">
-                {uniqueQuestions.map((q, idx) => (
+                {displayedQuestions.map((q, idx) => (
                   <div key={idx} className="page-break-avoid break-inside-avoid p-3 border border-black rounded-lg">
                     <div className="flex items-center justify-between font-bold mb-1.5">
                       <span>Soru {idx + 1} ({q.topic || 'Genel'})</span>
-                      <span className="px-2 py-0.5 border border-black rounded">Doğru Cevap: {q.correct_option}</span>
+                      <span className="px-2 py-0.5 border border-black rounded">Doğru Cevap: {q.correct_option || q.correct_answer || '-'}</span>
                     </div>
                     <div className="text-black leading-relaxed">
                       <MathRenderer text={q.explanation || 'Açıklama mevcut değil.'} content={q.explanation || 'Açıklama mevcut değil.'} />

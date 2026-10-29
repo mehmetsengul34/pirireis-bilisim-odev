@@ -763,7 +763,10 @@ export default function TeacherYksManager({ classrooms = [], user }) {
 
                 <button
                   type="button"
-                  onClick={() => setShowPrintModal(true)}
+                  onClick={() => {
+                    setPrintCustomExam(null);
+                    setShowPrintModal(true);
+                  }}
                   disabled={bankQuestions.length === 0}
                   className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5"
                 >
