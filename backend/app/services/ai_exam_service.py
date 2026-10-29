@@ -244,6 +244,9 @@ def sanitize_math_and_turkish(text: str, is_option: bool = False) -> str:
             # Formül dışı değişken kare ve küpleri
             t = re.sub(r'\b([0-9]*[a-zA-Z])\s*\^\s*([0-9]+)\b', r'$\1^{\2}$', t)
             t = re.sub(r'\b([0-9]*[a-zA-Z])([²³⁴])(?![a-zA-Z0-9])', lambda m: f"${m.group(1)}^{{{exp_map.get(m.group(2), '2')}}}$", t)
+            # Düz metinde altı çizili sözcük standartlaştırması: \underline{...} veya _kelime_ -> <u>...</u>
+            t = re.sub(r'\\underline\{([^}]+)\}', r'<u>\1</u>', t)
+            t = re.sub(r'(?<![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])_([^_\n]+)_(?![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])', r'<u>\1</u>', t)
             result.append(t)
 
     return ''.join(result).strip()
@@ -291,9 +294,23 @@ def make_distractors(correct_val: Any, diffs: List[int] = None) -> List[Any]:
 def format_options(correct_str: str, distractors: List[str]) -> Dict[str, Any]:
     letters = ["A", "B", "C", "D", "E"]
     correct_idx = random.randint(0, 4)
-    shuffled_distractors = list(distractors[:4])
+    shuffled_distractors = [d for d in distractors[:4] if "ulaşılamaz" not in str(d).lower()]
+
+    # Yedek alternatif iddialar (asla 'bu yargıya ulaşılamaz' veya geçersiz meta şık kullanılmaz)
+    generic_fallbacks = [
+        "Bireysel deneyimler toplumsal değerlerin oluşumunda tek belirleyici unsurdur.",
+        "Sanatsal ve kültürel üretim çağın gereksinimlerinden bağımsız ele alınamaz.",
+        "Kavramsal derinliğe sahip metinler dönemsel koşullarla doğrudan ilişkilidir.",
+        "Bilimsel ve felsefi gelişmeler toplumsal ilerlemenin temel itici gücüdür."
+    ]
+    random.shuffle(generic_fallbacks)
+    fb_idx = 0
     while len(shuffled_distractors) < 4:
-        shuffled_distractors.append("Bu yargıya metinden ulaşılamaz.")
+        cand = generic_fallbacks[fb_idx % len(generic_fallbacks)]
+        fb_idx += 1
+        if cand not in shuffled_distractors and cand != correct_str:
+            shuffled_distractors.append(cand)
+
     random.shuffle(shuffled_distractors)
 
     opts = {}
@@ -1086,26 +1103,68 @@ TURKISH_READINGS = [
     (
         "Teknolojinin sunduğu sonsuz bilgi akışı, bireylerin derinlemesine düşünme ve odaklanma becerilerini zamanla aşındırmaktadır. Eskiden saatlerce bir kitabın dünyasına dalıp giden insan, bugün birkaç saniyelik görsel uyarıcıların peşinden koşan sabırsız bir izleyiciye dönüşmüştür. Bu yüzeysellik, sanatsal yaratıcılıktan felsefi sorgulamalara kadar her alanı derinden etkilemektedir.",
         "Dijital hız ve bilgi bombardımanı insanın derinlikli odaklanma yeteneğini zayıflatmaktadır.",
-        ["Teknoloji sayesinde insanların okuma ve anlama hızı katlanarak artmıştır.", "Görsel uyarıcılar felsefi yaratıcılığı zenginleştiren en önemli unsurdur.", "Geleneksel kitaplar dijital çağın getirdiği gereksinimleri karşılamaktan uzaktır."],
+        [
+            "Teknoloji sayesinde insanların okuma ve anlama hızı katlanarak artmıştır.",
+            "Görsel uyarıcılar felsefi yaratıcılığı zenginleştiren en önemli unsurdur.",
+            "Geleneksel kitaplar dijital çağın getirdiği gereksinimleri karşılamaktan uzaktır.",
+            "Sanatsal üretim dijitalleşmenin doğurduğu yüzeyselliğe karşı tek sığınaktır."
+        ],
         "Paragrafta teknolojinin hızının derin düşünmeyi ve sabırlı odaklanmayı zedelediği ana düşünce olarak vurgulanmıştır."
     ),
     (
         "Sanatçı, çağına tanıklık eden ama onun dar sınırlarına hapsolmayan kişidir. Bir romancı veya şair, yaşadığı dönemin toplumsal çalkantılarını eserine nakşederken evrensel insanlık durumunu ıskalarsa, eseri yarınlara kalamaz. Çünkü kalıcılık, yerelden yola çıkıp evrensel değerlerle buluşabilme ustalığıdır.",
         "Sanat eserinin kalıcılığı, yerel olayları evrensel insanlık temalarıyla harmanlamasına bağlıdır.",
-        ["Sanatçı yalnızca kendi çağının modasına ve beklentilerine uygun eser üretmelidir.", "Evrensel temaları işleyen yazarlar toplumsal gerçeklikten kopuk kalırlar.", "Kalıcı olmanın tek koşulu soyut ve anlaşılmaz bir dil kullanmaktır."],
+        [
+            "Sanatçı yalnızca kendi çağının modasına ve beklentilerine uygun eser üretmelidir.",
+            "Evrensel temaları işleyen yazarlar toplumsal gerçeklikten kopuk kalırlar.",
+            "Kalıcı olmanın tek koşulu soyut ve anlaşılmaz bir dil kullanmaktır.",
+            "Toplumsal çalkantıları konu edinmeyen hiçbir yapıt edebi değer kazanamaz."
+        ],
         "Yazar, yerellikten evrenselliğe uzanabilen yapıtların zamana direnebileceğini belirtmektedir."
     ),
     (
         "Eleştiri, bir edebiyat eserini yargılayıp mahkûm etme kürsüsü değil; aksine okur ile metin arasında köprü kurma sanatıdır. Yetkin bir eleştirmen, yazarın kurduğu dünyayı didik didik ederken onun gizli estetik katmanlarını gün ışığına çıkarır. Böylece okur, metnin yüzeyinde göremediği zenginlikleri keşfeder.",
         "Eleştirinin temel gayesi, eserin derinliklerini açığa çıkararak okurun alımlamasını zenginleştirmektir.",
-        ["Eleştirmen eserin zayıf yönlerini cezalandırmakla görevli bir hakemdir.", "İyi bir metin hiçbir eleştiriye ve rehberliğe ihtiyaç duymadan anlaşılır.", "Eleştiri yazıları edebi eserlerin özgünlüğünü kısıtlayan bir engeldir."],
+        [
+            "Eleştirmen eserin zayıf yönlerini cezalandırmakla görevli bir hakemdir.",
+            "İyi bir metin hiçbir eleştiriye ve rehberliğe ihtiyaç duymadan anlaşılır.",
+            "Eleştiri yazıları edebi eserlerin özgünlüğünü kısıtlayan bir engeldir.",
+            "Okurun metinden zevk alabilmesi için yazarın niyetini baştan bilmesi zorunludur."
+        ],
         "Paragrafta eleştirinin okur ile metin arasındaki zenginleştirici köprü işlevi ele alınmıştır."
     ),
     (
         "Mimari yapılar, taş ve harçtan ibaret fiziki varlıklar değil; bir toplumun hayat tasavvurunun, inanç sisteminin ve tabiatla kurduğu ilişkinin mekâna yansımasıdır. Osmanlı cami ve külliyelerine baktığınızda yalnızca ibadet mekânı değil; aşevi, medrese ve şifahane ile bütünleşmiş bir merhamet medeniyeti görürsünüz.",
         "Mimari eserler inşa edildikleri toplumun kültürel, ahlaki ve zihinsel kodlarını yansıtır.",
-        ["Tarihi yapıların dayanıklılığı kullanılan malzemenin cinsine bağlıdır.", "Mimarlık sadece estetik kaygılarla üretilen pratikten ibarettir.", "Geleneksel mimarinin günümüz kent yaşamına uygulanması imkânsızdır."],
+        [
+            "Tarihi yapıların dayanıklılığı kullanılan malzemenin cinsine bağlıdır.",
+            "Mimarlık sadece estetik kaygılarla üretilen pratikten ibarettir.",
+            "Geleneksel mimarinin günümüz kent yaşamına uygulanması imkânsızdır.",
+            "Kentleşme süreçlerinde tarihi eserlerin korunması ikinci planda tutulmalıdır."
+        ],
         "Paragrafta mimarinin bir toplumun değerler sistemini somutlaştırdığı vurgulanmıştır."
+    ),
+    (
+        "Dil, yalnızca insanlar arasında anlaşmayı sağlayan mekanik bir araç değildir; bir ulusun hafızası, dünyayı algılama biçimi ve düşünce evrenidir. Bir sözcük kaybolduğunda sadece bir ses öbeği değil, o sözcüğün taşıdığı asırlık bir duygu ve deneyim de tarihe karışır. Bu yüzden anadilini korumak, bir toplumun kendi varoluşunu ve kimliğini koruması demektir.",
+        "Anadil, bir ulusun zihniyetini, kültürel belleğini ve kolektif kimliğini taşıyan kurucu unsurdur.",
+        [
+            "Dillerin değişimi ve yabancı sözcüklerin girişi her zaman kültürel bir zenginleşme doğurur.",
+            "Kelimelerin sayısı bir toplumun teknolojik gelişmişlik düzeyini doğrudan yansıtır.",
+            "Dilin temel işlevi yalnızca pratik günlük iletişimi sağlamakla sınırlıdır.",
+            "Eski sözcükleri koruma çabası çağdaş edebiyatın gelişimine ket vurmaktadır."
+        ],
+        "Yazar anadilin bir milletin kültürel hafızası ve kimliği olduğunu ana düşünce olarak savunmaktadır."
+    ),
+    (
+        "Yazmak, içsel bir hesaplaşma ve dünyayı yeniden kurma çabasıdır. Masasının başına geçen yazar, gerçeği olduğu gibi kopyalamak yerine ona kendi duyarlık süzgecinden geçirerek yeni bir biçim verir. Tıpkı bir ressamın tuvaline vurduğu fırça darbeleri gibi, sözcükler de yazarın zihninde yeniden yoğrulup yeni anlam katmanlarına bürünür.",
+        "Yazınsal yaratım, nesnel gerçeğin yazarın öznel duyarlılığı ve imgeleminde yeniden üretilmesidir.",
+        [
+            "Başarılı bir yazar gözlemlediği olayları hiçbir değişiklik yapmadan aktarmalıdır.",
+            "Edebi metinlerin değeri anlatılan olayın olağanüstülüğü ve sıradışılığı ile ölçülür.",
+            "Yazarlık yeteneği tamamen doğuştan gelen ve sonradan geliştirilemeyen bir niteliktir.",
+            "Gerçekçi romanlar okurun hayal gücünü geliştirmekte yetersiz kalır."
+        ],
+        "Paragrafta yazarın gerçeği kopyalamak yerine öznel duyarlılığıyla dönüştürdüğü ana fikir olarak işlenmiştir."
     )
 ]
 
@@ -1166,6 +1225,104 @@ def q_turkish_sound_events() -> Dict[str, Any]:
         "explanation": "İki heceli bazı sözcükler ünlüyle başlayan bir ek aldıklarında ikinci hecedeki dar ünlü düşer. Bu ses olayına ünlü düşmesi denir.",
         "topic": "Ses Bilgisi",
         "subtopic": "Ünlü Düşmesi (Hece Düşmesi)",
+        **opts
+    }
+
+
+# --- ALTI ÇİZİLİ SÖZCÜK VE SÖZ ÖBEĞİ ÜRETEÇLERİ (GARANTİLİ <u>...</u> ETİKETLİ) ---
+
+TURKISH_UNDERLINED_PHRASES = [
+    (
+        "Genç yazar, ilk romanında ustaların ayak izlerini takip etmek yerine <u>kendi patikasını açmayı</u> seçmiş; edebiyat dünyasında bağımsız bir ses olarak öne çıkmıştır.",
+        "Kimseye özenmeden özgün ve bağımsız bir anlatım yolu benimsemek",
+        [
+            "Zorlu ve yıpratıcı çalışma koşullarını göze almak",
+            "Geleneksel anlatım biçimlerini harfiyen sürdürmek",
+            "Geniş okur kitlelerinin ticari beklentilerine uygun eser üretmek",
+            "Kişisel yaşam öyküsünü edebi bir kurgu haline getirmek"
+        ],
+        "Metindeki 'kendi patikasını açmak' ifadesi, başkalarını taklit etmeden özgün ve bağımsız bir edebi yol tutturmayı ifade eder."
+    ),
+    (
+        "Usta şair, şiirlerinde büyük iddiaların arkasına sığınmaz; gündelik hayatın telaşında gözden kaçan ayrıntılara <u>ayna tutarak</u> okuru derin bir iç muhasebeye davet eder.",
+        "Gerçekleri ve saklı kalan durumları tarafsızca görünür kılmak",
+        [
+            "Edebi gelenekten tamamen koparak soyut imgelere yönelmek",
+            "Okurun beklentilerine göre şiir anlayışını şekillendirmek",
+            "Sosyal eleştiriyi gizlemek amacıyla kapalı bir dil kullanmak",
+            "Geleceğe dair kesin ve bağlayıcı öngörülerde bulunmak"
+        ],
+        "'Ayna tutmak' sözü, var olan durumları veya gözden kaçan gerçekleri olduğu gibi yansıtıp görünür kılmak anlamındadır."
+    ),
+    (
+        "Toplumsal meseleler karşısında <u>kabuğuna çekilmek</u> bir aydının benimseyeceği tavır olamaz; aydın, çağına ve insanına karşı vicdani sorumluluk taşır.",
+        "Çevresindeki olaylarla ilgisini kesip kendi içine kapanmak",
+        [
+            "Fikirlerini kimseden çekinmeden açıkça savunmak",
+            "Toplumsal baskılara karşı örgütlü bir mücadele yürütmek",
+            "Geçmişin kültürel mirasını tarafsızca incelemek",
+            "Sorunları çözmek yerine görmezden gelmeyi erdem saymak"
+        ],
+        "'Kabuğuna çekilmek' deyimi, dış dünyadaki gelişmelere duyarsız kalarak kendi yalnızlığına ve iç dünyasına kapanmak demektir."
+    ),
+    (
+        "Büyük romancılar sadece olay anlatmaz; eserlerinde <u>hayatın nabzını tutarak</u> insan ruhunun en hassas titreşimlerini okura duyururlar.",
+        "Yaşamın canlılığını, değişimini ve gerçek dinamiklerini yakından hissetmek",
+        [
+            "Tarihsel belgeleri roman kurgusunda kusursuzca birleştirmek",
+            "Toplumun ahlaki değerlerini yargılayıp yönlendirmeye çalışmak",
+            "Okurlara hayatın zorluklarına karşı teselli vermek",
+            "Eserin sonunu okurun tahmin edemeyeceği biçimde bağlamak"
+        ],
+        "'Hayatın nabzını tutmak' ifadesi, yaşamın gerçek akışını, temposunu ve insani duyguları derinden kavramak ve hissettirmek anlamına gelir."
+    )
+]
+
+def q_turkish_underlined_phrase() -> Dict[str, Any]:
+    item = random.choice(TURKISH_UNDERLINED_PHRASES)
+    opts = format_options(item[1], item[2])
+    return {
+        "question_text": f'**Paragraf:**\n"{item[0]}"\n\nBu parçadaki **altı çizili sözle anlatılmak istenen** aşağıdakilerden hangisidir?',
+        "visual_svg": None,
+        "explanation": item[3],
+        "topic": "Sözcükte ve Söz Öbeklerinde Anlam",
+        "subtopic": "Altı Çizili Söz Öbeğinin Anlamı",
+        **opts
+    }
+
+def q_turkish_underlined_word_meaning() -> Dict[str, Any]:
+    items = [
+        {
+            "stem": "Aşağıdaki cümlelerin hangisinde **altı çizili sözcük mecaz anlamda** kullanılmıştır?",
+            "correct": "Bu samimi ve sıcak tavırlarıyla kısa sürede herkesin <u>kalbini kazandı</u>.",
+            "distractors": [
+                "Dün akşamdan beri odasındaki çalışma <u>masasını</u> temizliyordu.",
+                "Pencereden süzülen parlak <u>güneş</u> ışığı odayı aydınlattı.",
+                "Bahçedeki sararmış kuru <u>yaprakları</u> dikkatle topladılar.",
+                "Çantasındaki kalın <u>kitabı</u> çıkarıp sıranın üzerine bıraktı."
+            ],
+            "exp": "'Kalp kazanmak' mecaz anlamlı bir söz öbeğidir (sevgi ve sempati kazanmak anlamında kullanılmıştır)."
+        },
+        {
+            "stem": "Aşağıdaki cümlelerin hangisinde **altı çizili sözcük terim anlamıyla** kullanılmıştır?",
+            "correct": "Tiyatro oyununun ikinci <u>perdesi</u> seyircilerden büyük alkış aldı.",
+            "distractors": [
+                "Güneş içeri girmesin diye salonun <u>perdesini</u> kapattı.",
+                "Olayların üzerindeki sır <u>perdesi</u> henüz aralanmadı.",
+                "Gözlerindeki hüzün <u>perdesi</u> dikkatimizden kaçmadı.",
+                "İki arkadaş aralarındaki soğukluk <u>perdesini</u> sonunda kaldırdı."
+            ],
+            "exp": "'Perde' sözcüğü tiyatro sanatına ait bir kavram olarak terim anlamıyla kullanılmıştır."
+        }
+    ]
+    chosen = random.choice(items)
+    opts = format_options(chosen["correct"], chosen["distractors"])
+    return {
+        "question_text": chosen["stem"],
+        "visual_svg": None,
+        "explanation": chosen["exp"],
+        "topic": "Sözcükte Anlam",
+        "subtopic": "Gerçek, Mecaz ve Terim Anlam",
         **opts
     }
 
@@ -1826,7 +1983,8 @@ BIOLOGY_GENERATOR_REGISTRY = [
 
 TURKISH_GENERATOR_REGISTRY = [
     q_turkish_reading, q_turkish_spelling, q_turkish_punctuation,
-    q_turkish_sound_events, q_literature_divan
+    q_turkish_sound_events, q_literature_divan,
+    q_turkish_underlined_phrase, q_turkish_underlined_word_meaning
 ]
 
 HISTORY_GENERATOR_REGISTRY = [
@@ -2050,7 +2208,17 @@ MATEMATİK VE KATEX STANDARDI:
 - Matematik, fen ve derece sembolleri her zaman standart LaTeX $ ... $ içine alınmalıdır.
 - Derece için DAİMA $30^\\circ$, $45^\\circ$, $60^\\circ$ yaz.
 - Şıklarda tek bir sayı veya formül olsa bile MUTLAKA $ ... $ içine al (örn. $36\\pi$, $x^2 + 1$).
-- Türkçe karakterleri temiz UTF-8 olarak doğrudan yaz (ç, ğ, ı, İ, ö, ş, ü)."""
+- Türkçe karakterleri temiz UTF-8 olarak doğrudan yaz (ç, ğ, ı, İ, ö, ş, ü).
+
+TÜRKÇE VE PARAGRAF KESİN KURALLARI (MEB/ÖSYM FORMATI):
+1. ALTI ÇİZİLİ SÖZCÜK KURALI:
+   - Eğer soru kökünde veya şıklarda 'altı çizili sözcük', 'altı çizili ifade', 'altı çizili söz öbeği' ifadesi geçiyorsa, paragraftaki veya şıktaki ilgili hedef sözcüklerin altı KESİNLİKLE <u>...</u> HTML etiketi içine alınmalıdır!
+   - Örnek: "Yazar bu yapıtında <u>hayatın nabzını tutmayı</u> başarmıştır." veya A şıkkı: "Olaylara her zaman <u>ön yargılı</u> yaklaşıyordu."
+   - 'Altı çizili' deyip sözcüğün altını çizmemek (<u> etiketi koymamak) KESİNLİKLE YASAKTIR!
+
+2. EN KAPSAMLI YARGI / ANA DÜŞÜNCE ŞIK KURALI:
+   - Paragraftan çıkarılabilecek 'en kapsamlı yargı', 'ana düşünce', 'ana fikir' veya 'asıl anlatılmak istenen' sorularında; şıklardan birine 'Bu yargıya metinden ulaşılamaz', 'Metinden böyle bir sonuca varılamaz', 'Metinden çıkarılamaz' gibi geçersiz, saçma ve hatalı şıklar YAZMAK KESİNLİKLE YASAKTIR!
+   - Tüm 5 şık da (A, B, C, D, E) metnin konusuna dair alternatif birer fikir veya iddia cümlesi olmalıdır."""
 
     if training_guidelines:
         system_instruction += f"""
@@ -2141,6 +2309,34 @@ KATI KURALLAR:
     return []
 
 # ================= KATI BENZERSİZLİK VE DENETİM SİSTEMİ =================
+
+
+def ensure_underlined_word_formatting(questions: List[Dict[str, Any]]):
+    """Eğer soru kökünde 'altı çizili' ifadesi varsa metinde veya şıklarda <u> etiketinin varlığını garanti eder."""
+    for q in questions:
+        q_text = q.get("question_text", "")
+        q_text_low = q_text.lower()
+        if "altı çizili" in q_text_low or "altı çizilmiş" in q_text_low:
+            # 1. Metin veya şıklarda _kelime_ varsa <u>kelime</u> yap
+            q["question_text"] = re.sub(r'(?<![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])_([^\n_]+)_(?![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])', r'<u>\g<1></u>', q["question_text"])
+            for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
+                if opt_k in q:
+                    q[opt_k] = re.sub(r'(?<![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])_([^\n_]+)_(?![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])', r'<u>\g<1></u>', str(q[opt_k]))
+
+            has_u = ("<u>" in q["question_text"]) or any("<u>" in str(q.get(opt_k, "")) for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"])
+            if not has_u:
+                # Tırnak içindeki ifadeyi <u> içine al: "kelime" veya 'kelime'
+                quote_m = re.search(r'''["']([^"'\n]{3,40})["']''', q["question_text"])
+                if quote_m:
+                    target = quote_m.group(1)
+                    q["question_text"] = q["question_text"].replace(f'"{target}"', f'<u>{target}</u>').replace(f"'{target}'", f"<u>{target}</u>")
+                else:
+                    first_opt = str(q.get("option_a", "")).strip()
+                    if len(first_opt.split()) <= 3 and not first_opt.startswith("<u>"):
+                        for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
+                            if opt_k in q:
+                                val = str(q[opt_k]).strip()
+                                q[opt_k] = f"<u>{val}</u>"
 
 def decorate_question_visuals(questions: List[Dict[str, Any]], subject: str):
     """Görsel gerektiren ders ve konularda sorunun visual_svg alanı boşsa otomatik uygun vektörel SVG bağlar."""
@@ -2237,6 +2433,7 @@ def enforce_strict_uniqueness(
 
     # Otomatik görsel denetimi ve süslemesi
     decorate_question_visuals(unique_questions, subject)
+    ensure_underlined_word_formatting(unique_questions)
 
     return unique_questions[:target_count]
 

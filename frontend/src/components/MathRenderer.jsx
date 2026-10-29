@@ -171,6 +171,10 @@ function normalizeMathText(rawText) {
     });
     s = s.replace(/\b([a-zA-Z])_([0-9]+)\b/g, (_m, v, idx) => `$${v}_{${idx}}$`);
 
+    // G. Altı çizili sözcükler: \underline{...} veya _kelime_ -> <u>...</u>
+    s = s.replace(/\\underline\{([^}]+)\}/g, '<u>$1</u>');
+    s = s.replace(/(?<![a-zA-Z0-9])_([^_\n]+)_(?![a-zA-Z0-9])/g, '<u>$1</u>');
+
     return s;
   });
 
@@ -247,7 +251,7 @@ export default function MathRenderer({ text, content, value, children, className
 
     return lines.map((line, lineIdx) => {
       // Satır içi parçalama: Önce $$...$$ (display math), sonra $...$ (inline math), sonra **...** (bold)
-      const tokenRegex = /(\$\$[\s\S]*?\$\$|\$[^\$]+?\$|\*\*[^*]+?\*\*)/g;
+      const tokenRegex = /(\$\$[\s\S]*?\$\$|\$[^\$]+?\$|\*\*[^*]+?\*\*|<u>[\s\S]*?<\/u>|<ins>[\s\S]*?<\/ins>)/g;
       const tokens = [];
       let lastPos = 0;
       let tokenMatch;
@@ -275,6 +279,12 @@ export default function MathRenderer({ text, content, value, children, className
           tokens.push({
             type: 'bold',
             value: matchStr.slice(2, -2)
+          });
+        } else if ((matchStr.startsWith('<u>') && matchStr.endsWith('</u>')) || (matchStr.startsWith('<ins>') && matchStr.endsWith('</ins>'))) {
+          const inner = matchStr.startsWith('<u>') ? matchStr.slice(3, -4) : matchStr.slice(5, -6);
+          tokens.push({
+            type: 'underline',
+            value: inner
           });
         }
 
@@ -340,6 +350,15 @@ export default function MathRenderer({ text, content, value, children, className
                 <strong key={tokIdx} className="font-semibold text-inherit print:!text-black">
                   {renderPlainTextWithMathSymbols(token.value)}
                 </strong>
+              );
+            } else if (token.type === 'underline') {
+              return (
+                <u
+                  key={tokIdx}
+                  className="underline underline-offset-4 decoration-2 decoration-indigo-600 dark:decoration-indigo-400 font-bold px-0.5 print:!text-black print:!decoration-black print:font-bold"
+                >
+                  {renderPlainTextWithMathSymbols(token.value)}
+                </u>
               );
             } else {
               return (

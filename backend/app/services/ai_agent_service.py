@@ -71,8 +71,25 @@ class JudgeAgent:
             critiques.append("Soru kökü standart ÖSYM kalıplarına daha fazla yaklaştırılabilir.")
         scores["curriculum_alignment"] = max(score_stem, 6)
 
+        # Altı çizili sözcük denetimi: Soru 'altı çizili' ifadesini içeriyorsa, metinde veya şıklarda <u> etiketi var mı?
+        q_low = q_text.lower()
+        if "altı çizili" in q_low or "altı çizilmiş" in q_low:
+            has_underline = ("<u>" in q_text) or any("<u>" in str(opt) for opt in options) or ("\\underline" in q_text) or any("\\underline" in str(opt) for opt in options)
+            if not has_underline:
+                score_stem -= 8
+                critiques.append("Soru kökü 'altı çizili' sözcüğü soruyor ancak metinde veya şıklarda <u>...</u> etiketi bulunmuyor.")
+
         # 2. Çeldirici Kalitesi ve Şık Dengesi (20 Puan)
         score_distractors = 20
+
+        # En kapsamlı yargı / ana fikir sorusunda 'ulaşılamaz' şıkkı var mı?
+        is_main_idea_q = any(kw in q_low for kw in ["en kapsamlı yargı", "ana düşünce", "ana fikir", "asıl anlatılmak istenen"])
+        if is_main_idea_q:
+            invalid_opt_keywords = ["ulaşılamaz", "varılamaz", "çıkarılamaz", "böyle bir yargı", "ulaşmak mümkün değildir"]
+            has_invalid_opt = any(any(ik in opt.lower() for ik in invalid_opt_keywords) for opt in options)
+            if has_invalid_opt:
+                score_distractors -= 12
+                critiques.append("Ana düşünce / kapsamlı yargı sorusunda 'Bu yargıya ulaşılamaz' şeklinde pedagojik olarak geçersiz şık tespit edildi.")
         # Boş veya çok kısa şık var mı?
         short_opts = [opt for opt in options if len(opt.strip()) == 0 or opt.strip() == "-"]
         if short_opts:
@@ -159,6 +176,47 @@ class JudgeAgent:
         for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
             if opt_k in repaired:
                 repaired[opt_k] = sanitize_math_and_turkish(str(repaired[opt_k]), is_option=True)
+
+        # 1.1. Altı çizili sözcük onarımı
+        q_text_low = repaired["question_text"].lower()
+        if "altı çizili" in q_text_low or "altı çizilmiş" in q_text_low:
+            # <u> var mı kontrol et
+            has_u = ("<u>" in repaired["question_text"]) or any("<u>" in str(repaired.get(f"option_{k}", "")) for k in ["a","b","c","d","e"])
+            if not has_u:
+                # _kelime_ varsa <u>kelime</u> yap
+                repaired["question_text"] = re.sub(r'(?<![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])_([^\n_]+)_(?![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])', r'<u>\g<1></u>', repaired["question_text"])
+                for k in ["a", "b", "c", "d", "e"]:
+                    repaired[f"option_{k}"] = re.sub(r'(?<![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])_([^\n_]+)_(?![a-zA-Z0-9çğıöşüÇĞİÖŞÜ])', r'<u>\g<1></u>', str(repaired.get(f"option_{k}", "")))
+
+                has_u_now = ("<u>" in repaired["question_text"]) or any("<u>" in str(repaired.get(f"option_{k}", "")) for k in ["a","b","c","d","e"])
+                if not has_u_now:
+                    quote_m = re.search(r'''["']([^"'\n]{3,40})["']''', repaired["question_text"])
+                    if quote_m:
+                        target = quote_m.group(1)
+                        repaired["question_text"] = repaired["question_text"].replace(f'"{target}"', f'<u>{target}</u>').replace(f"'{target}'", f"<u>{target}</u>")
+                    else:
+                        first_opt = str(repaired.get("option_a", "")).strip()
+                        if len(first_opt.split()) <= 3 and not first_opt.startswith("<u>"):
+                            for k in ["a", "b", "c", "d", "e"]:
+                                val = str(repaired.get(f"option_{k}", "")).strip()
+                                repaired[f"option_{k}"] = f"<u>{val}</u>"
+
+        # 1.2. En kapsamlı yargı sorusunda geçersiz 'ulaşılamaz' şıkkını onar
+        is_main_idea_q = any(kw in q_text_low for kw in ["en kapsamlı yargı", "ana düşünce", "ana fikir", "asıl anlatılmak istenen"])
+        if is_main_idea_q:
+            invalid_opt_keywords = ["ulaşılamaz", "varılamaz", "çıkarılamaz", "böyle bir yargı", "ulaşmak mümkün değildir"]
+            replacement_propositions = [
+                "Edebi eserlerin başarısı dönemin sosyal gerçekliğini doğrudan yansıtma gücüne dayanır.",
+                "Bireysel deneyimler evrensel insanlık temalarıyla buluştuğunda kalıcı değer kazanır.",
+                "Sanatsal yaratım toplumsal beklentilerin ötesinde bağımsız bir estetik alan gerektirir.",
+                "Kültürel süreklilik geçmiş mirasın çağdaş yaklaşımlarla yeniden yorumlanmasıyla sağlanır."
+            ]
+            rep_idx = 0
+            for k in ["a", "b", "c", "d", "e"]:
+                opt_val = str(repaired.get(f"option_{k}", ""))
+                if any(ik in opt_val.lower() for ik in invalid_opt_keywords):
+                    repaired[f"option_{k}"] = replacement_propositions[rep_idx % len(replacement_propositions)]
+                    rep_idx += 1
 
         # 2. Görsel gereksinimi varsa ve boşsa bağla
         decorate_question_visuals([repaired], subject=subject)
