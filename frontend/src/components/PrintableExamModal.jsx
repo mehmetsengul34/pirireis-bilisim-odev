@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { Printer, X, CheckCircle2, ShieldCheck, EyeOff, KeyRound, Sliders, FileText } from 'lucide-react';
+import { Printer, X, CheckCircle2, Sliders } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 import { isVerbalBranch } from '../utils/branchUtils';
 
@@ -10,7 +9,7 @@ export default function PrintableExamModal({
   defaultTitle = '',
   onClose 
 }) {
-  // Güvenli Soru Listesi ve Tekilleştirme (Soru kökü benzer diye geçerli soruları asla silme)
+  // Güvenli Soru Listesi ve Tekilleştirme
   const uniqueQuestions = useMemo(() => {
     if (!Array.isArray(questions) || questions.length === 0) return [];
     const seenIds = new Set();
@@ -52,7 +51,7 @@ export default function PrintableExamModal({
 
   const [schoolName, setSchoolName] = useState('Piri Reis Ticaret Mesleki ve Teknik Anadolu Lisesi');
   const [examTitle, setExamTitle] = useState(
-    defaultTitle || `${defaultSubject} Sınavı`
+    defaultTitle || `${defaultSubject} YKS Kazanım ve Deneme Sınavı`
   );
   const [academicYear, setAcademicYear] = useState('2025 - 2026 Eğitim Öğretim Yılı');
   const [examDuration, setExamDuration] = useState(
@@ -79,7 +78,7 @@ export default function PrintableExamModal({
   const [showAnswerKey, setShowAnswerKey] = useState(false); // Varsayılan kapalı (öğrenci kağıdında cevap yazmaz)
   const [showSolutions, setShowSolutions] = useState(false);
 
-  // Klavye Kısayolu (Ctrl+P / Cmd+P) ile doğrudan sistem yazdırma motorunu tetikle
+  // Klavye Kısayolu (Ctrl+P / Cmd+P)
   useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p') {
@@ -91,32 +90,17 @@ export default function PrintableExamModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Doğrudan ve Kesintisiz Sistem Yazdırma / PDF Kaydetme Motoru
   const handlePrint = () => {
-    // Varsa eski iframe veya artıkları temizle
-    const oldFrame = document.getElementById('print-paper-iframe');
-    if (oldFrame) {
-      oldFrame.remove();
-    }
-    // Doğrudan sistem yazdırma / PDF motorunu tetikle
-    setTimeout(() => {
-      window.print();
-    }, 50);
+    window.print();
   };
 
-  return createPortal(
-    <div className="printable-portal-root fixed inset-0 z-[100] overflow-y-auto bg-black/70 backdrop-blur-sm flex justify-center items-start p-2 sm:p-6 py-6 sm:py-10 printable-exam-modal-wrapper print:!static print:!inset-auto print:!p-0 print:!m-0 print:!bg-white print:!overflow-visible print:!block print:!w-full print:!h-auto print:!backdrop-blur-none">
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm flex justify-center p-2 sm:p-4 printable-exam-modal-wrapper">
       
       {/* Modal Dialog Card */}
-      <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl flex flex-col my-0 border border-zinc-200 dark:border-zinc-800 printable-exam-container overflow-hidden print:!static print:!max-w-none print:!w-full print:!border-none print:!shadow-none print:!rounded-none print:!bg-white print:!overflow-visible print:!block print:!p-0 print:!m-0">
+      <div className="relative w-full max-w-5xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl flex flex-col my-auto border border-zinc-200 dark:border-zinc-800 printable-exam-container">
         
         {/* Top Control Bar (Baskıda gizlenir) */}
-        <div className="no-print mx-4 sm:mx-6 mt-3 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <Printer className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span><strong>Yazdırma & PDF:</strong> Butonlara bastığınızda tarayıcının sistem yazdırma diyaloğu açılır. Buradan yazıcınızı (HP vb.) seçip yazdırabilir veya "PDF Olarak Kaydet" seçeneğini kullanabilirsiniz. (Kısayol: <strong>Ctrl + P</strong>)</span>
-          </div>
-        </div>
         <div className="no-print p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-850/80 rounded-t-3xl flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-indigo-600 text-white shadow-md shadow-indigo-600/20">
@@ -124,8 +108,8 @@ export default function PrintableExamModal({
             </div>
             <div>
               <h3 className="font-extrabold text-sm sm:text-base text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-                <span>A4 Kağıt Sınav Baskı & Önizleme</span>
-                <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold">
+                <span>A4 Kağıt Sınav Baskı Modülü</span>
+                <span className="px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold">
                   {displayedQuestions.length} Soru Baskıya Hazır
                 </span>
                 {uniqueQuestions.length > displayedQuestions.length && (
@@ -135,7 +119,7 @@ export default function PrintableExamModal({
                 )}
               </h3>
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                ÖSYM & MEB standartlarında 2 sütunlu A4 sınav kağıdı şablonu (Fiziksel yazıcı ve PDF uyumlu).
+                ÖSYM & MEB standartlarında 2 sütunlu A4 sınav kağıdı şablonu.
               </p>
             </div>
           </div>
@@ -144,20 +128,10 @@ export default function PrintableExamModal({
             <button
               onClick={handlePrint}
               disabled={displayedQuestions.length === 0}
-              className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-600/30 transition flex items-center gap-2 cursor-pointer"
-              title="Yazıcıya gönderir veya sistem yazdırma motorunu açar"
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
-              <span>Yazıcıya Gönder (Yazdır)</span>
-            </button>
-            <button
-              onClick={handlePrint}
-              disabled={displayedQuestions.length === 0}
-              className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2 cursor-pointer"
-              title="PDF Olarak Kaydet (Sistem Yazdırma Penceresinden)"
-            >
-              <FileText className="w-4 h-4" />
-              <span>PDF Olarak Kaydet</span>
+              <span>Yazdır / PDF Olarak Kaydet</span>
             </button>
             <button
               onClick={onClose}
@@ -170,129 +144,89 @@ export default function PrintableExamModal({
         </div>
 
         {/* Print Configuration Bar (Baskıda gizlenir) */}
-        <div className="no-print p-4 bg-zinc-100/60 dark:bg-zinc-850/40 border-b border-zinc-200 dark:border-zinc-800 space-y-3 text-xs">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[220px]">
-              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                Okul Adı:
-              </label>
-              <input
-                type="text"
-                value={schoolName}
-                onChange={(e) => setSchoolName(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                Sınav Başlığı:
-              </label>
-              <input
-                type="text"
-                value={examTitle}
-                onChange={(e) => setExamTitle(e.target.value)}
-                className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            {/* Soru Sayısı Sınırlandırıcısı (Soru bankasından toplu baskı alırken kolaylık) */}
-            {uniqueQuestions.length > 20 && (
-              <div className="min-w-[170px]">
-                <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
-                  <Sliders className="w-3 h-3 text-indigo-500" />
-                  <span>Basılacak Soru Sayısı:</span>
-                </label>
-                <select
-                  value={questionLimit}
-                  onChange={(e) => setQuestionLimit(Number(e.target.value))}
-                  className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
-                >
-                  <option value={uniqueQuestions.length}>Tüm Sorular ({uniqueQuestions.length})</option>
-                  <option value={10}>İlk 10 Soru (Hızlı Test)</option>
-                  <option value={20}>İlk 20 Soru (Deneme Boyutu)</option>
-                  {uniqueQuestions.length >= 40 && (
-                    <option value={40}>İlk 40 Soru (Tam Format)</option>
-                  )}
-                </select>
-              </div>
-            )}
+        <div className="no-print p-4 bg-zinc-100/60 dark:bg-zinc-850/40 border-b border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center gap-4 text-xs">
+          <div className="flex-1 min-w-[220px]">
+            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+              Okul Adı:
+            </label>
+            <input
+              type="text"
+              value={schoolName}
+              onChange={(e) => setSchoolName(e.target.value)}
+              className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
-          {/* Sınav Baskı Modu & Cevap Anahtarı Güvenlik Butonları */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mr-1">Baskı Türü:</span>
-              <div className="inline-flex p-1 rounded-xl bg-zinc-200/80 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700">
-                <button
-                  type="button"
-                  onClick={() => setShowAnswerKey(false)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    !showAnswerKey
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-                  }`}
-                >
-                  <EyeOff className="w-3.5 h-3.5" />
-                  <span>Öğrenci Sınavı (Cevaplar Gizli)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAnswerKey(true)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                    showAnswerKey
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-                  }`}
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                  <span>+ Cevap Anahtarı (Ek Sayfa)</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={twoColumns}
-                  onChange={(e) => setTwoColumns(e.target.checked)}
-                  className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="font-semibold text-zinc-700 dark:text-zinc-300">2 Sütun (Kitapçık Düzeni)</span>
-              </label>
-
-              <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={showSolutions}
-                  onChange={(e) => setShowSolutions(e.target.checked)}
-                  className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="font-semibold text-zinc-700 dark:text-zinc-300">Çözüm Kitapçığı</span>
-              </label>
-            </div>
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+              Sınav Başlığı:
+            </label>
+            <input
+              type="text"
+              value={examTitle}
+              onChange={(e) => setExamTitle(e.target.value)}
+              className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
-          <div className="text-[11px] flex items-center gap-2 pt-1">
-            {!showAnswerKey ? (
-              <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Öğrenci Sınav Kağıdı: Cevaplar ve çözümler hiçbir sayfada basılmaz.</span>
-              </span>
-            ) : (
-              <span className="text-indigo-600 dark:text-indigo-400 font-semibold flex items-center gap-1">
-                <KeyRound className="w-3.5 h-3.5" />
-                <span>Öğretmen Modu: Cevap anahtarı öğrenci sorularından sonra ayrı bir sayfada basılacaktır.</span>
-              </span>
-            )}
+          {uniqueQuestions.length > 20 && (
+            <div className="min-w-[170px]">
+              <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 mb-1 flex items-center gap-1">
+                <Sliders className="w-3 h-3 text-indigo-500" />
+                <span>Soru Sayısı:</span>
+              </label>
+              <select
+                value={questionLimit}
+                onChange={(e) => setQuestionLimit(Number(e.target.value))}
+                className="w-full px-3 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+              >
+                <option value={uniqueQuestions.length}>Tüm Sorular ({uniqueQuestions.length})</option>
+                <option value={10}>İlk 10 Soru (Hızlı Test)</option>
+                <option value={20}>İlk 20 Soru (Deneme Boyutu)</option>
+                {uniqueQuestions.length >= 40 && (
+                  <option value={40}>İlk 40 Soru (Tam Format)</option>
+                )}
+              </select>
+            </div>
+          )}
+
+          <div className="flex items-center gap-4 flex-wrap pt-2 sm:pt-0">
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={twoColumns}
+                onChange={(e) => setTwoColumns(e.target.checked)}
+                className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="font-semibold text-zinc-700 dark:text-zinc-300">2 Sütun (Kitapçık Düzeni)</span>
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showAnswerKey}
+                onChange={(e) => setShowAnswerKey(e.target.checked)}
+                className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="font-semibold text-zinc-700 dark:text-zinc-300">Cevap Anahtarı (Ayrı Sayfa)</span>
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showSolutions}
+                onChange={(e) => setShowSolutions(e.target.checked)}
+                className="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span className="font-semibold text-zinc-700 dark:text-zinc-300">Ayrıntılı Çözüm Kitapçığı</span>
+            </label>
           </div>
         </div>
 
         {/* Printable Document Paper (Önizleme ve Baskı Birebir Aynı) */}
         <div 
           id="printable-exam-paper-content"
-          className="p-6 sm:p-10 bg-white text-black font-serif printable-paper overflow-y-auto max-h-[72vh] print:!max-h-none print:!overflow-visible print:!static print:!p-0 print:!m-0 print:!w-full print:!block"
+          className="p-6 sm:p-10 bg-white text-black font-serif printable-paper overflow-y-auto max-h-[75vh] print:max-h-none print:overflow-visible"
         >
           
           {/* Sınav Başlığı / Header */}
@@ -348,7 +282,7 @@ export default function PrintableExamModal({
             </div>
           ) : (
             /* Questions Layout (2 Sütun ÖSYM Kitapçık Düzeni) */
-            <div className={twoColumns ? 'printable-columns-2' : 'space-y-6'}>
+            <div className={twoColumns ? 'printable-columns-2' : 'printable-columns-1 space-y-6'}>
               {displayedQuestions.map((q, idx) => {
                 const qNum = idx + 1;
                 const isLgsQuestion = q.exam_type === 'LGS' || defaultSubject === 'LGS' || (!q.option_e && q.exam_type !== 'AYT' && q.exam_type !== 'TYT');
@@ -372,7 +306,7 @@ export default function PrintableExamModal({
                       )}
                     </div>
 
-                    {/* Vektörel SVG Çizimi (Açık Zemin / Yüksek Kontrast - Yalnızca Sayısal Branşlar) */}
+                    {/* Vektörel SVG Çizimi (Varsa - Yalnızca Sayısal/Uygun Branşlar) */}
                     {q.visual_svg && !isVerbalBranch(q.subject || defaultSubject, q.topic) && (
                       <div className="my-2 p-1.5 bg-white flex justify-center overflow-hidden printable-svg-container">
                         <div className="max-w-[260px] w-full" dangerouslySetInnerHTML={{ __html: q.visual_svg }} />
@@ -455,7 +389,6 @@ export default function PrintableExamModal({
         </div>
 
       </div>
-    </div>,
-    document.body
+    </div>
   );
 }

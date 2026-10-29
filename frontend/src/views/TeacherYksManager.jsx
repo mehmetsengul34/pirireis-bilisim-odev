@@ -353,7 +353,9 @@ export default function TeacherYksManager({ classrooms = [], user }) {
   const totalSubmissions = exams.reduce((acc, e) => acc + (e.submission_count || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <>
+      <div className={`space-y-6 ${showPrintModal ? "no-print" : ""}`}>
+
       
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-zinc-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
@@ -1636,6 +1638,8 @@ export default function TeacherYksManager({ classrooms = [], user }) {
         </div>
       )}
 
+      </div>
+
       {/* Generator Modal */}
       <YksExamGeneratorModal
         isOpen={showGeneratorModal}
@@ -1831,6 +1835,6 @@ export default function TeacherYksManager({ classrooms = [], user }) {
         </div>
       )}
 
-    </div>
+    </>
   );
 }
