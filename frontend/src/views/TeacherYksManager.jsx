@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Sparkles, BookOpen, Plus, BarChart3, Users, Clock, Award, 
   Trash2, Eye, Send, CheckCircle2, ChevronRight, Layers, AlertCircle,
