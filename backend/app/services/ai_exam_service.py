@@ -2048,8 +2048,8 @@ GÖRSEL VE VEKTÖREL ŞEKİL DESTEĞİ:
 
 MATEMATİK VE KATEX STANDARDI:
 - Matematik, fen ve derece sembolleri her zaman standart LaTeX $ ... $ içine alınmalıdır.
-- Derece için DAİMA $30^\circ$, $45^\circ$, $60^\circ$ yaz.
-- Şıklarda tek bir sayı veya formül olsa bile MUTLAKA $ ... $ içine al (örn. $36\pi$, $x^2 + 1$).
+- Derece için DAİMA $30^\\circ$, $45^\\circ$, $60^\\circ$ yaz.
+- Şıklarda tek bir sayı veya formül olsa bile MUTLAKA $ ... $ içine al (örn. $36\\pi$, $x^2 + 1$).
 - Türkçe karakterleri temiz UTF-8 olarak doğrudan yaz (ç, ğ, ı, İ, ö, ş, ü)."""
 
     if training_guidelines:
