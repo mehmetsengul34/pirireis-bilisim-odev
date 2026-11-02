@@ -309,4 +309,65 @@ export const notificationService = {
   }
 };
 
+export const bilisimService = {
+  getCurrentWeek: async () => {
+    const res = await api.get('/bilisim/current-week');
+    return res.data;
+  },
+  getStarterTemplates: async () => {
+    const res = await api.get('/bilisim/starter-templates');
+    return res.data;
+  },
+  listCourses: async () => {
+    const res = await api.get('/bilisim/courses');
+    return res.data;
+  },
+  createCourse: async (courseData, starterKey = null) => {
+    const res = await api.post('/bilisim/courses', courseData, {
+      params: starterKey ? { starter_key: starterKey } : {}
+    });
+    return res.data;
+  },
+  deleteCourse: async (courseId) => {
+    const res = await api.delete(`/bilisim/courses/${courseId}`);
+    return res.data;
+  },
+  getPlan: async (courseId) => {
+    const res = await api.get(`/bilisim/courses/${courseId}/plan`);
+    return res.data;
+  },
+  uploadPlan: async (courseId, formData) => {
+    const res = await api.post(`/bilisim/courses/${courseId}/plan`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  listModules: async (courseId) => {
+    const res = await api.get(`/bilisim/courses/${courseId}/modules`);
+    return res.data;
+  },
+  uploadModule: async (courseId, formData) => {
+    const res = await api.post(`/bilisim/courses/${courseId}/modules`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+  deleteModule: async (courseId, moduleId) => {
+    const res = await api.delete(`/bilisim/courses/${courseId}/modules/${moduleId}`);
+    return res.data;
+  },
+  getMaterial: async (courseId, weekNumber) => {
+    const res = await api.get(`/bilisim/courses/${courseId}/materials/${weekNumber}`);
+    return res.data;
+  },
+  generateMaterial: async (courseId, weekNumber, payload = {}) => {
+    const res = await api.post(`/bilisim/courses/${courseId}/generate/${weekNumber}`, payload);
+    return res.data;
+  },
+  getDownloadUrl: (materialId) => {
+    const base = apiBase ? `${apiBase.replace(/\/$/, '')}` : '';
+    return `${base}/api/bilisim/download-presentation/${materialId}`;
+  }
+};
+
 export default api;

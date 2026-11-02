@@ -266,5 +266,76 @@ class AIAgentMemory(Base):
     content = Column(Text, nullable=False) # JSON veya metin
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+# ================= BİLİŞİM DERSLERİ, YILLIK PLAN VE DERS MATERYALİ MODELLERİ =================
+
+class BilisimCourse(Base):
+    __tablename__ = "bilisim_courses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    teacher_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    name = Column(String(150), nullable=False)
+    grade_level = Column(String(50), default="11. Sınıf")
+    academic_year = Column(String(50), default="2026-2027")
+    start_date = Column(DateTime, default=lambda: datetime(2026, 9, 14))
+    description = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    teacher = relationship("User")
+    plans = relationship("BilisimPlan", back_populates="course", cascade="all, delete-orphan")
+    modules = relationship("BilisimModuleDoc", back_populates="course", cascade="all, delete-orphan")
+    materials = relationship("BilisimWeeklyMaterial", back_populates="course", cascade="all, delete-orphan")
+
+class BilisimPlan(Base):
+    __tablename__ = "bilisim_plans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("bilisim_courses.id"), nullable=False)
+    filename = Column(String(255), nullable=True)
+    file_path = Column(String(500), nullable=True)
+    raw_content = Column(Text, nullable=True)
+    parsed_weeks = Column(Text, nullable=True) # JSON array of 36 weeks
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    course = relationship("BilisimCourse", back_populates="plans")
+
+class BilisimModuleDoc(Base):
+    __tablename__ = "bilisim_module_docs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("bilisim_courses.id"), nullable=False)
+    title = Column(String(255), nullable=False)
+    filename = Column(String(255), nullable=False)
+    file_path = Column(String(500), nullable=True)
+    file_size_kb = Column(Integer, default=0)
+    page_count = Column(Integer, default=1)
+    extracted_text = Column(Text, nullable=True)
+    summary = Column(Text, nullable=True)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+
+    course = relationship("BilisimCourse", back_populates="modules")
+
+class BilisimWeeklyMaterial(Base):
+    __tablename__ = "bilisim_weekly_materials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("bilisim_courses.id"), nullable=False)
+    week_number = Column(Integer, nullable=False)
+    topic = Column(String(255), nullable=False)
+    subtopics = Column(Text, nullable=True)
+    learning_outcomes = Column(Text, nullable=True)
+    teaching_guide = Column(Text, nullable=True)
+    code_examples = Column(Text, nullable=True)
+    lab_exercises = Column(Text, nullable=True)
+    quiz_questions = Column(Text, nullable=True)
+    slides_json = Column(Text, nullable=True)
+    pptx_file_path = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("course_id", "week_number", name="_bilisim_course_week_uc"),)
+
+    course = relationship("BilisimCourse", back_populates="materials")
+
+
 
 

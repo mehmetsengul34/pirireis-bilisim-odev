@@ -475,3 +475,70 @@ class AIAgentRunRequest(BaseModel):
     target_count_per_subject: int = 2
     audit_distractors: bool = True
 
+# ================= BİLİŞİM DERSİ, YILLIK PLAN VE MATERYAL ŞEMALARI =================
+
+class BilisimCourseCreate(BaseModel):
+    name: str
+    grade_level: Optional[str] = "11. Sınıf"
+    academic_year: Optional[str] = "2026-2027"
+    start_date: Optional[str] = "2026-09-14"
+    description: Optional[str] = None
+
+class BilisimCourseOut(BaseModel):
+    id: int
+    name: str
+    grade_level: str
+    academic_year: str
+    start_date: Optional[datetime] = None
+    description: Optional[str] = None
+    created_at: datetime
+    has_plan: bool = False
+    plan_filename: Optional[str] = None
+    modules_count: int = 0
+    current_week: int = 1
+    total_weeks: int = 36
+
+    class Config:
+        from_attributes = True
+
+class BilisimPlanTextUpdate(BaseModel):
+    raw_content: str
+
+class BilisimModuleDocOut(BaseModel):
+    id: int
+    course_id: int
+    title: str
+    filename: str
+    file_size_kb: int = 0
+    page_count: int = 1
+    summary: Optional[str] = None
+    uploaded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class BilisimWeeklyMaterialOut(BaseModel):
+    id: int
+    course_id: int
+    week_number: int
+    topic: str
+    subtopics: Optional[str] = None
+    learning_outcomes: Optional[str] = None
+    teaching_guide: Optional[str] = None
+    code_examples: Optional[str] = None
+    lab_exercises: Optional[str] = None
+    quiz_questions: Optional[str] = None
+    slides_json: Optional[str] = None
+    pptx_file_path: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class BilisimGenerateRequest(BaseModel):
+    week_number: int
+    custom_instructions: Optional[str] = None
+    selected_topic: Optional[str] = None
+
+

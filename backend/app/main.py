@@ -8,10 +8,11 @@ from app.database import engine, Base, SessionLocal, BASE_DIR, get_db_info
 from app.models import (
     User, Classroom, ClassroomStudent, Assignment, Submission,
     Exam, ExamQuestion, ExamSubmission, ExamAnswer, Notification,
-    QuestionBank, AIQuestionTrainingDoc, AIAgentActivity, AIAgentMemory
+    QuestionBank, AIQuestionTrainingDoc, AIAgentActivity, AIAgentMemory,
+    BilisimCourse, BilisimPlan, BilisimModuleDoc, BilisimWeeklyMaterial
 )
 from app.auth import hash_password
-from app.routers import auth, classrooms, assignments, submissions, system, exams, notifications
+from app.routers import auth, classrooms, assignments, submissions, system, exams, notifications, bilisim
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -124,6 +125,9 @@ app.add_middleware(
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(os.path.join(UPLOADS_DIR, "assignments"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "submissions"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "curriculum"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "modules"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "presentations"), exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Include Routers
@@ -134,6 +138,7 @@ app.include_router(submissions.router)
 app.include_router(exams.router)
 app.include_router(notifications.router)
 app.include_router(system.router)
+app.include_router(bilisim.router)
 
 @app.on_event("startup")
 def startup_seed_data():
@@ -203,6 +208,46 @@ def startup_seed_data():
                     due_date=None
                 )
                 db.add(sample_assignment)
+                db.commit()
+
+            # Varsayılan Bilişim Dersi ve Yıllık Plan Başlatıcı
+            sample_b_course = db.query(BilisimCourse).first()
+            if not sample_b_course:
+                from app.services.bilisim_ai_service import STARTER_CURRICULUMS
+                import json
+                starter_info = STARTER_CURRICULUMS["mobil_uygulama"]
+                new_b_course = BilisimCourse(
+                    teacher_id=pirireis_teacher.id,
+                    name=starter_info["name"],
+                    grade_level=starter_info["grade_level"],
+                    academic_year="2026-2027",
+                    description=starter_info["description"]
+                )
+                db.add(new_b_course)
+                db.commit()
+                db.refresh(new_b_course)
+
+                weeks = starter_info["weeks"]
+                raw_lines = [f"{w['week']}. Hafta: {w['topic']} - {w['outcomes']}" for w in weeks]
+                init_plan = BilisimPlan(
+                    course_id=new_b_course.id,
+                    filename="MEB_11_Sinif_Mobil_Uygulama_Yillik_Plan.txt",
+                    raw_content="\n".join(raw_lines),
+                    parsed_weeks=json.dumps(weeks, ensure_ascii=False)
+                )
+                db.add(init_plan)
+
+                # Örnek başlangıç MEB modülü ekle
+                sample_module = BilisimModuleDoc(
+                    course_id=new_b_course.id,
+                    title="Modül 1: Android Studio Kurulumu & Arayüz Tasarımı",
+                    filename="MEB_Modul_Android_Studio_Arayuz.pdf",
+                    file_size_kb=1420,
+                    page_count=28,
+                    extracted_text="Android Studio ile Mobil Uygulama Geliştirme. ConstraintLayout, XML Arayüz tasarımı, TextView, EditText, Button nesneleri ve setOnClickListener olay dinleyicisi...",
+                    summary="Android Studio temel bileşenleri ve XML arayüz mimarisi kılavuzu."
+                )
+                db.add(sample_module)
                 db.commit()
 
         # Otomatik Soru Bankası Senkronizasyonu

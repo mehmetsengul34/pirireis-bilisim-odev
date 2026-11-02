@@ -21,6 +21,12 @@ backend/uploads/assignments/*
 !backend/uploads/assignments/.gitkeep
 backend/uploads/submissions/*
 !backend/uploads/submissions/.gitkeep
+backend/uploads/curriculum/*
+!backend/uploads/curriculum/.gitkeep
+backend/uploads/modules/*
+!backend/uploads/modules/.gitkeep
+backend/uploads/presentations/*
+!backend/uploads/presentations/.gitkeep
 
 # Frontend Build
 frontend/dist/
