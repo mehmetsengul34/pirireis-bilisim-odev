@@ -340,6 +340,10 @@ export const bilisimService = {
     const res = await api.post(`/bilisim/courses/${courseId}/plan`, formData);
     return res.data;
   },
+  uploadNewPlan: async (formData) => {
+    const res = await api.post('/bilisim/upload-new-plan', formData);
+    return res.data;
+  },
   listModules: async (courseId) => {
     const res = await api.get(`/bilisim/courses/${courseId}/modules`);
     return res.data;

@@ -248,40 +248,213 @@ STARTER_CURRICULUMS = {
             {"week": 7, "topic": "Kurucu Fonksiyonlar (Constructors) ve 'this' / 'self' Kavramı", "outcomes": "Nesne başlatma adımları ve bellek yönetimi"},
             {"week": 8, "topic": "Kapsülleme (Encapsulation) & Erişim Belirleyiciler (Access Modifiers)", "outcomes": "private, public, protected ve getter/setter özellikleri"}
         ]
+    },
+    "grafik_canlandirma": {
+        "name": "Grafik ve Canlandırma",
+        "grade_level": "11. Sınıf",
+        "description": "Görüntü işleme programları, temel komutlar, boyut ve çözünürlük, katmanlar (layers), filtreler, biçimli yazılar, eylemler (actions) ve web arayüz tasarımı.",
+        "weeks": [
+            {"week": 1, "topic": "Görüntü İşleme Programlarına Giriş & Kurulum", "outcomes": "Görüntü işleme programlarının kurulumunu yapar, arayüzü tanır.", "dates": "14-18 Eylül"},
+            {"week": 2, "topic": "Temel Komutlar & Araç Paleti (Seçme, Kırpma, Yazı, Boyama)", "outcomes": "Temel komutları ve araç çubuğundaki araçları gruplandırır.", "dates": "21-25 Eylül"},
+            {"week": 3, "topic": "Boyut ve Çözünürlük Ayarları (DPI, Piksel & Baskı Boyutu)", "outcomes": "Dosya boyutunu ve çözünürlük ayarlarını amaca uygun düzenler.", "dates": "28 Eylül - 2 Ekim"},
+            {"week": 4, "topic": "Boyut ve Çözünürlük Uygulamaları & Genel Tekrar", "outcomes": "Görsel boyutlandırma kriterlerini pekiştirir.", "dates": "5-9 Ekim"},
+            {"week": 5, "topic": "Seçili Alan Oluşturma & Renk/Ton/Kontrast Ayarları", "outcomes": "Lasso, Marquee ve Magic Wand ile alan seçip ton ve kontrast ayarlar.", "dates": "12-16 Ekim"},
+            {"week": 6, "topic": "Katmanlar (Layers) Mimarisi & Katman Özellikleri", "outcomes": "Katman sıralama, bağlama, opaklık ve harmanlama modlarını uygular.", "dates": "19-23 Ekim"},
+            {"week": 7, "topic": "Filtreler Galerisi & Görsel Efektler", "outcomes": "Görsellere sanatsal ve dinamik filtre efektleri uygular.", "dates": "26-30 Ekim"},
+            {"week": 8, "topic": "Filtreler ile Görsel İyileştirme & Atölye Uygulaması", "outcomes": "Bulanıklaştırma, keskinleştirme ve gürültü giderme işlemlerini yapar.", "dates": "2-6 Kasım"},
+            {"week": 9, "topic": "Biçimli Tipografi & Yazı Efektleri Tasarımı", "outcomes": "Tipografik araçlarla afiş ve banner başlıkları tasarlar.", "dates": "9-13 Kasım"},
+            {"week": 10, "topic": "Otomasyon & Eylemler (Actions) Paneli", "outcomes": "Tekrarlayan işleri eylemler paneli ile otomatikleştirir.", "dates": "23-27 Kasım"},
+            {"week": 11, "topic": "Web Arayüz Tasarımı & Dilimleme (Slice Tool)", "outcomes": "Web arayüz bileşenlerini dilimleyip web formatında dışa aktarır.", "dates": "30 Kasım - 4 Aralık"}
+        ]
     }
 }
 
+def normalize_turkish(text: str) -> str:
+    """Türkçe karakterleri ve büyük/küçük harf varyasyonlarını aramalar için standartlaştırır."""
+    if not text:
+        return ""
+    mapping = {
+        'İ': 'i', 'I': 'i', 'ı': 'i', 'i': 'i',
+        'Ğ': 'g', 'ğ': 'g',
+        'Ü': 'u', 'ü': 'u',
+        'Ş': 's', 'ş': 's',
+        'Ö': 'o', 'ö': 'o',
+        'Ç': 'c', 'ç': 'c',
+    }
+    res = text
+    for tr_char, norm_char in mapping.items():
+        res = res.replace(tr_char, norm_char)
+    return res.lower()
+
+def detect_course_info_from_plan(filename: str, raw_text: str) -> Dict[str, str]:
+    """
+    Yüklenen belgenin başlığından veya dosya adından dersin adını, sınıf seviyesini ve yılını tespit eder.
+    Örn: 'GRAFİK VE CANLANDIRMA (2026-2027).docx' -> 'Grafik ve Canlandırma' (11. Sınıf)
+    """
+    detected_name = ""
+    grade = "11. Sınıf"
+    year = "2026-2027"
+
+    norm_text = normalize_turkish(raw_text or "")
+    norm_fn = normalize_turkish(filename or "")
+
+    # 1. Metin veya dosya adı içinde sınıf tespiti
+    grade_match = re.search(r'([0-9]{1,2})\s*[\.\-]?\s*sinif', norm_text)
+    if grade_match:
+        grade = f"{grade_match.group(1)}. Sınıf"
+    else:
+        fn_grade = re.search(r'([0-9]{1,2})\s*[\.\-]?\s*sinif', norm_fn)
+        if fn_grade:
+            grade = f"{fn_grade.group(1)}. Sınıf"
+
+    # 2. Metin içinde yıl tespiti
+    year_match = re.search(r'(20[2-3][0-9]\s*[-–/]\s*20[2-3][0-9])', raw_text or "")
+    if year_match:
+        year = year_match.group(1).replace("/", "-").strip()
+
+    # 3. Metin içinde '... DERSİ ÜNİTELENDİRİLMİŞ' veya 'DERSİN ADI: ...' tespiti
+    m_course = re.search(
+        r'(?:ALANI|DALI)?\s*(?:[0-9]{1,2}\.\s*SINIF)?\s*([A-ZÇĞİÖŞÜa-zçğıöşü\s]{3,50}?)\s*DERS[Iİ]\s*ÜN[Iİ]TELEND[Iİ]R[Iİ]LM[Iİ]',
+        raw_text or "",
+        re.IGNORECASE
+    )
+    if m_course:
+        raw_detected = m_course.group(1).strip()
+        raw_detected = re.sub(r'^(?:YAZILIM GELİŞTİRME|BİLİŞİM TEKNOLOJİLERİ|ALANI|DALI)\s*', '', raw_detected, flags=re.IGNORECASE).strip()
+        if len(raw_detected) >= 3:
+            detected_name = raw_detected
+
+    if not detected_name:
+        m_name = re.search(r'DERS[Iİ]N\s*ADI\s*[:\-–]?\s*([^\n\r]+)', raw_text or "", re.IGNORECASE)
+        if m_name:
+            candidate = m_name.group(1).strip()
+            if len(candidate) >= 3 and len(candidate) <= 60:
+                detected_name = candidate
+
+    # 4. Dosya adından ders adı çıkarma
+    if not detected_name or len(detected_name) < 3:
+        clean_fn = os.path.splitext(filename or "")[0]
+        clean_fn = re.sub(r'\(\s*[0-9\-\s/]+\s*\)', '', clean_fn)
+        clean_fn = re.sub(r'(?:yıllık|dersi|planı|ünitelendirilmiş|meb|mtal)', '', clean_fn, flags=re.IGNORECASE).strip()
+        clean_fn = re.sub(r'^[0-9\.\-\_\s]+', '', clean_fn).strip()
+        if len(clean_fn) >= 3:
+            detected_name = clean_fn
+
+    # Bilinen anahtar kelimelere göre normalize etme
+    norm_detected = normalize_turkish(detected_name)
+    if "grafik" in norm_detected and ("canlandir" in norm_detected or "animasyon" in norm_detected or len(norm_detected) < 30):
+        final_name = "Grafik ve Canlandırma"
+    elif "mobil" in norm_detected or "android" in norm_detected:
+        final_name = "Mobil Uygulama Geliştirme (Android Studio & Java)"
+    elif "web" in norm_detected:
+        final_name = "Web Tabanlı Uygulama Geliştirme (React & JS)"
+    elif "nesne" in norm_detected or "python" in norm_detected or "c#" in norm_detected:
+        final_name = "Nesne Tabanlı Programlama (C# / Python)"
+    elif "robotik" in norm_detected or "kodlama" in norm_detected or "arduino" in norm_detected:
+        final_name = "Robotik ve Kodlama"
+    elif "veri" in norm_detected and "taban" in norm_detected:
+        final_name = "Veri Tabanı Yönetimi (SQL)"
+    elif "ag" in norm_detected or "network" in norm_detected or "anahtarlama" in norm_detected:
+        final_name = "Ağ Sistemleri ve Yönlendirme"
+    elif "siber" in norm_detected or "guvenlik" in norm_detected:
+        final_name = "Siber Güvenlik Temelleri"
+    elif "yapay" in norm_detected:
+        final_name = "Yapay Zeka ve Makine Öğrenmesi"
+    elif detected_name:
+        words = [w.capitalize() for w in detected_name.strip().split()]
+        final_name = " ".join(words) if words else "Bilişim Teknolojileri Dersi"
+    else:
+        final_name = "Bilişim Teknolojileri Dersi"
+
+    return {
+        "name": final_name,
+        "grade_level": grade,
+        "academic_year": year
+    }
+
 def parse_annual_plan_text(raw_text: str, course_name: str = "") -> List[Dict[str, Any]]:
     """
-    Öğretmenin yüklediği yıllık plan metnini (veya PDF'ten çekilen ham metni)
-    hafta hafta analiz edip yapılandırılmış 36 haftalık listeye dönüştürür.
+    Öğretmenin yüklediği yıllık plan metnini (PDF/Word/Excel/TXT)
+    MEB takvim tarihleri ve ünite tabloları üzerinden hafta hafta analiz eder.
     """
     if not raw_text or len(raw_text.strip()) < 50:
-        # Metin yoksa veya çok kısaysa ders ismine en yakın şablonu getir
         lower_c = course_name.lower()
-        if "mobil" in lower_c or "android" in lower_c:
+        if "grafik" in lower_c:
+            base = STARTER_CURRICULUMS["grafik_canlandirma"]["weeks"]
+            return pad_weeks_to_36(base, "Grafik ve Canlandırma")
+        elif "mobil" in lower_c or "android" in lower_c:
             return STARTER_CURRICULUMS["mobil_uygulama"]["weeks"]
-        elif "web" in lower_c or "tasarım" in lower_c or "react" in lower_c:
+        elif "web" in lower_c:
             base = STARTER_CURRICULUMS["web_programlama"]["weeks"]
-            # 36 haftaya tamamla
-            return pad_weeks_to_36(base, "Web Tabanlı Uygulama Geliştirme")
-        elif "nesne" in lower_c or "c#" in lower_c or "python" in lower_c:
+            return pad_weeks_to_36(base, "Web Tabanlı Uygulama")
+        elif "nesne" in lower_c:
             base = STARTER_CURRICULUMS["nesne_tabanli"]["weeks"]
             return pad_weeks_to_36(base, "Nesne Tabanlı Programlama")
         else:
             return STARTER_CURRICULUMS["mobil_uygulama"]["weeks"]
 
-    # Regex ile hafta bloklarını yakala
-    # Örnek: "1. HAFTA", "Hafta 1:", "1.Hafta", "14-18 Eylül"
+    lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
+
+    # 1. YÖNTEM: MEB Tablo Tarih Blokları (Örn: 14-18 Eylül, 21-25 Eylül, 2-6 Kasım...)
+    date_regex = re.compile(
+        r'^\s*(\d{1,2}\s*[\-–]\s*\d{1,2}\s+(?:Eylül|Ekim|Kasım|Aralık|Ocak|Şubat|Mart|Nisan|Mayıs|Haziran)'
+        r'(?:\s*[\-–]\s*\d{1,2}\s+(?:Eylül|Ekim|Kasım|Aralık|Ocak|Şubat|Mart|Nisan|Mayıs|Haziran))?)\s*$',
+        re.IGNORECASE
+    )
+
+    date_matches = []
+    for idx, line in enumerate(lines):
+        if date_regex.match(line):
+            date_matches.append((idx, line))
+
+    if len(date_matches) >= 8:
+        table_weeks = []
+        for i in range(len(date_matches)):
+            start_idx, date_str = date_matches[i]
+            end_idx = date_matches[i + 1][0] if i + 1 < len(date_matches) else min(len(lines), start_idx + 12)
+            block = lines[start_idx + 1:end_idx]
+
+            topic_cand = ""
+            outcome_cand = ""
+            for bline in block:
+                if bline.isdigit() and len(bline) <= 2:
+                    continue
+                if re.search(r'(?:[0-9]\.[0-9]|öğrenme birimi|ünite|konu)', bline, re.IGNORECASE):
+                    if not topic_cand:
+                        topic_cand = bline
+                elif re.search(r'(?:yapar|açıklar|uygular|kodlar|gruplandırır|düzenler|hazırlar|belirler|tanımlar|kazanım)', bline, re.IGNORECASE):
+                    if not outcome_cand:
+                        outcome_cand = bline
+                elif not topic_cand and len(bline) > 10 and not re.search(r'(?:anlatım|soru-cevap|bilgisayar|projeksiyon)', bline, re.IGNORECASE):
+                    topic_cand = bline
+
+            if not topic_cand and outcome_cand:
+                topic_cand = outcome_cand
+            elif not topic_cand:
+                topic_cand = f"{i + 1}. Hafta Bilişim ve Uygulama Konusu"
+
+            topic_cand = re.sub(r'^[0-9\.\-\s]+', '', topic_cand).strip()[:120]
+            if not outcome_cand:
+                outcome_cand = f"{i + 1}. Hafta ({date_str}) MEB kazanım ve öğrenme hedefleri."
+
+            table_weeks.append({
+                "week": i + 1,
+                "topic": topic_cand,
+                "outcomes": outcome_cand[:200],
+                "dates": date_str
+            })
+
+        if len(table_weeks) >= 8:
+            return pad_weeks_to_36(table_weeks, course_name or "Bilişim Teknolojileri")
+
+    # 2. YÖNTEM: "Hafta 1", "1. Hafta" Regex Taraması
     pattern = re.compile(
         r'(?:(?:\b|^)(\d{1,2})\s*[\.\:\-]?\s*Hafta|(?:Hafta\s*(\d{1,2})))\s*[:\-–]?\s*([^\n\r]+)',
         re.IGNORECASE
     )
-
     matches = pattern.findall(raw_text)
     parsed_weeks = []
     seen_weeks = set()
-
     for m in matches:
         w_num_str = m[0] or m[1]
         try:
@@ -289,7 +462,6 @@ def parse_annual_plan_text(raw_text: str, course_name: str = "") -> List[Dict[st
             if 1 <= w_num <= 36 and w_num not in seen_weeks:
                 seen_weeks.add(w_num)
                 topic = m[2].strip()
-                # Ekstra gereksiz kelimeleri temizle
                 topic = re.sub(r'^(?:Konu|Ünite|Kazanım)\s*[:\-–]?\s*', '', topic, flags=re.IGNORECASE)
                 parsed_weeks.append({
                     "week": w_num,
@@ -299,10 +471,8 @@ def parse_annual_plan_text(raw_text: str, course_name: str = "") -> List[Dict[st
         except Exception:
             continue
 
-    parsed_weeks.sort(key=lambda x: x["week"])
-
-    # Eğer en az 10 hafta yakaladıysa eksikleri doldurup döndür
     if len(parsed_weeks) >= 8:
+        parsed_weeks.sort(key=lambda x: x["week"])
         return pad_weeks_to_36(parsed_weeks, course_name or "Bilişim Teknolojileri")
 
     # Satır satır alternatif ayrıştırma

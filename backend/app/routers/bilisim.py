@@ -25,7 +25,8 @@ from app.auth import get_current_user, require_teacher
 from app.services.bilisim_ai_service import (
     calculate_academic_week, extract_text_from_file,
     parse_annual_plan_text, STARTER_CURRICULUMS,
-    generate_weekly_bilisim_material, build_pptx_presentation
+    generate_weekly_bilisim_material, build_pptx_presentation,
+    detect_course_info_from_plan
 )
 
 router = APIRouter(prefix="/api/bilisim", tags=["Bilisim AI"])
@@ -61,17 +62,69 @@ def get_starter_templates():
 
 # ================= 2. DERS YÖNETİMİ =================
 
+def ensure_default_bilisim_courses(db: Session, teacher_id: int):
+    """
+    Bilişim Alanı temel derslerini ve yıllık planlarını kontrol eder.
+    Eğer Course 1'de Grafik ve Canlandırma planı varsa ders adını günceller.
+    Standart MEB Bilişim dersleri eksikse hazır 36 haftalık planlarıyla oluşturur.
+    """
+    try:
+        # 1. Mevcut dersleri kontrol et: Eğer Course 1'in planı varsa adını doğru ata
+        c1 = db.query(BilisimCourse).filter(BilisimCourse.id == 1).first()
+        p1 = db.query(BilisimPlan).filter(BilisimPlan.course_id == 1).first()
+        if c1 and p1:
+            info = detect_course_info_from_plan(p1.filename or "", p1.raw_content or "")
+            if info.get("name") and info["name"] != c1.name:
+                c1.name = info["name"]
+                c1.grade_level = info.get("grade_level", c1.grade_level)
+                db.commit()
+
+        # 2. Standart dersler
+        defaults = [
+            ("grafik_canlandirma", "Grafik ve Canlandırma", "11. Sınıf"),
+            ("mobil_uygulama", "Mobil Uygulama Geliştirme (Android Studio & Java)", "11. Sınıf"),
+            ("web_programlama", "Web Tabanlı Uygulama Geliştirme (React & JS)", "11. Sınıf"),
+            ("nesne_tabanli", "Nesne Tabanlı Programlama (C# / Python)", "11. Sınıf"),
+        ]
+
+        for key, name, grade in defaults:
+            exists = db.query(BilisimCourse).filter(
+                BilisimCourse.name.ilike(f"%{name[:10]}%")
+            ).first()
+            if not exists and key in STARTER_CURRICULUMS:
+                new_c = BilisimCourse(
+                    teacher_id=teacher_id,
+                    name=name,
+                    grade_level=grade,
+                    academic_year="2026-2027",
+                    description=STARTER_CURRICULUMS[key]["description"]
+                )
+                db.add(new_c)
+                db.commit()
+                db.refresh(new_c)
+
+                weeks = STARTER_CURRICULUMS[key]["weeks"]
+                raw_lines = [f"{w['week']}. Hafta: {w['topic']} - {w['outcomes']}" for w in weeks]
+                plan = BilisimPlan(
+                    course_id=new_c.id,
+                    filename=f"MEB_{key}_yillik_plan.txt",
+                    raw_content="\n".join(raw_lines),
+                    parsed_weeks=json.dumps(weeks, ensure_ascii=False)
+                )
+                db.add(plan)
+                db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"[Ensure Bilisim Courses Error] {e}")
+
 @router.get("/courses")
 def list_courses(
     current_user: User = Depends(require_teacher),
     db: Session = Depends(get_db)
 ):
-    """Öğretmenin Bilişim derslerini listeler."""
-    query = db.query(BilisimCourse)
-    if current_user.username.lower() != "pirireis":
-        query = query.filter(BilisimCourse.teacher_id == current_user.id)
-
-    courses = query.order_by(BilisimCourse.created_at.desc()).all()
+    """Bilişim Alanı'ndaki tüm yıllık planları ve dersleri listeler."""
+    ensure_default_bilisim_courses(db, current_user.id)
+    courses = db.query(BilisimCourse).order_by(BilisimCourse.id.asc()).all()
     week_info = calculate_academic_week()
     cur_week = week_info["current_week"]
 
@@ -250,6 +303,17 @@ async def upload_course_plan(
         clean_content = (extracted_content or "").replace("\x00", "")[:300000]
         clean_filename = (saved_filename or "").replace("\x00", "")
 
+        # Plandan ders adı, sınıf seviyesi ve öğretim yılını tespit et ve dersi güncelle
+        info = detect_course_info_from_plan(clean_filename, clean_content)
+        detected_name = info.get("name")
+        detected_grade = info.get("grade_level")
+        if detected_name and len(detected_name) >= 3:
+            course.name = detected_name
+        if detected_grade:
+            course.grade_level = detected_grade
+        if info.get("academic_year"):
+            course.academic_year = info.get("academic_year")
+
         # 36 haftalık yapıya ayrıştır
         parsed_weeks = parse_annual_plan_text(clean_content, course.name)
         clean_weeks_json = json.dumps(parsed_weeks, ensure_ascii=False).replace("\x00", "")
@@ -274,7 +338,10 @@ async def upload_course_plan(
 
         db.commit()
         return {
-            "message": f"Yıllık plan başarıyla yüklendi ve {len(parsed_weeks)} haftalık müfredat çıkarıldı.",
+            "message": f"'{course.name}' yıllık planı başarıyla yüklendi ve {len(parsed_weeks)} haftalık müfredat çıkarıldı.",
+            "course_id": course.id,
+            "course_name": course.name,
+            "grade_level": course.grade_level,
             "parsed_weeks_count": len(parsed_weeks)
         }
     except HTTPException:
@@ -282,6 +349,108 @@ async def upload_course_plan(
     except Exception as e:
         db.rollback()
         print(f"[Bilisim Upload Plan Error] {e}")
+        raise HTTPException(status_code=400, detail=f"Plan yüklenirken hata oluştu: {str(e)}")
+
+@router.post("/upload-new-plan")
+async def upload_new_course_plan(
+    file: Optional[UploadFile] = File(None),
+    raw_text: Optional[str] = Form(None),
+    custom_name: Optional[str] = Form(None),
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """
+    Doğrudan yeni bir yıllık plan dosyası yükler (PDF, DOCX, XLSX, TXT) veya formdan yapıştırılan metni kaydeder.
+    Belgeden ders adını ve sınıfını otomatik tespit eder, yeni bir Bilişim dersi oluşturur
+    (veya aynı isimli ders varsa onu günceller), 36 haftalık müfredatı bağlar ve ders listesine ekler.
+    """
+    try:
+        extracted_content = ""
+        saved_filename = "yillik_plan.txt"
+        file_path = None
+
+        unique_prefix = uuid.uuid4().hex[:8]
+
+        if file and file.filename:
+            ext = os.path.splitext(file.filename)[1].lower()
+            unique_name = f"newplan_{unique_prefix}{ext}"
+            file_path = os.path.join(UPLOADS_PLAN_DIR, unique_name)
+            saved_filename = file.filename
+
+            content_bytes = await file.read()
+            async with aiofiles.open(file_path, "wb") as f:
+                await f.write(content_bytes)
+
+            extracted_content, _ = extract_text_from_file(file_path, file.filename)
+        elif raw_text:
+            extracted_content = raw_text.strip()
+        else:
+            raise HTTPException(status_code=400, detail="Lütfen bir yıllık plan dosyası yükleyin veya metin girin.")
+
+        clean_content = (extracted_content or "").replace("\x00", "")[:300000]
+        clean_filename = (saved_filename or "").replace("\x00", "")
+
+        # Plandan ders adı, sınıf seviyesi ve öğretim yılını tespit et
+        info = detect_course_info_from_plan(clean_filename, clean_content)
+        detected_name = custom_name.strip() if custom_name and custom_name.strip() else info.get("name", "Yeni Bilişim Dersi")
+        grade_level = info.get("grade_level", "11. Sınıf")
+        academic_year = info.get("academic_year", "2026-2027")
+
+        # Aynı isimde mevcut ders var mı kontrol et
+        existing_course = db.query(BilisimCourse).filter(
+            BilisimCourse.name.ilike(detected_name)
+        ).first()
+
+        if existing_course:
+            course = existing_course
+            course.grade_level = grade_level
+            course.academic_year = academic_year
+        else:
+            course = BilisimCourse(
+                teacher_id=current_user.id,
+                name=detected_name,
+                grade_level=grade_level,
+                academic_year=academic_year,
+                description=f"'{clean_filename}' yıllık planından otomatik oluşturulan ders."
+            )
+            db.add(course)
+            db.commit()
+            db.refresh(course)
+
+        # 36 haftalık yapıya ayrıştır
+        parsed_weeks = parse_annual_plan_text(clean_content, course.name)
+        clean_weeks_json = json.dumps(parsed_weeks, ensure_ascii=False).replace("\x00", "")
+
+        plan = db.query(BilisimPlan).filter(BilisimPlan.course_id == course.id).first()
+        if plan:
+            plan.filename = clean_filename
+            plan.file_path = file_path
+            plan.raw_content = clean_content
+            plan.parsed_weeks = clean_weeks_json
+            plan.uploaded_at = datetime.utcnow()
+        else:
+            plan = BilisimPlan(
+                course_id=course.id,
+                filename=clean_filename,
+                file_path=file_path,
+                raw_content=clean_content,
+                parsed_weeks=clean_weeks_json
+            )
+            db.add(plan)
+
+        db.commit()
+        return {
+            "message": f"'{course.name}' ({course.grade_level}) dersi başarıyla eklendi ve {len(parsed_weeks)} haftalık müfredatı hazırlandı.",
+            "course_id": course.id,
+            "course_name": course.name,
+            "grade_level": course.grade_level,
+            "parsed_weeks_count": len(parsed_weeks)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[Bilisim Upload New Plan Error] {e}")
         raise HTTPException(status_code=400, detail=f"Plan yüklenirken hata oluştu: {str(e)}")
 
 # ================= 4. MEB DERS MODÜLLERİ DEPOSU =================

@@ -72,7 +72,7 @@ export default function TeacherBilisimAI({ user }) {
     }
   }, [selectedCourseId, selectedWeek]);
 
-  const loadWeekAndCourses = async () => {
+  const loadWeekAndCourses = async (preferredCourseId = null) => {
     setLoadingCourses(true);
     try {
       const [weekRes, coursesList] = await Promise.all([
@@ -81,11 +81,15 @@ export default function TeacherBilisimAI({ user }) {
       ]);
       if (weekRes) {
         setCurrentWeekInfo(weekRes);
-        setSelectedWeek(weekRes.current_week || 8);
+        setSelectedWeek((prev) => prev || weekRes.current_week || 8);
       }
-      setCourses(coursesList);
-      if (coursesList.length > 0) {
-        setSelectedCourseId(coursesList[0].id);
+      setCourses(coursesList || []);
+      if (coursesList && coursesList.length > 0) {
+        if (preferredCourseId && coursesList.some(c => c.id === preferredCourseId)) {
+          setSelectedCourseId(preferredCourseId);
+        } else if (!selectedCourseId || !coursesList.some(c => c.id === selectedCourseId)) {
+          setSelectedCourseId(coursesList[0].id);
+        }
       }
     } catch (err) {
       console.error('Bilişim başlangıç verileri alınamadı:', err);
@@ -136,6 +140,32 @@ export default function TeacherBilisimAI({ user }) {
     }
   };
 
+  // Direct 1-Click Upload New Annual Plan
+  const handleUploadNewPlanDirectly = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingPlan(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await bilisimService.uploadNewPlan(fd);
+      alert(res.message || 'Yıllık plan başarıyla yüklendi ve ders listesine eklendi!');
+      await loadWeekAndCourses(res.course_id);
+      if (res.course_id) {
+        setSelectedCourseId(res.course_id);
+        loadPlan(res.course_id);
+        loadMaterial(res.course_id, selectedWeek);
+      }
+    } catch (err) {
+      console.error('Yeni plan yükleme hatası:', err);
+      alert('Plan yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setUploadingPlan(false);
+      e.target.value = '';
+    }
+  };
+
   // Create Course Handler
   const handleCreateCourse = async (e) => {
     e.preventDefault();
@@ -154,7 +184,7 @@ export default function TeacherBilisimAI({ user }) {
       setShowCourseModal(false);
       setNewCourseName('');
       setNewCourseDesc('');
-      await loadWeekAndCourses();
+      await loadWeekAndCourses(res.course_id);
       if (res.course_id) {
         setSelectedCourseId(res.course_id);
       }
@@ -181,13 +211,9 @@ export default function TeacherBilisimAI({ user }) {
     }
   };
 
-  // Upload Plan File Handler
-  const handleUploadPlanFile = async (e) => {
-    e.preventDefault();
-    if (!selectedCourseId) {
-      alert('Lütfen önce bir ders seçiniz veya yeni bir ders oluşturunuz.');
-      return;
-    }
+  // Upload Plan File Handler (for selected course or as a new course)
+  const handleUploadPlanFile = async (e, asNewCourse = false) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!planFile) {
       alert('Lütfen bir yıllık plan dosyası (PDF, Word .docx, Excel .xlsx veya TXT) seçiniz.');
       return;
@@ -196,11 +222,26 @@ export default function TeacherBilisimAI({ user }) {
     try {
       const fd = new FormData();
       fd.append('file', planFile);
-      const res = await bilisimService.uploadPlan(selectedCourseId, fd);
-      alert(res.message || 'Yıllık plan başarıyla yüklendi ve müfredat ayrıştırıldı!');
-      setPlanFile(null);
-      loadPlan(selectedCourseId);
-      loadMaterial(selectedCourseId, selectedWeek);
+      if (asNewCourse) {
+        const res = await bilisimService.uploadNewPlan(fd);
+        alert(res.message || 'Yıllık plan yüklendi ve yeni ders başarıyla oluşturuldu!');
+        setPlanFile(null);
+        await loadWeekAndCourses(res.course_id);
+        if (res.course_id) {
+          setSelectedCourseId(res.course_id);
+        }
+      } else {
+        if (!selectedCourseId) {
+          alert('Lütfen önce bir ders seçiniz.');
+          return;
+        }
+        const res = await bilisimService.uploadPlan(selectedCourseId, fd);
+        alert(res.message || 'Yıllık plan başarıyla yüklendi ve müfredat ayrıştırıldı!');
+        setPlanFile(null);
+        await loadWeekAndCourses(selectedCourseId);
+        loadPlan(selectedCourseId);
+        loadMaterial(selectedCourseId, selectedWeek);
+      }
     } catch (err) {
       console.error('Plan yükleme hatası:', err);
       alert('Plan yüklenirken hata: ' + (err.response?.data?.detail || err.message));
@@ -351,27 +392,40 @@ export default function TeacherBilisimAI({ user }) {
       {/* COURSE SELECTOR BAR & ACTION CONTROLS */}
       <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3 flex-wrap">
-          <label className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
+          <label className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             Aktif Ders:
           </label>
           <select
             value={selectedCourseId || ''}
             onChange={(e) => setSelectedCourseId(Number(e.target.value))}
-            className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm font-medium focus:ring-2 focus:ring-cyan-500 min-w-[280px]"
+            className="px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-cyan-500 min-w-[320px] max-w-full text-zinc-900 dark:text-zinc-100 shadow-sm"
           >
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name} ({c.grade_level})
+                {c.name} ({c.grade_level}) {c.has_plan ? '• [Plan Hazır]' : '• [Plan Yok]'}
               </option>
             ))}
           </select>
 
+          {/* 1-Click Fast Upload New Plan & Create Course */}
+          <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-semibold rounded-lg transition-all shadow-sm cursor-pointer">
+            <Upload className="w-4 h-4" />
+            <span>📁 Yeni Yıllık Plan Yükle & Ders Aç</span>
+            <input
+              type="file"
+              accept=".pdf,.docx,.doc,.xlsx,.xls,.txt"
+              className="hidden"
+              onChange={handleUploadNewPlanDirectly}
+              disabled={uploadingPlan}
+            />
+          </label>
+
           <button
             onClick={() => setShowCourseModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold rounded-lg transition-colors border border-zinc-200 dark:border-zinc-700"
           >
             <Plus className="w-4 h-4" />
-            Yeni Ders Ekle
+            Manuel Ders Ekle
           </button>
         </div>
 
@@ -538,17 +592,33 @@ export default function TeacherBilisimAI({ user }) {
                 />
               </label>
 
-              <button
-                type="submit"
-                disabled={!planFile || uploadingPlan}
-                className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition-colors ${
-                  !planFile || uploadingPlan
-                    ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
-                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
-                }`}
-              >
-                {uploadingPlan ? 'Ayrıştırılıyor...' : 'Yıllık Planı Yükle & Kaydet'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => handleUploadPlanFile(e, false)}
+                  disabled={!planFile || uploadingPlan}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors ${
+                    !planFile || uploadingPlan
+                      ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
+                      : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm'
+                  }`}
+                >
+                  {uploadingPlan ? 'Ayrıştırılıyor...' : 'Bu Ders İçin Kaydet'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => handleUploadPlanFile(e, true)}
+                  disabled={!planFile || uploadingPlan}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-colors ${
+                    !planFile || uploadingPlan
+                      ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed'
+                      : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm'
+                  }`}
+                >
+                  {uploadingPlan ? 'Oluşturuluyor...' : '+ Yeni Ders Olarak Ekle'}
+                </button>
+              </div>
             </form>
           </div>
 
