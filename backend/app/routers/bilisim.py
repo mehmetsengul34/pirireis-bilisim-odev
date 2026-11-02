@@ -218,59 +218,71 @@ async def upload_course_plan(
     db: Session = Depends(get_db)
 ):
     """
-    Ders için yıllık plan yükler (PDF, TXT, DOCX) veya formdan yapıştırılan metni kaydeder.
+    Ders için yıllık plan yükler (PDF, DOCX, XLSX, TXT) veya formdan yapıştırılan metni kaydeder.
     Metni otomatik ayrıştırıp 36 haftalık takvime döker.
     """
-    course = db.query(BilisimCourse).filter(BilisimCourse.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="Ders bulunamadı.")
+    try:
+        course = db.query(BilisimCourse).filter(BilisimCourse.id == course_id).first()
+        if not course:
+            raise HTTPException(status_code=404, detail="Ders bulunamadı.")
 
-    extracted_content = ""
-    saved_filename = "manuel_plan_metni.txt"
-    file_path = None
+        extracted_content = ""
+        saved_filename = "manuel_plan_metni.txt"
+        file_path = None
 
-    if file and file.filename:
-        ext = os.path.splitext(file.filename)[1]
-        unique_name = f"plan_{course_id}_{uuid.uuid4().hex[:8]}{ext}"
-        file_path = os.path.join(UPLOADS_PLAN_DIR, unique_name)
-        saved_filename = file.filename
+        if file and file.filename:
+            ext = os.path.splitext(file.filename)[1].lower()
+            unique_name = f"plan_{course_id}_{uuid.uuid4().hex[:8]}{ext}"
+            file_path = os.path.join(UPLOADS_PLAN_DIR, unique_name)
+            saved_filename = file.filename
 
-        content_bytes = await file.read()
-        async with aiofiles.open(file_path, "wb") as f:
-            await f.write(content_bytes)
+            content_bytes = await file.read()
+            async with aiofiles.open(file_path, "wb") as f:
+                await f.write(content_bytes)
 
-        extracted_content, _ = extract_text_from_file(file_path, file.filename)
-    elif raw_text:
-        extracted_content = raw_text.strip()
-    else:
-        raise HTTPException(status_code=400, detail="Lütfen bir yıllık plan dosyası yükleyin veya metin girin.")
+            extracted_content, _ = extract_text_from_file(file_path, file.filename)
+        elif raw_text:
+            extracted_content = raw_text.strip()
+        else:
+            raise HTTPException(status_code=400, detail="Lütfen bir yıllık plan dosyası yükleyin veya metin girin.")
 
-    # 36 haftalık yapıya ayrıştır
-    parsed_weeks = parse_annual_plan_text(extracted_content, course.name)
+        # PostgreSQL Güvenliği: NUL byte ve aşırı uzunluk temizliği
+        clean_content = (extracted_content or "").replace("\x00", "")[:300000]
+        clean_filename = (saved_filename or "").replace("\x00", "")
 
-    # Mevcut planı güncelle veya yenisini oluştur
-    plan = db.query(BilisimPlan).filter(BilisimPlan.course_id == course_id).first()
-    if plan:
-        plan.filename = saved_filename
-        plan.file_path = file_path
-        plan.raw_content = extracted_content
-        plan.parsed_weeks = json.dumps(parsed_weeks, ensure_ascii=False)
-        plan.uploaded_at = datetime.utcnow()
-    else:
-        plan = BilisimPlan(
-            course_id=course_id,
-            filename=saved_filename,
-            file_path=file_path,
-            raw_content=extracted_content,
-            parsed_weeks=json.dumps(parsed_weeks, ensure_ascii=False)
-        )
-        db.add(plan)
+        # 36 haftalık yapıya ayrıştır
+        parsed_weeks = parse_annual_plan_text(clean_content, course.name)
+        clean_weeks_json = json.dumps(parsed_weeks, ensure_ascii=False).replace("\x00", "")
 
-    db.commit()
-    return {
-        "message": f"Yıllık plan başarıyla yüklendi ve {len(parsed_weeks)} haftalık müfredat çıkarıldı.",
-        "parsed_weeks_count": len(parsed_weeks)
-    }
+        # Mevcut planı güncelle veya yenisini oluştur
+        plan = db.query(BilisimPlan).filter(BilisimPlan.course_id == course_id).first()
+        if plan:
+            plan.filename = clean_filename
+            plan.file_path = file_path
+            plan.raw_content = clean_content
+            plan.parsed_weeks = clean_weeks_json
+            plan.uploaded_at = datetime.utcnow()
+        else:
+            plan = BilisimPlan(
+                course_id=course_id,
+                filename=clean_filename,
+                file_path=file_path,
+                raw_content=clean_content,
+                parsed_weeks=clean_weeks_json
+            )
+            db.add(plan)
+
+        db.commit()
+        return {
+            "message": f"Yıllık plan başarıyla yüklendi ve {len(parsed_weeks)} haftalık müfredat çıkarıldı.",
+            "parsed_weeks_count": len(parsed_weeks)
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[Bilisim Upload Plan Error] {e}")
+        raise HTTPException(status_code=400, detail=f"Plan yüklenirken hata oluştu: {str(e)}")
 
 # ================= 4. MEB DERS MODÜLLERİ DEPOSU =================
 
@@ -307,41 +319,50 @@ async def upload_course_module(
     db: Session = Depends(get_db)
 ):
     """MEB ders modülü (PDF/Doküman) yükler ve metnini indeksler."""
-    course = db.query(BilisimCourse).filter(BilisimCourse.id == course_id).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="Ders bulunamadı.")
+    try:
+        course = db.query(BilisimCourse).filter(BilisimCourse.id == course_id).first()
+        if not course:
+            raise HTTPException(status_code=404, detail="Ders bulunamadı.")
 
-    ext = os.path.splitext(file.filename)[1]
-    unique_name = f"mod_{course_id}_{uuid.uuid4().hex[:8]}{ext}"
-    file_path = os.path.join(UPLOADS_MODULE_DIR, unique_name)
+        ext = os.path.splitext(file.filename)[1].lower()
+        unique_name = f"mod_{course_id}_{uuid.uuid4().hex[:8]}{ext}"
+        file_path = os.path.join(UPLOADS_MODULE_DIR, unique_name)
 
-    content_bytes = await file.read()
-    file_size_kb = len(content_bytes) // 1024
+        content_bytes = await file.read()
+        file_size_kb = len(content_bytes) // 1024
 
-    async with aiofiles.open(file_path, "wb") as f:
-        await f.write(content_bytes)
+        async with aiofiles.open(file_path, "wb") as f:
+            await f.write(content_bytes)
 
-    extracted_text, page_count = extract_text_from_file(file_path, file.filename)
-    summary_preview = extracted_text[:300].replace("\n", " ").strip() if extracted_text else "Metin ayrıştırılamadı."
+        extracted_text, page_count = extract_text_from_file(file_path, file.filename)
+        clean_mod_text = (extracted_text or "").replace("\x00", "")[:300000]
+        summary_preview = (clean_mod_text[:300].replace("\n", " ").strip() if clean_mod_text else "Metin ayrıştırılamadı.").replace("\x00", "")
+        clean_title = (title or file.filename).strip().replace("\x00", "")
 
-    mod_doc = BilisimModuleDoc(
-        course_id=course_id,
-        title=title.strip(),
-        filename=file.filename,
-        file_path=file_path,
-        file_size_kb=file_size_kb,
-        page_count=page_count,
-        extracted_text=extracted_text,
-        summary=summary_preview
-    )
-    db.add(mod_doc)
-    db.commit()
-    db.refresh(mod_doc)
+        mod_doc = BilisimModuleDoc(
+            course_id=course_id,
+            title=clean_title,
+            filename=file.filename.replace("\x00", ""),
+            file_path=file_path,
+            file_size_kb=file_size_kb,
+            page_count=page_count,
+            extracted_text=clean_mod_text,
+            summary=summary_preview
+        )
+        db.add(mod_doc)
+        db.commit()
+        db.refresh(mod_doc)
 
-    return {
-        "message": f"'{title}' modülü başarıyla yüklendi ({page_count} sayfa).",
-        "module_id": mod_doc.id
-    }
+        return {
+            "message": f"'{clean_title}' modülü başarıyla yüklendi ({page_count} sayfa).",
+            "module_id": mod_doc.id
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"[Bilisim Upload Module Error] {e}")
+        raise HTTPException(status_code=400, detail=f"Modül yüklenirken hata oluştu: {str(e)}")
 
 @router.delete("/courses/{course_id}/modules/{module_id}")
 def delete_course_module(

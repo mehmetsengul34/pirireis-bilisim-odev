@@ -184,20 +184,25 @@ export default function TeacherBilisimAI({ user }) {
   // Upload Plan File Handler
   const handleUploadPlanFile = async (e) => {
     e.preventDefault();
+    if (!selectedCourseId) {
+      alert('Lütfen önce bir ders seçiniz veya yeni bir ders oluşturunuz.');
+      return;
+    }
     if (!planFile) {
-      alert('Lütfen bir dosya (PDF/TXT) seçiniz.');
+      alert('Lütfen bir yıllık plan dosyası (PDF, Word .docx, Excel .xlsx veya TXT) seçiniz.');
       return;
     }
     setUploadingPlan(true);
     try {
       const fd = new FormData();
       fd.append('file', planFile);
-      await bilisimService.uploadPlan(selectedCourseId, fd);
-      alert('Yıllık plan başarıyla yüklendi ve müfredat ayrıştırıldı!');
+      const res = await bilisimService.uploadPlan(selectedCourseId, fd);
+      alert(res.message || 'Yıllık plan başarıyla yüklendi ve müfredat ayrıştırıldı!');
       setPlanFile(null);
       loadPlan(selectedCourseId);
       loadMaterial(selectedCourseId, selectedWeek);
     } catch (err) {
+      console.error('Plan yükleme hatası:', err);
       alert('Plan yüklenirken hata: ' + (err.response?.data?.detail || err.message));
     } finally {
       setUploadingPlan(false);
@@ -206,6 +211,10 @@ export default function TeacherBilisimAI({ user }) {
 
   // Save Plan Text Handler
   const handleSavePlanText = async () => {
+    if (!selectedCourseId) {
+      alert('Lütfen önce bir ders seçiniz.');
+      return;
+    }
     if (!planTextInput.trim()) {
       alert('Lütfen yıllık plan metnini giriniz.');
       return;
@@ -214,13 +223,14 @@ export default function TeacherBilisimAI({ user }) {
     try {
       const fd = new FormData();
       fd.append('raw_text', planTextInput.trim());
-      await bilisimService.uploadPlan(selectedCourseId, fd);
-      alert('Yıllık plan metni kaydedildi ve haftalık konular ayrıştırıldı!');
+      const res = await bilisimService.uploadPlan(selectedCourseId, fd);
+      alert(res.message || 'Yıllık plan metni kaydedildi ve haftalık konular ayrıştırıldı!');
       setShowPlanTextModal(false);
       setPlanTextInput('');
       loadPlan(selectedCourseId);
       loadMaterial(selectedCourseId, selectedWeek);
     } catch (err) {
+      console.error('Plan metin kaydetme hatası:', err);
       alert('Plan kaydedilirken hata: ' + (err.response?.data?.detail || err.message));
     } finally {
       setUploadingPlan(false);
@@ -230,8 +240,12 @@ export default function TeacherBilisimAI({ user }) {
   // Upload Module Handler
   const handleUploadModule = async (e) => {
     e.preventDefault();
+    if (!selectedCourseId) {
+      alert('Lütfen önce bir ders seçiniz.');
+      return;
+    }
     if (!moduleTitle.trim() || !moduleFile) {
-      alert('Lütfen modül başlığı ve bir PDF/dosya seçiniz.');
+      alert('Lütfen modül başlığı ve bir dosya (PDF / Word / TXT) seçiniz.');
       return;
     }
     setUploadingModule(true);
@@ -239,13 +253,14 @@ export default function TeacherBilisimAI({ user }) {
       const fd = new FormData();
       fd.append('title', moduleTitle.trim());
       fd.append('file', moduleFile);
-      await bilisimService.uploadModule(selectedCourseId, fd);
-      alert('MEB ders modülü başarıyla yüklendi!');
+      const res = await bilisimService.uploadModule(selectedCourseId, fd);
+      alert(res.message || 'MEB ders modülü başarıyla yüklendi!');
       setShowModuleModal(false);
       setModuleTitle('');
       setModuleFile(null);
       loadModules(selectedCourseId);
     } catch (err) {
+      console.error('Modül yükleme hatası:', err);
       alert('Modül yüklenirken hata: ' + (err.response?.data?.detail || err.message));
     } finally {
       setUploadingModule(false);
@@ -510,14 +525,14 @@ export default function TeacherBilisimAI({ user }) {
               <label className="block w-full border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-4 text-center cursor-pointer hover:border-cyan-500 dark:hover:border-cyan-400 transition-colors">
                 <FileUp className="w-6 h-6 text-zinc-400 mx-auto mb-1" />
                 <span className="text-xs text-zinc-600 dark:text-zinc-300 block font-medium">
-                  {planFile ? planFile.name : 'Yıllık Plan Dosyası Seç (PDF / TXT)'}
+                  {planFile ? planFile.name : 'Yıllık Plan Dosyası Seç (PDF, Word .docx, Excel, TXT)'}
                 </span>
                 <span className="text-[10px] text-zinc-400 block mt-0.5">
-                  Tıkla veya sürükleyip bırak
+                  PDF, DOCX, XLSX veya TXT dosyası seçin veya sürükleyin
                 </span>
                 <input
                   type="file"
-                  accept=".pdf,.txt,.docx,.xlsx"
+                  accept=".pdf,.docx,.doc,.xlsx,.xls,.txt"
                   onChange={(e) => setPlanFile(e.target.files[0])}
                   className="hidden"
                 />

@@ -337,9 +337,7 @@ export const bilisimService = {
     return res.data;
   },
   uploadPlan: async (courseId, formData) => {
-    const res = await api.post(`/bilisim/courses/${courseId}/plan`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    const res = await api.post(`/bilisim/courses/${courseId}/plan`, formData);
     return res.data;
   },
   listModules: async (courseId) => {
@@ -347,9 +345,7 @@ export const bilisimService = {
     return res.data;
   },
   uploadModule: async (courseId, formData) => {
-    const res = await api.post(`/bilisim/courses/${courseId}/modules`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+    const res = await api.post(`/bilisim/courses/${courseId}/modules`, formData);
     return res.data;
   },
   deleteModule: async (courseId, moduleId) => {

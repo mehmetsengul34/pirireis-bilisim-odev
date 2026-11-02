@@ -80,12 +80,16 @@ def calculate_academic_week(start_date: Optional[datetime.date] = None, target_d
         "is_fall_term": clamped_week <= 18
     }
 
-# ================= 2. DOSYA VE METİN AYRIŞTIRICI (PDF / TXT) =================
+# ================= 2. DOSYA VE METİN AYRIŞTIRICI (PDF / DOCX / XLSX / TXT) =================
 
 def extract_text_from_file(file_path: str, filename: str) -> Tuple[str, int]:
     """
-    Yüklenen PDF veya metin dosyasından temizlenmiş metni ve sayfa sayısını çeker.
+    Yüklenen PDF, Word (.docx), Excel (.xlsx) veya metin dosyasından temizlenmiş metni ve sayfa sayısını çeker.
+    PostgreSQL NUL byte (\x00) ve ikili (binary) karakter hatalarını kesin olarak önler.
     """
+    import zipfile
+    import xml.etree.ElementTree as ET
+
     ext = os.path.splitext(filename)[1].lower()
     text = ""
     pages = 1
@@ -96,26 +100,76 @@ def extract_text_from_file(file_path: str, filename: str) -> Tuple[str, int]:
     if ext == ".pdf":
         try:
             reader = pypdf.PdfReader(file_path)
-            pages = len(reader.pages)
+            pages = len(reader.pages) or 1
             extracted_parts = []
             for i, p in enumerate(reader.pages):
-                pt = p.extract_text()
-                if pt:
-                    extracted_parts.append(f"--- SAYFA {i+1} ---\n" + pt)
+                try:
+                    pt = p.extract_text()
+                    if pt:
+                        extracted_parts.append(f"--- SAYFA {i+1} ---\n" + pt)
+                except Exception:
+                    continue
             text = "\n".join(extracted_parts)
         except Exception as err:
             text = f"PDF ayrıştırılırken hata oluştu: {err}"
+
+    elif ext in [".docx", ".docm"]:
+        try:
+            with zipfile.ZipFile(file_path, "r") as z:
+                if "word/document.xml" in z.namelist():
+                    xml_content = z.read("word/document.xml")
+                    tree = ET.fromstring(xml_content)
+                    texts = []
+                    for elem in tree.iter():
+                        if elem.tag.endswith("}t") and elem.text:
+                            texts.append(elem.text)
+                        elif elem.tag.endswith("}p"):
+                            texts.append("\n")
+                    text = "".join(texts)
+                    pages = max(1, len(text) // 2500)
+        except Exception as err:
+            text = f"Word belgesi ayrıştırılırken hata oluştu: {err}"
+
+    elif ext in [".xlsx", ".xlsm"]:
+        try:
+            with zipfile.ZipFile(file_path, "r") as z:
+                texts = []
+                # 1. Paylaşılan metinler (sharedStrings)
+                if "xl/sharedStrings.xml" in z.namelist():
+                    tree = ET.fromstring(z.read("xl/sharedStrings.xml"))
+                    for elem in tree.iter():
+                        if elem.tag.endswith("}t") and elem.text:
+                            texts.append(elem.text)
+
+                # 2. Hücre içerikleri (sheet1.xml vb.)
+                for name in z.namelist():
+                    if name.startswith("xl/worksheets/sheet") and name.endswith(".xml"):
+                        try:
+                            stree = ET.fromstring(z.read(name))
+                            for selem in stree.iter():
+                                if selem.tag.endswith("}v") and selem.text and len(selem.text) > 1:
+                                    texts.append(selem.text)
+                        except Exception:
+                            continue
+
+                text = "\n".join(texts)
+                pages = max(1, len(texts) // 40)
+        except Exception as err:
+            text = f"Excel tablosu ayrıştırılırken hata oluştu: {err}"
+
     else:
         # Metin tabanlı dosya (txt, csv, json, md)
         for enc in ["utf-8", "utf-8-sig", "cp1254", "iso-8859-9", "latin-1"]:
             try:
-                with open(file_path, "r", encoding=enc) as f:
+                with open(file_path, "r", encoding=enc, errors="ignore") as f:
                     text = f.read()
                 break
             except Exception:
                 continue
 
-    return text.strip(), pages
+    # KESİN GÜVENLİK: PostgreSQL TEXT/VARCHAR sütunları için NUL (0x00) baytlarını temizle!
+    clean_text = text.replace("\x00", "").strip()
+    return clean_text, max(1, pages)
 
 # ================= 3. BİLİŞİM MÜFREDAT VE YILLIK PLAN HAZIR ŞABLONLARI =================
 
@@ -551,7 +605,7 @@ const loginForm = document.querySelector('#loginForm');
 const emailInput = document.querySelector('#email');
 const passwordInput = document.querySelector('#password');
 const statusBox = document.querySelector('#statusMessage');"""
-        sample_code_2 = """// 2. Form Gönderme Olayı ve E-posta Kontrolü
+        sample_code_2 = r"""// 2. Form Gönderme Olayı ve E-posta Kontrolü
 loginForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const email = emailInput.value.trim();
