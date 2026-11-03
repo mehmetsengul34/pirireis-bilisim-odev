@@ -54,10 +54,57 @@ def parse_students_from_pdf(pdf_bytes: bytes) -> List[dict]:
         line = all_lines[idx]
         clean_line = re.sub(r'[|\t]+', ' ', line).strip()
 
-        # 1. Check Horizontal single-line pattern: e.g. "1 101 Ahmet Yılmaz E" or "101 Ahmet Yılmaz"
+        # 0. Check Crystal Reports e-Okul 2-line pattern:
+        # Line idx:   "142YAKUP" or "413GAMZE ASUMAN" or "142 YAKUP"
+        # Line idx+1: "ErkekEŞİYOK 1" or "KızYEŞİLTAŞ 3" or "Erkek EŞİYOK 1"
+        if idx + 1 < len(all_lines):
+            next_clean = re.sub(r'[|\t]+', ' ', all_lines[idx + 1]).strip()
+            m_cr1 = re.match(r'^(\d{1,8})\s*([A-Za-zÇĞİÖŞÜçğıöşü][A-Za-zÇĞİÖŞÜçğıöşü\s\'.]*)$', clean_line)
+            m_cr2 = re.match(r'^(?:Erkek|Kız|Kiz|ERKEK|KIZ)\s*([A-Za-zÇĞİÖŞÜçğıöşü][A-Za-zÇĞİÖŞÜçğıöşü\s\'.]*?)(?:\s+\d{1,4})?$', next_clean, re.IGNORECASE)
+            if m_cr1 and m_cr2:
+                num = m_cr1.group(1).strip()
+                fn = m_cr1.group(2).strip()
+                sn = m_cr2.group(1).strip()
+                norm_fn = normalize_tr(fn)
+                if num not in seen_numbers and len(fn) >= 2 and not any(k in norm_fn for k in footer_keywords):
+                    seen_numbers.add(num)
+                    students.append({
+                        "student_number": num,
+                        "full_name": clean_tr_name(f"{fn} {sn}"),
+                        "username": generate_student_username(num, fn),
+                        "password": "1234"
+                    })
+                idx += 2
+                continue
+
+        # 0b. Check Crystal Reports e-Okul single-line merged pattern:
+        # e.g. "142YAKUP ErkekEŞİYOK 1" or "142 YAKUP Erkek EŞİYOK 1"
+        m_cr_single = re.match(
+            r'^(\d{1,8})\s*([A-Za-zÇĞİÖŞÜçğıöşü][A-Za-zÇĞİÖŞÜçğıöşü\s\'.]*?)\s+(?:Erkek|Kız|Kiz|ERKEK|KIZ)\s*([A-Za-zÇĞİÖŞÜçğıöşü][A-Za-zÇĞİÖŞÜçğıöşü\s\'.]*?)(?:\s+\d{1,4})?$',
+            clean_line,
+            re.IGNORECASE
+        )
+        if m_cr_single:
+            num = m_cr_single.group(1).strip()
+            fn = m_cr_single.group(2).strip()
+            sn = m_cr_single.group(3).strip()
+            norm_fn = normalize_tr(fn)
+            if num not in seen_numbers and len(fn) >= 2 and not any(k in norm_fn for k in footer_keywords):
+                seen_numbers.add(num)
+                students.append({
+                    "student_number": num,
+                    "full_name": clean_tr_name(f"{fn} {sn}"),
+                    "username": generate_student_username(num, fn),
+                    "password": "1234"
+                })
+            idx += 1
+            continue
+
+        # 1. Check Horizontal single-line pattern: e.g. "1 142 YAKUP EŞİYOK Erkek" or "1 101 Ahmet Yılmaz E" or "101 Ahmet Yılmaz"
+        line_no_gender = re.sub(r'\s+(?:Erkek|Kız|Kiz|ERKEK|KIZ|[EKek])$', '', clean_line, flags=re.IGNORECASE).strip()
         m = re.match(
-            r'^(?:(\d{1,4})\s+)?(\d{1,8})\s+([A-Za-zÇĞİÖŞÜçğıöşü\s\'.]+?)\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)(?:\s+[EKek])?$',
-            clean_line
+            r'^(?:(\d{1,4})\s+)?(\d{1,8})\s+([A-Za-zÇĞİÖŞÜçğıöşü\s\'.]+?)\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)$',
+            line_no_gender
         )
         if m:
             num = m.group(2).strip()

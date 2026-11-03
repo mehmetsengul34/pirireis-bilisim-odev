@@ -37,7 +37,7 @@ class CreateStudentRequest(BaseModel):
     password: str
     full_name: str
     student_number: Optional[str] = None
-    classroom_id: int
+    classroom_id: Optional[int] = None
 
 # Classroom Schemas
 class ClassroomCreate(BaseModel):

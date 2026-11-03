@@ -1322,10 +1322,11 @@ export default function TeacherDashboard({ user }) {
                             setStudentFullName(e.target.value);
                             // Auto-generate username suggestion if number exists
                             if (studentNumber) {
-                              const namePart = e.target.value.trim().split(' ')[0] || '';
+                              const parts = e.target.value.trim().split(/\s+/).filter(Boolean);
+                              const namePart = parts.length >= 2 ? parts.slice(0, -1).join('') : (parts[0] || '');
                               const trMap = { 'ç':'c','ğ':'g','ı':'i','ö':'o','ş':'s','ü':'u','Ç':'c','Ğ':'g','İ':'i','Ö':'o','Ş':'s','Ü':'u' };
-                              const clean = namePart.replace(/[çğıöşüÇĞİÖŞÜ]/g, m => trMap[m]).toLowerCase();
-                              setStudentUsername(`${studentNumber}${clean}`);
+                              const clean = namePart.replace(/[çğıöşüÇĞİÖŞÜ]/g, m => trMap[m]).toLowerCase().replace(/[^a-z0-9]/g, '');
+                              setStudentUsername(`${studentNumber.trim()}${clean}`);
                             }
                           }}
                           className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-400"
@@ -1340,10 +1341,11 @@ export default function TeacherDashboard({ user }) {
                           onChange={(e) => {
                             setStudentNumber(e.target.value);
                             if (studentFullName) {
-                              const namePart = studentFullName.trim().split(' ')[0] || '';
+                              const parts = studentFullName.trim().split(/\s+/).filter(Boolean);
+                              const namePart = parts.length >= 2 ? parts.slice(0, -1).join('') : (parts[0] || '');
                               const trMap = { 'ç':'c','ğ':'g','ı':'i','ö':'o','ş':'s','ü':'u','Ç':'c','Ğ':'g','İ':'i','Ö':'o','Ş':'s','Ü':'u' };
-                              const clean = namePart.replace(/[çğıöşüÇĞİÖŞÜ]/g, m => trMap[m]).toLowerCase();
-                              setStudentUsername(`${e.target.value}${clean}`);
+                              const clean = namePart.replace(/[çğıöşüÇĞİÖŞÜ]/g, m => trMap[m]).toLowerCase().replace(/[^a-z0-9]/g, '');
+                              setStudentUsername(`${e.target.value.trim()}${clean}`);
                             }
                           }}
                           className="w-full px-3 py-1.5 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-400"
