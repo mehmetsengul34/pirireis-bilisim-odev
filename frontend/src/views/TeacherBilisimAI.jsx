@@ -52,7 +52,10 @@ export default function TeacherBilisimAI({ user }) {
   const [loadingMaterial, setLoadingMaterial] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [customTeacherPrompt, setCustomTeacherPrompt] = useState('');
-  const [activeMaterialTab, setActiveMaterialTab] = useState('presentation'); // 'presentation' | 'code' | 'lab' | 'guide' | 'quiz'
+  const [activeMaterialTab, setActiveMaterialTab] = useState('daily_plan'); // 'daily_plan' | 'presentation' | 'code' | 'lab' | 'guide' | 'quiz'
+
+  // Fast 1-Click Module Upload State
+  const [uploadingNewModule, setUploadingNewModule] = useState(false);
 
   // Interactive Slide Carousel State
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
@@ -162,6 +165,33 @@ export default function TeacherBilisimAI({ user }) {
       alert('Plan yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
     } finally {
       setUploadingPlan(false);
+      e.target.value = '';
+    }
+  };
+
+  // Direct 1-Click Upload New Module & Auto-Add Course
+  const handleUploadNewModuleDirectly = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingNewModule(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await bilisimService.uploadNewModule(fd);
+      alert(res.message || 'MEB Modülü başarıyla yüklendi ve ders listesine eklendi!');
+      await loadWeekAndCourses(res.course_id);
+      if (res.course_id) {
+        setSelectedCourseId(res.course_id);
+        loadPlan(res.course_id);
+        loadModules(res.course_id);
+        loadMaterial(res.course_id, selectedWeek);
+      }
+    } catch (err) {
+      console.error('Yeni modül yükleme hatası:', err);
+      alert('Modül yüklenirken hata oluştu: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setUploadingNewModule(false);
       e.target.value = '';
     }
   };
@@ -417,6 +447,19 @@ export default function TeacherBilisimAI({ user }) {
               className="hidden"
               onChange={handleUploadNewPlanDirectly}
               disabled={uploadingPlan}
+            />
+          </label>
+
+          {/* 1-Click Fast Upload New Module & Auto-Detect Course */}
+          <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold rounded-lg transition-all shadow-sm cursor-pointer">
+            <BookMarked className="w-4 h-4" />
+            <span>📚 Yeni Modül Yükle & Ders Aç</span>
+            <input
+              type="file"
+              accept=".pdf,.docx,.txt"
+              className="hidden"
+              onChange={handleUploadNewModuleDirectly}
+              disabled={uploadingNewModule}
             />
           </label>
 
@@ -746,6 +789,18 @@ export default function TeacherBilisimAI({ user }) {
               <div className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/50 p-2 sm:p-3 flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <button
+                    onClick={() => setActiveMaterialTab('daily_plan')}
+                    className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                      activeMaterialTab === 'daily_plan'
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    1. Resmî MEB Günlük Planı
+                  </button>
+
+                  <button
                     onClick={() => setActiveMaterialTab('presentation')}
                     className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
                       activeMaterialTab === 'presentation'
@@ -754,7 +809,7 @@ export default function TeacherBilisimAI({ user }) {
                     }`}
                   >
                     <MonitorPlay className="w-4 h-4" />
-                    1. Ders Sunusu ({slides.length} Slayt)
+                    2. Ders Sunusu ({slides.length} Slayt)
                   </button>
 
                   <button
@@ -766,7 +821,7 @@ export default function TeacherBilisimAI({ user }) {
                     }`}
                   >
                     <Code2 className="w-4 h-4" />
-                    2. Canlı Kod Örnekleri
+                    3. Canlı Kod Örnekleri
                   </button>
 
                   <button
@@ -778,7 +833,7 @@ export default function TeacherBilisimAI({ user }) {
                     }`}
                   >
                     <Terminal className="w-4 h-4" />
-                    3. Laboratuvar Görevi
+                    4. Laboratuvar Görevi
                   </button>
 
                   <button
@@ -790,7 +845,7 @@ export default function TeacherBilisimAI({ user }) {
                     }`}
                   >
                     <Clock className="w-4 h-4" />
-                    4. Ders Akış Kılavuzu
+                    5. Ders Akış Kılavuzu
                   </button>
 
                   <button
@@ -802,22 +857,303 @@ export default function TeacherBilisimAI({ user }) {
                     }`}
                   >
                     <HelpCircle className="w-4 h-4" />
-                    5. Pekiştirme Soruları
+                    6. Pekiştirme Soruları
                   </button>
                 </div>
 
-                {/* PPTX Download Action */}
-                {material?.download_url && (
-                  <a
-                    href={bilisimService.getDownloadUrl(material.id)}
-                    download
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-md transition-transform hover:scale-105"
-                  >
-                    <Download className="w-4 h-4" />
-                    PowerPoint (.pptx) İndir
-                  </a>
-                )}
+                {/* Download Actions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {material?.daily_plan_download_url && (
+                    <a
+                      href={bilisimService.getDailyPlanDownloadUrl(material.id)}
+                      download
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105"
+                      title="Resmî MEB Günlük Ders Planını Word (.docx) olarak indir"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Günlük Plan (.docx)
+                    </a>
+                  )}
+                  {material?.topic_download_url && (
+                    <a
+                      href={bilisimService.getTopicExampleDownloadUrl(material.id)}
+                      download
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105"
+                      title="Haftanın Konu Örneği ve Modül Soru Çözümlerini Word (.docx) olarak indir"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Konu Örneği (.docx)
+                    </a>
+                  )}
+                  {material?.download_url && (
+                    <a
+                      href={bilisimService.getDownloadUrl(material.id)}
+                      download
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105"
+                      title="16:9 PowerPoint (.pptx) sunusunu indir"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      PowerPoint (.pptx)
+                    </a>
+                  )}
+                </div>
               </div>
+
+              {/* TAB 0: RESMÎ MEB GÜNLÜK PLANI & KONU ÖRNEĞİ */}
+              {activeMaterialTab === 'daily_plan' && (
+                <div className="p-6 space-y-6">
+                  {material?.daily_plan ? (
+                    <div className="space-y-6">
+                      {/* Daily Plan Top Actions Card */}
+                      <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white border border-indigo-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md">
+                        <div className="space-y-1">
+                          <div className="inline-flex items-center gap-1.5 text-xs text-indigo-300 font-bold uppercase tracking-wider">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            MEB Müfredatı ve Modüle Uygun Hazırlanmış Günlük Ders Planı
+                          </div>
+                          <h3 className="text-base font-bold text-white">
+                            {selectedWeek}. Hafta: {material.daily_plan.topic || currentWeekTopic}
+                          </h3>
+                          <p className="text-xs text-zinc-300">
+                            Haftalık kazanımlar, ünite sonu sorularının çözümleri ve laboratuvar konusu eksiksiz dahil edilmiştir.
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                          <a
+                            href={bilisimService.getDailyPlanDownloadUrl(material.id)}
+                            download
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-md hover:scale-105"
+                          >
+                            <Download className="w-4 h-4" />
+                            Günlük Planı İndir (.docx)
+                          </a>
+                          <a
+                            href={bilisimService.getTopicExampleDownloadUrl(material.id)}
+                            download
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-lg transition-all shadow-md hover:scale-105"
+                          >
+                            <Download className="w-4 h-4" />
+                            Konu Örneğini İndir (.docx)
+                          </a>
+                        </div>
+                      </div>
+
+                      {/* MEB Formal Grid Table */}
+                      <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 overflow-hidden shadow-sm">
+                        <div className="bg-zinc-100 dark:bg-zinc-900 px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 text-center">
+                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 tracking-wide uppercase">
+                            T.C. TORBALI PİRİ REİS MESLEKİ VE TEKNİK ANADOLU LİSESİ • BİLİŞİM TEKNOLOJİLERİ ALANI
+                          </span>
+                          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                            GÜNLÜK DERS İŞLENİŞ PLANI (MEB MEVZUATINA UYGUN)
+                          </div>
+                        </div>
+
+                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs border-b border-zinc-100 dark:border-zinc-900">
+                          <div className="space-y-2">
+                            <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
+                              <span className="font-bold text-zinc-500 dark:text-zinc-400">Dersin Adı:</span>
+                              <span className="font-semibold text-zinc-800 dark:text-zinc-200">{material.daily_plan.course_name || selectedCourse?.name}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
+                              <span className="font-bold text-zinc-500 dark:text-zinc-400">Sınıf / Şube:</span>
+                              <span className="font-semibold text-zinc-800 dark:text-zinc-200">{material.daily_plan.grade_level || selectedCourse?.grade_level}</span>
+                            </div>
+                            <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
+                              <span className="font-bold text-zinc-500 dark:text-zinc-400">Hafta / Tarih:</span>
+                              <span className="font-semibold text-zinc-800 dark:text-zinc-200">{selectedWeek}. Hafta ({material.daily_plan.date_range || currentWeekInfo.date_range_str})</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="font-bold text-zinc-500 dark:text-zinc-400">Süre:</span>
+                              <span className="font-semibold text-zinc-800 dark:text-zinc-200">{material.daily_plan.duration || '2 Ders Saati (80 Dk)'}</span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
+                              <span className="font-bold text-zinc-500 dark:text-zinc-400 block mb-0.5">Öğrenme Alanı / Konu:</span>
+                              <span className="font-semibold text-zinc-900 dark:text-zinc-100">{material.daily_plan.topic || currentWeekTopic}</span>
+                            </div>
+                            <div className="border-b border-zinc-100 dark:border-zinc-800 pb-1.5">
+                              <span className="font-bold text-zinc-500 dark:text-zinc-400 block mb-0.5">O Haftanın Kazanımları:</span>
+                              <span className="font-medium text-emerald-600 dark:text-emerald-400">{material.daily_plan.outcomes || currentWeekOutcomes}</span>
+                            </div>
+                            <div>
+                              <span className="font-bold text-zinc-500 dark:text-zinc-400 block mb-0.5">Kullanılan Araç ve Yöntemler:</span>
+                              <span className="text-zinc-700 dark:text-zinc-300">{material.daily_plan.materials_used || 'Akıllı Tahta, Laboratuvar Bilgisayarları, Geliştirme Ortamı, MEB Modülü'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Process Steps */}
+                        <div className="p-4 space-y-3 bg-zinc-50/50 dark:bg-zinc-900/30">
+                          <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">
+                            Öğretme - Öğrenme Süreci Basamakları:
+                          </h4>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                            <div className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 space-y-1">
+                              <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                                <span>1.</span> Dikkat Çekme ve Güdüleme
+                              </span>
+                              <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                {material.daily_plan.process?.introduction || 'Dersin günlük hayattaki ve sektördeki kullanım örnekleri gösterilerek öğrencilerin ilgisi çekilir.'}
+                              </p>
+                            </div>
+
+                            <div className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 space-y-1">
+                              <span className="font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-1.5">
+                                <span>2.</span> Keşfetme ve Geliştirme (Konu Anlatımı)
+                              </span>
+                              <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                {material.daily_plan.process?.exploration || 'Etkileşimli akıllı tahtada konu teorik ve görsel temelleriyle aktarılır.'}
+                              </p>
+                            </div>
+
+                            <div className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 space-y-1">
+                              <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                                <span>3.</span> Derinleştirme ve Uygulama (Atölye Laboratuvarı)
+                              </span>
+                              <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                {material.daily_plan.process?.application || 'Öğrenciler bilgisayar başına geçerek verilen haftalık konu kodunu ve uygulamasını kodlar.'}
+                              </p>
+                            </div>
+
+                            <div className="p-3 bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 space-y-1">
+                              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                                <span>4.</span> Değerlendirme ve Özetleme
+                              </span>
+                              <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed">
+                                {material.daily_plan.process?.evaluation || 'Modül ünite sonu soruları çözülerek dersin kazanımları pekiştirilir.'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* GÜNLÜK PLANDA HAZIRLANAN KONU ÖRNEĞİ CARD */}
+                      {material.daily_plan.topic_example && (
+                        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 space-y-4 shadow-sm">
+                          <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                            <div className="flex items-center gap-2">
+                              <Code2 className="w-5 h-5 text-teal-500" />
+                              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                                Günlük Planda Hazırlanan Konu Örneği
+                              </h3>
+                            </div>
+                            <a
+                              href={bilisimService.getTopicExampleDownloadUrl(material.id)}
+                              download
+                              className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline inline-flex items-center gap-1"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              Konu Örneğini İndir (.docx)
+                            </a>
+                          </div>
+
+                          <div className="space-y-1">
+                            <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                              {material.daily_plan.topic_example.title}
+                            </h4>
+                            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                              {material.daily_plan.topic_example.explanation}
+                            </p>
+                          </div>
+
+                          {material.daily_plan.topic_example.code_or_design && (
+                            <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                              <div className="bg-zinc-100 dark:bg-zinc-900 px-4 py-2 flex items-center justify-between text-xs">
+                                <span className="font-mono text-zinc-700 dark:text-zinc-300 font-semibold">
+                                  Haftanın Çalışır Konu Kodu / Örneği
+                                </span>
+                                <button
+                                  onClick={() => handleCopyCode(material.daily_plan.topic_example.code_or_design, 'daily_code')}
+                                  className="text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white inline-flex items-center gap-1"
+                                >
+                                  {copiedCodeIndex === 'daily_code' ? (
+                                    <>
+                                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                      <span className="text-emerald-500 text-[11px]">Kopyalandı</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span className="text-[11px]">Kopyala</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              <div className="p-4 bg-[#0F172A] font-mono text-xs text-sky-200 overflow-x-auto">
+                                <pre className="whitespace-pre-wrap leading-relaxed">
+                                  {material.daily_plan.topic_example.code_or_design}
+                                </pre>
+                              </div>
+                            </div>
+                          )}
+
+                          {material.daily_plan.topic_example.pitfalls && (
+                            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2">
+                              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <span className="font-bold">Öğrencilerin Dikkat Edeceği Noktalar: </span>
+                                {material.daily_plan.topic_example.pitfalls}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* MODÜL ÜNİTE SONU DEĞERLENDİRME SORULARI VE ÇÖZÜMLERİ CARD */}
+                      {(material.daily_plan.unit_questions?.length > 0 || material.unit_questions?.length > 0) && (
+                        <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 space-y-4 shadow-sm">
+                          <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                            <div className="flex items-center gap-2">
+                              <HelpCircle className="w-5 h-5 text-indigo-500" />
+                              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                                Modül Ünite Sonu Değerlendirme Soruları ve Çözümleri
+                              </h3>
+                            </div>
+                            <span className="text-xs px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-md font-semibold border border-indigo-200 dark:border-indigo-800">
+                              {(material.daily_plan.unit_questions || material.unit_questions).length} Soru & Detaylı Cevap
+                            </span>
+                          </div>
+
+                          <div className="space-y-3">
+                            {(material.daily_plan.unit_questions || material.unit_questions).map((qItem, qIdx) => (
+                              <div
+                                key={qIdx}
+                                className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-2 text-xs"
+                              >
+                                <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-start gap-2">
+                                  <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center flex-shrink-0 text-[11px]">
+                                    {qIdx + 1}
+                                  </span>
+                                  <span className="leading-snug">{qItem.question}</span>
+                                </div>
+
+                                <div className="pl-7 space-y-1.5">
+                                  <div className="inline-block px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-500/30">
+                                    Doğru Cevap: {qItem.correct_answer}
+                                  </div>
+                                  <div className="p-3 bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                    <span className="font-bold text-zinc-900 dark:text-zinc-100">Detaylı Çözüm ve Gerekçe: </span>
+                                    {qItem.solution}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-zinc-400 text-xs">
+                      Günlük plan verisi bulunamadı. Lütfen "Bu Haftanın Materyalini AI ile Hazırla" butonuna basınız.
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* TAB 1: PRESENTATION & INTERACTIVE SLIDE VIEWER */}
               {activeMaterialTab === 'presentation' && (
@@ -933,9 +1269,31 @@ export default function TeacherBilisimAI({ user }) {
                 </div>
               )}
 
-              {/* TAB 2: CODE EXAMPLES */}
+              {/* TAB 3: CODE EXAMPLES & MODÜL SORULARI */}
               {activeMaterialTab === 'code' && (
                 <div className="p-6 space-y-6">
+                  {/* Action Bar for Code & Topic Document Download */}
+                  <div className="p-4 rounded-xl bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-bold text-teal-800 dark:text-teal-300">
+                        Haftanın Konu Anlatımı & Modül Çözümleri Belgesi
+                      </div>
+                      <div className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
+                        Öğrencilerinize dağıtabileceğiniz çalışma ve modül soru çözümlerini Word formatında indirebilirsiniz.
+                      </div>
+                    </div>
+                    {material?.topic_download_url && (
+                      <a
+                        href={bilisimService.getTopicExampleDownloadUrl(material.id)}
+                        download
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105 flex-shrink-0"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        Konu Örneğini ve Çözümleri İndir (.docx)
+                      </a>
+                    )}
+                  </div>
+
                   {material?.code_examples?.length > 0 ? (
                     material.code_examples.map((item, idx) => (
                       <div
@@ -998,6 +1356,49 @@ export default function TeacherBilisimAI({ user }) {
                     ))
                   ) : (
                     <div className="text-center py-8 text-zinc-400 text-xs">Kod örneği bulunamadı.</div>
+                  )}
+
+                  {/* Modül Ünite Sonu Soruları ve Çözümleri */}
+                  {(material?.daily_plan?.unit_questions?.length > 0 || material?.unit_questions?.length > 0) && (
+                    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-5 space-y-4 shadow-sm">
+                      <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-2">
+                          <HelpCircle className="w-5 h-5 text-indigo-500" />
+                          <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                            Modül Ünite Sonu Değerlendirme Soruları ve Çözümleri
+                          </h3>
+                        </div>
+                        <span className="text-xs px-2.5 py-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-md font-semibold border border-indigo-200 dark:border-indigo-800">
+                          {(material.daily_plan?.unit_questions || material.unit_questions).length} Soru & Detaylı Çözüm
+                        </span>
+                      </div>
+
+                      <div className="space-y-3">
+                        {(material.daily_plan?.unit_questions || material.unit_questions).map((qItem, qIdx) => (
+                          <div
+                            key={qIdx}
+                            className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 space-y-2 text-xs"
+                          >
+                            <div className="font-bold text-zinc-900 dark:text-zinc-100 flex items-start gap-2">
+                              <span className="w-5 h-5 rounded-full bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center flex-shrink-0 text-[11px]">
+                                {qIdx + 1}
+                              </span>
+                              <span className="leading-snug">{qItem.question}</span>
+                            </div>
+
+                            <div className="pl-7 space-y-1.5">
+                              <div className="inline-block px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-xs border border-emerald-500/30">
+                                Doğru Cevap: {qItem.correct_answer}
+                              </div>
+                              <div className="p-3 bg-white dark:bg-zinc-950 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 leading-relaxed">
+                                <span className="font-bold text-zinc-900 dark:text-zinc-100">Detaylı Çözüm ve Gerekçe: </span>
+                                {qItem.solution}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </div>
               )}

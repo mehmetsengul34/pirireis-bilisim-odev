@@ -352,6 +352,10 @@ export const bilisimService = {
     const res = await api.post(`/bilisim/courses/${courseId}/modules`, formData);
     return res.data;
   },
+  uploadNewModule: async (formData) => {
+    const res = await api.post('/bilisim/upload-new-module', formData);
+    return res.data;
+  },
   deleteModule: async (courseId, moduleId) => {
     const res = await api.delete(`/bilisim/courses/${courseId}/modules/${moduleId}`);
     return res.data;
@@ -367,6 +371,14 @@ export const bilisimService = {
   getDownloadUrl: (materialId) => {
     const base = apiBase ? `${apiBase.replace(/\/$/, '')}` : '';
     return `${base}/api/bilisim/download-presentation/${materialId}`;
+  },
+  getDailyPlanDownloadUrl: (materialId) => {
+    const base = apiBase ? `${apiBase.replace(/\/$/, '')}` : '';
+    return `${base}/api/bilisim/download-daily-plan/${materialId}`;
+  },
+  getTopicExampleDownloadUrl: (materialId) => {
+    const base = apiBase ? `${apiBase.replace(/\/$/, '')}` : '';
+    return `${base}/api/bilisim/download-topic-example/${materialId}`;
   }
 };
 

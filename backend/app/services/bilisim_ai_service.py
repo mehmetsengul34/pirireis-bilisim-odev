@@ -25,6 +25,13 @@ from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 
+import docx
+from docx.shared import Inches as DocxInches, Pt as DocxPt, RGBColor as DocxRGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
+from docx.oxml import parse_xml, OxmlElement
+from docx.oxml.ns import nsdecls, qn
+
 # ================= 1. AKADEMİK TAKVİM & HAFTA HESAPLAYICI =================
 
 MEB_DEFAULT_START_DATE = datetime.date(2026, 9, 14) # MEB 2026-2027 Eğitim Öğretim Yılı Açılışı (14 Eylül 2026 Pazartesi)
@@ -713,6 +720,16 @@ JSON ÇIKTISI ŞU STANDARTTA OLMALIDIR (SADECE GEÇERLİ JSON DÖNDÜR):
                                 raw = re.sub(r"```$", "", raw).strip()
                             parsed = json.loads(raw)
                             if isinstance(parsed, dict) and "slides" in parsed:
+                                fallback_mat = generate_procedural_bilisim_material(course_name, grade_level, week_number, topic, outcomes)
+                                if not parsed.get("unit_questions"):
+                                    parsed["unit_questions"] = fallback_mat.get("unit_questions", [])
+                                if not parsed.get("daily_plan"):
+                                    parsed["daily_plan"] = fallback_mat.get("daily_plan", {})
+                                if isinstance(parsed.get("teaching_guide"), dict):
+                                    if not parsed["teaching_guide"].get("daily_plan"):
+                                        parsed["teaching_guide"]["daily_plan"] = parsed.get("daily_plan")
+                                    if not parsed["teaching_guide"].get("unit_questions"):
+                                        parsed["teaching_guide"]["unit_questions"] = parsed.get("unit_questions")
                                 return parsed
                 except Exception as ex:
                     print(f"[Bilisim AI] {model_name} çağrısında istisna: {ex}")
@@ -733,10 +750,43 @@ def generate_procedural_bilisim_material(
     İnternet veya API kesintilerinde bile öğretmenin elini hiçbir zaman boş bırakmayan,
     MEB Bilişim standartlarına %100 uyumlu zengin materyal üreteci.
     """
-    is_mobile = "mobil" in course_name.lower() or "android" in course_name.lower()
-    is_web = "web" in course_name.lower() or "tasarım" in course_name.lower() or "html" in course_name.lower()
+    is_graphic = "grafik" in course_name.lower() or "canlandir" in course_name.lower() or "tasarim" in course_name.lower() or "photoshop" in course_name.lower()
+    is_mobile = "mobil" in course_name.lower() or "android" in course_name.lower() or "flutter" in course_name.lower()
+    is_web = "web" in course_name.lower() or "tasarım" in course_name.lower() or "html" in course_name.lower() or "react" in course_name.lower() or "javascript" in course_name.lower()
 
-    if is_mobile:
+    if is_graphic:
+        lang = "tasarim_grafik"
+        sample_code_1 = f"""// 1. ADIM: Katman Hazırlığı ve Akıllı Nesneye (Smart Object) Dönüştürme
+// - Görseli çalışma alanına aktarın (Dosya -> Aç veya Ctrl+O).
+// - Arka Plan (Background) katmanının kilit ikonuna tıklayarak 'Katman 0' yapın.
+// - Katmana sağ tıklayın ve 'Convert to Smart Object' (Akıllı Nesne) seçeneğini işaretleyin.
+//   (Böylece pikseller bozulmaz ve filtreler sonradan düzenlenebilir 'Akıllı Filtre' kalır).
+// - Araç Çubuğundan 'Quick Selection Tool' (Hızlı Seçim Aracı - W) veya 'Pen Tool' (P) seçin.
+// - '{topic}' sınırlarını hassas şekilde belirleyin."""
+
+        sample_code_2 = f"""// 2. ADIM: Ton, Kontrast Histogram Dengeleme ve Katman Maskeleme
+// - Menü Çubuğundan: Layer -> New Adjustment Layer -> Curves (Eğriler) seçin.
+// - RGB Eğrisinde hafif bir 'S-Eğrisi' oluşturarak açık tonları parlatıp gölgeleri derinleştirin.
+// - Menü: Layer -> New Adjustment Layer -> Levels (Düzeyler) ile histogramın sol ve sağ uçlarını kırpma sınırına yaklaştırın.
+// - Seçili alana Katman Maskesi (Layer Mask) ekleyin.
+// - Siyah yumuşak uçlu fırça (B) ile istenmeyen kenarları silin; beyaz fırça ile eksik alanları geri getirin.
+// - Feather: 1.5 px yumuşatma vererek kompozisyonu sonlandırın."""
+
+        unit_questions = [
+            {
+                "question": "1. Photoshop ve grafik yazılımlarında 'Akıllı Nesne' (Smart Object) kullanmanın tahribatsız düzenleme (non-destructive editing) açısından faydası nedir?",
+                "answer": "Cevap: Akıllı nesneler orijinal piksel ve çözünürlük verisini güvenle saklar. Görsel defalarca küçültülüp büyütüldüğünde veya filtrelere maruz kaldığında pikselleşme ve kalite kaybı yaşanmaz. Tüm filtreler istenildiği an değiştirilebilir 'Akıllı Filtre' olarak kalır."
+            },
+            {
+                "question": "2. Seçili bir alanda kenar yumuşatma (Feather) ve sınır genişletme (Expand/Contract) işlemlerinin amacı nedir?",
+                "answer": "Cevap: Feather, seçili alanın kenar piksellerini arka planla kademeli olarak harmanlar. Kenarlardaki sert ve testere dişli yapay geçişleri engeller; montajın doğal görünmesini sağlar."
+            },
+            {
+                "question": "3. Dijital canlandırma ve ekran sunumlarında görsel renk modu neden CMYK yerine RGB olmalıdır?",
+                "answer": "Cevap: RGB ışık temelli bir renk uzayıdır; monitörler, mobil ekranlar ve projeksiyon cihazları doğrudan kırmızı, yeşil, mavi ışık kombinasyonuyla görüntü üretir. CMYK matbaa baskı pigmentleri içindir ve ekranda soluk/mat renk hatalarına yol açar."
+            }
+        ]
+    elif is_mobile:
         lang = "java"
         sample_code_1 = """// 1. Arayüz Bileşenini Bağlama ve Başlatma
 EditText etUsername = findViewById(R.id.etUsername);
@@ -768,9 +818,24 @@ btnSubmit.setOnClickListener(v -> {
     startActivity(intent);
     Toast.makeText(this, "Hoş geldiniz, " + username, Toast.LENGTH_SHORT).show();
 });"""
+
+        unit_questions = [
+            {
+                "question": "1. Android Activity yaşam döngüsünde onCreate(), onPause() ve onResume() metotlarının görevleri nelerdir?",
+                "answer": "Cevap: onCreate() Activity ilk açıldığında arayüzü ve değişkenleri bağlar. onPause() kullanıcı başka bir pencereye geçtiğinde çalışarak sistem kaynaklarını korur. onResume() ise Activity tekrar ön plana geldiğinde kullanıcı etkileşimini sürdürür."
+            },
+            {
+                "question": "2. Android'de Explicit (Belirgin) Intent ile Implicit (Örtük) Intent arasındaki fark nedir?",
+                "answer": "Cevap: Explicit Intent, uygulama içerisindeki belirli bir Activity sınıfını doğrudan açar. Implicit Intent ise sistemdeki diğer uygulamaları (Harita, Kamera, Tarayıcı) tetiklemek için bir eylem (Action) bildirir."
+            },
+            {
+                "question": "3. UI Thread (Ana İş Parçacığı) üzerinde ağır veritabanı veya ağ işlemleri yürütülürse ne olur?",
+                "answer": "Cevap: Arayüz kilitlenir ve sistem 5 saniye içinde ANR (Application Not Responding) hatası vererek uygulamayı zorla kapatır. Ağ ve veritabanı sorguları arka plan thread'lerinde (Coroutine/Thread) çalıştırılmalıdır."
+            }
+        ]
     elif is_web:
         lang = "javascript"
-        sample_code_1 = """// 1. DOM Elementlerini Seçme
+        sample_code_1 = """// 1. DOM Elementlerini Seçme ve Başlatma
 const loginForm = document.querySelector('#loginForm');
 const emailInput = document.querySelector('#email');
 const passwordInput = document.querySelector('#password');
@@ -792,6 +857,21 @@ loginForm.addEventListener('submit', (e) => {
     statusBox.textContent = 'Giriş başarılı! Yönlendiriliyorsunuz...';
     statusBox.className = 'text-green-500 font-bold';
 });"""
+
+        unit_questions = [
+            {
+                "question": "1. DOM nedir ve form işlemlerinde e.preventDefault() çağrısının temel amacı nedir?",
+                "answer": "Cevap: DOM (Document Object Model), HTML sayfasının nesne tabanlı yapısıdır. e.preventDefault(), form submit edildiğinde tarayıcının sayfayı yeniden yüklemesini engeller; böylece veriler kesintisiz olarak JavaScript ile işlenir."
+            },
+            {
+                "question": "2. Modern web tasarımlarında CSS Flexbox ile CSS Grid arasındaki temel kullanım farkı nedir?",
+                "answer": "Cevap: Flexbox tek boyutlu (satır VEYA sütun) akışlar ve hizalamalar için idealdir. CSS Grid ise iki boyutlu (satırlar VE sütunlar birlikte) karmaşık şablon yerleşimleri için kullanılır."
+            },
+            {
+                "question": "3. Asenkron JavaScript (Fetch / Async-Await) işlemlerinde try-catch bloklarının kullanılmasının önemi nedir?",
+                "answer": "Cevap: Sunucudan yanıt gelmediğinde veya HTTP 500/404 hatası döndüğünde uygulamanın çökmesini engeller; kullanıcıya hatayı nezaketle bildirerek güvenli akış sağlar."
+            }
+        ]
     else:
         lang = "csharp"
         sample_code_1 = """// 1. Sınıf Tanımlama ve Kapsülleme (Encapsulation)
@@ -822,8 +902,59 @@ static void Main(string[] args)
     Console.WriteLine($"Kayıt Başarılı: {ogr.AdSoyad} - No: {ogr.OkulNo}");
 }"""
 
+        unit_questions = [
+            {
+                "question": "1. Kapsülleme (Encapsulation) ilkesi nedir ve Private değişkenlere Public Property ile erişmenin temel nedeni nedir?",
+                "answer": "Cevap: Kapsülleme, nesnenin iç verilerini dış müdahalelerden korur. Property blokları ile verilere erişirken değer doğrulaması (validation) yapılır ve tutarsız veri girişleri önlenir."
+            },
+            {
+                "question": "2. Kalıtım (Inheritance) ve Polimorfizm (Çok Biçimlilik) nesne tabanlı projelerde kod tekrarını nasıl önler?",
+                "answer": "Cevap: Ortak özellik ve metotlar tek bir ata sınıfta tanımlanır. Alt sınıflar bu metotları miras alarak gerektiğinde 'override' eder; böylece aynı kod blokları tekrar yazılmaz."
+            },
+            {
+                "question": "3. Bellek yönetiminde Değer Tipleri (Stack) ile Referans Tipleri (Heap) arasındaki fark nedir?",
+                "answer": "Cevap: Değer tipleri (int, bool, struct) Stack bellekte saklanır ve hızlıdır. Referans tipleri (class, string, array) ise asıl veriyi Heap'te saklar ve Stack'te yalnızca adres referansı tutar."
+            }
+        ]
+
+    daily_plan = {
+        "duration_min": 80,
+        "school_name": "T.C. Millî Eğitim Bakanlığı - Torbalı Piri Reis MTAL",
+        "area_field": "Bilişim Teknolojileri Alanı / Yazılım Geliştirme",
+        "course_name": course_name,
+        "grade_level": grade_level,
+        "week_number": week_number,
+        "learning_unit": f"{week_number}. Öğrenme Birimi",
+        "topic": topic,
+        "learning_outcomes": [
+            f"Öğrenci {topic} konusunun temel kuramsal ilkelerini ve işlevini açıklar.",
+            f"Geliştirme / tasarım ortamında {topic} kazanımlarına uygun adımları hatasız uygular.",
+            "Kullanıcı etkileşimlerini, bileşen sınırlarını ve veri akışını doğru yapılandırır.",
+            "Yaygın sözdizimi, mantık veya tasarım hatalarını bağımsız olarak ayıklar ve giderir."
+        ],
+        "methods_techniques": "Anlatım, Projeksiyon ile Canlı Kodlama/Tasarım Gösterimi, Bireysel Laboratuvar Çalışması, Problem Çözme, Soru-Cevap.",
+        "tools_materials": "Bilişim Teknolojileri Laboratuvarı, Bilgisayarlar, Projeksiyon / Akıllı Tahta, Geliştirme Ortamı (IDE) / Tasarım Yazılımı, MEB Bilişim Ders Modülü, Yıllık Plan.",
+        "process": {
+            "attention_motivation": f"Gerçek hayat sektör projelerinden '{topic}' ile ilgili çarpıcı bir problem veya örnek sunularak öğrencilerin derse dikkati çekilir.",
+            "instruction_presentation": f"Öğretmen projeksiyondan '{topic}' konusunun teorik mimarisini, sözdizimi ve çalışma kurallarını canlı olarak açıklar.",
+            "application_practice": f"Tüm öğrenciler laboratuvarda kendi bilgisayarlarında '{topic}' uygulamasını birebir kodlar/tasarlar. Öğretmen bilgisayarlar arasında dolaşarak takılan öğrencilere rehberlik eder.",
+            "evaluation_summary": f"Dersin kazanımları özetlenir, öğrenci çalışmaları incelenir ve MEB modülü ünite sonu değerlendirme soruları çözülerek pekiştirme sağlanır."
+        },
+        "topic_example": {
+            "title": f"Haftanın Kazanım Örneği: {topic}",
+            "scenario": f"Torbalı Piri Reis MTAL laboratuvarında '{topic}' kazanımlarını pekiştiren fonksiyonel çalışma.",
+            "language": lang,
+            "code_or_steps": sample_code_1 + "\n\n" + sample_code_2,
+            "pedagogical_explanation": "Kazanımlara dayalı adım adım uygulama izahatı ve çalışma mantığı.",
+            "common_pitfalls": "Öğrencilerin dikkat etmesi gereken kritik hata noktaları ve çözümleri."
+        },
+        "unit_questions": unit_questions
+    }
+
     return {
         "topic": topic,
+        "daily_plan": daily_plan,
+        "unit_questions": unit_questions,
         "subtopics": [
             f"{topic} Mimarisi ve Temelleri",
             "Bileşen Yapısı ve Özellikleri",
@@ -845,7 +976,9 @@ static void Main(string[] args)
                 {"time": "70-80 dk", "phase": "Değerlendirme & Pekiştirme", "activity": "Öğrenci ekranlarının incelenmesi, pekiştirme soruları ve ders özeti."}
             ],
             "board_notes": f"1. {topic} Genel Blok Şeması\n2. Temel Fonksiyon ve Metot İmzaları\n3. Veri Akış Yönü ve Yaşam Döngüsü",
-            "teacher_tips": "Öğretmene Tavsiye: Öğrencilerin en sık karşılaştığı yazım hatalarına ve kütüphane import eksikliklerine dersin başında özellikle vurgu yapınız."
+            "teacher_tips": "Öğretmene Tavsiye: Öğrencilerin en sık karşılaştığı yazım hatalarına ve kütüphane import eksikliklerine dersin başında özellikle vurgu yapınız.",
+            "daily_plan": daily_plan,
+            "unit_questions": unit_questions
         },
         "code_examples": [
             {
@@ -1247,4 +1380,386 @@ def build_pptx_presentation(
                 p_extra.font.name = "Segoe UI"
 
     prs.save(output_path)
+    return output_path
+
+# ================= 7. GÜNLÜK DERS PLANI VE KONU ÖRNEĞİ (.DOCX) MOTORU =================
+
+def set_cell_background(cell, fill_hex: str):
+    """Word tablosu hücresine arka plan rengi verir."""
+    tcPr = cell._element.get_or_add_tcPr()
+    shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{fill_hex}"/>')
+    tcPr.append(shd)
+
+def build_docx_daily_plan(
+    material_data: Dict[str, Any],
+    course_name: str,
+    grade_level: str,
+    week_number: int,
+    output_path: str
+) -> str:
+    """
+    Seçilen haftanın ders içeriğini resmî MEB Günlük Ders Planı standardında
+    şık, profesyonel bir Microsoft Word (.docx) belgesi olarak üretir.
+    """
+    doc = docx.Document()
+
+    for section in doc.sections:
+        section.top_margin = DocxInches(0.75)
+        section.bottom_margin = DocxInches(0.75)
+        section.left_margin = DocxInches(0.8)
+        section.right_margin = DocxInches(0.8)
+
+    topic = material_data.get("topic", f"{week_number}. Hafta Konusu")
+    outcomes = material_data.get("learning_outcomes", [])
+    if isinstance(outcomes, str):
+        try:
+            outcomes = json.loads(outcomes)
+        except Exception:
+            outcomes = [outcomes]
+
+    guide = material_data.get("teaching_guide", {})
+    if isinstance(guide, str):
+        try:
+            guide = json.loads(guide)
+        except Exception:
+            guide = {}
+
+    daily_plan = guide.get("daily_plan") or material_data.get("daily_plan") or {}
+    code_examples = material_data.get("code_examples", [])
+    if isinstance(code_examples, str):
+        try:
+            code_examples = json.loads(code_examples)
+        except Exception:
+            code_examples = []
+
+    unit_questions = material_data.get("unit_questions") or guide.get("unit_questions") or []
+    if isinstance(unit_questions, str):
+        try:
+            unit_questions = json.loads(unit_questions)
+        except Exception:
+            unit_questions = []
+
+    # 1. Başlık Alanı
+    header_p = doc.add_paragraph()
+    header_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    hr1 = header_p.add_run("T.C.\nMİLLÎ EĞİTİM BAKANLIĞI\n")
+    hr1.font.bold = True
+    hr1.font.size = DocxPt(11)
+    hr1.font.color.rgb = DocxRGBColor(71, 85, 105)
+
+    hr2 = header_p.add_run("TORBALI PİRİ REİS MESLEKİ VE TEKNİK ANADOLU LİSESİ\n")
+    hr2.font.bold = True
+    hr2.font.size = DocxPt(12)
+    hr2.font.color.rgb = DocxRGBColor(15, 23, 42)
+
+    hr3 = header_p.add_run("BİLİŞİM TEKNOLOJİLERİ ALANI GÜNLÜK DERS PLANI\n")
+    hr3.font.bold = True
+    hr3.font.size = DocxPt(13)
+    hr3.font.color.rgb = DocxRGBColor(14, 116, 144)
+
+    # 2. Ders Bilgileri Tablosu
+    info_table = doc.add_table(rows=4, cols=4)
+    info_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    info_table.autofit = False
+
+    labels = [
+        [("Dersin Adı:", course_name), ("Sınıf Seviyesi:", grade_level)],
+        [("Eğitim Yılı:", "2026-2027"), ("Dersin Süresi:", "80 Dakika (2 Ders Saati)")],
+        [("Alan / Dal:", "Bilişim Teknolojileri / Yazılım"), ("Ders Haftası:", f"{week_number}. Hafta")],
+        [("Öğrenme Birimi:", topic), ("Konu Başlığı:", topic)]
+    ]
+
+    for row_idx, row_data in enumerate(labels):
+        col_offset = 0
+        for label_text, val_text in row_data:
+            c_lbl = info_table.rows[row_idx].cells[col_offset]
+            c_val = info_table.rows[row_idx].cells[col_offset + 1]
+            set_cell_background(c_lbl, "F1F5F9")
+
+            p_lbl = c_lbl.paragraphs[0]
+            r_l = p_lbl.add_run(label_text)
+            r_l.font.bold = True
+            r_l.font.size = DocxPt(9.5)
+            r_l.font.color.rgb = DocxRGBColor(30, 41, 59)
+
+            p_val = c_val.paragraphs[0]
+            r_v = p_val.add_run(str(val_text))
+            r_v.font.size = DocxPt(9.5)
+            r_v.font.color.rgb = DocxRGBColor(15, 23, 42)
+
+            col_offset += 2
+
+    doc.add_paragraph()
+
+    # Bölüm 1: MEB Kazanımları
+    h1 = doc.add_heading("I. MEB DERS KAZANIMLARI VE ÖĞRENME HEDEFLERİ", level=2)
+    h1.paragraph_format.space_before = DocxPt(8)
+    h1.paragraph_format.space_after = DocxPt(4)
+    for out in outcomes:
+        p = doc.add_paragraph(style='List Bullet')
+        p.paragraph_format.space_after = DocxPt(3)
+        r = p.add_run(str(out))
+        r.font.size = DocxPt(10)
+
+    # Bölüm 2: Yöntem, Teknik, Araç ve Gereçler
+    h2 = doc.add_heading("II. YÖNTEM, TEKNİK, ARAÇ VE GEREÇLER", level=2)
+    h2.paragraph_format.space_before = DocxPt(8)
+    h2.paragraph_format.space_after = DocxPt(4)
+    p_methods = doc.add_paragraph()
+    r_m_title = p_methods.add_run("• Kullanılan Yöntem ve Teknikler: ")
+    r_m_title.font.bold = True
+    r_m_title.font.size = DocxPt(10)
+    r_m_body = p_methods.add_run(daily_plan.get("methods_techniques", "Anlatım, Projeksiyon ile Canlı Kodlama/Uygulama Gösterimi, Bireysel Bilgisayar Uygulaması, Problem Çözme, Soru-Cevap."))
+    r_m_body.font.size = DocxPt(10)
+
+    p_tools = doc.add_paragraph()
+    r_t_title = p_tools.add_run("• Araç ve Gereçler: ")
+    r_t_title.font.bold = True
+    r_t_title.font.size = DocxPt(10)
+    r_t_body = p_tools.add_run(daily_plan.get("tools_materials", "Bilişim Teknolojileri Laboratuvarı, Bilgisayarlar, Projeksiyon / Akıllı Tahta, Entegre Geliştirme Ortamı (IDE) / Tasarım Yazılımı, MEB Bilişim Ders Modülü, Yıllık Müfredat Planı."))
+    r_t_body.font.size = DocxPt(10)
+
+    # Bölüm 3: Dersin İşlenişi ve Pedagojik Süreç (80 Dk)
+    h3 = doc.add_heading("III. DERSİN İŞLENİŞİ VE PEDAGOJİK SÜREÇ (80 DAKİKA)", level=2)
+    h3.paragraph_format.space_before = DocxPt(8)
+    h3.paragraph_format.space_after = DocxPt(4)
+
+    proc = daily_plan.get("process", {})
+    steps = [
+        ("1. Dikkati Çekme ve Güdüleme (10 Dk)", proc.get("attention_motivation", f"Gerçek hayat sektör yazılımlarından ve bilişim dünyasından '{topic}' ile ilgili çarpıcı bir problem/örnek sunularak öğrencilerin ilgisi çekilir.")),
+        ("2. Keşfetme & Projeksiyon Anlatımı (20 Dk)", proc.get("instruction_presentation", f"Öğretmen projeksiyonda '{topic}' konusunun teorik ilkelerini, sözdizimi kurallarını ve çalışma mantığını canlı gösterimle adım adım açıklar.")),
+        ("3. Derinleşme & Bilgisayar Uygulaması (35 Dk)", proc.get("application_practice", f"Tüm öğrenciler laboratuvarda kendi bilgisayarlarında verilen görevi birebir kodlar/tasarlar. Öğretmen bilgisayarlar arasında dolaşarak takılan öğrencilere bireysel rehberlik sağlar.")),
+        ("4. Değerlendirme & Gelecek Haftaya Bakış (15 Dk)", proc.get("evaluation_summary", f"Dersin kazanımları sınıfça özetlenir, öğrenci çalışmaları incelenir ve modül ünite sonu değerlendirme soruları çözülerek pekiştirme sağlanır."))
+    ]
+
+    for st_title, st_desc in steps:
+        p = doc.add_paragraph()
+        p.paragraph_format.space_after = DocxPt(4)
+        r_st = p.add_run(f"• {st_title}: ")
+        r_st.font.bold = True
+        r_st.font.size = DocxPt(10)
+        r_st.font.color.rgb = DocxRGBColor(15, 23, 42)
+        r_desc = p.add_run(st_desc)
+        r_desc.font.size = DocxPt(9.5)
+
+    # Bölüm 4: Haftanın Kazanım Odaklı Çalışır Konu Örneği
+    h4 = doc.add_heading("IV. HAFTANIN KAZANIM ODAKLI ÇALIŞIR KONU ÖRNEĞİ", level=2)
+    h4.paragraph_format.space_before = DocxPt(8)
+    h4.paragraph_format.space_after = DocxPt(4)
+
+    if code_examples:
+        for ex in code_examples:
+            p_ex_title = doc.add_paragraph()
+            r_ex_t = p_ex_title.add_run(ex.get("title", f"Konu Örneği: {topic}"))
+            r_ex_t.font.bold = True
+            r_ex_t.font.size = DocxPt(10.5)
+            r_ex_t.font.color.rgb = DocxRGBColor(14, 116, 144)
+
+            code_text = ex.get("code", "")
+            if code_text:
+                tbl_code = doc.add_table(rows=1, cols=1)
+                tbl_code.alignment = WD_TABLE_ALIGNMENT.CENTER
+                set_cell_background(tbl_code.rows[0].cells[0], "F8FAFC")
+                p_c = tbl_code.rows[0].cells[0].paragraphs[0]
+                p_c.paragraph_format.space_before = DocxPt(3)
+                p_c.paragraph_format.space_after = DocxPt(3)
+                r_c = p_c.add_run(code_text)
+                r_c.font.name = "Consolas"
+                r_c.font.size = DocxPt(8.5)
+                r_c.font.color.rgb = DocxRGBColor(30, 41, 59)
+
+            if ex.get("explanation"):
+                p_exp = doc.add_paragraph()
+                r_exp_lbl = p_exp.add_run("Pedagojik İnceleme: ")
+                r_exp_lbl.font.bold = True
+                r_exp_lbl.font.size = DocxPt(9.5)
+                r_exp = p_exp.add_run(ex.get("explanation"))
+                r_exp.font.size = DocxPt(9.5)
+
+            if ex.get("common_mistakes"):
+                p_mst = doc.add_paragraph()
+                r_mst_lbl = p_mst.add_run("Sık Yapılan Hatalar & Çözüm: ")
+                r_mst_lbl.font.bold = True
+                r_mst_lbl.font.size = DocxPt(9.5)
+                r_mst_lbl.font.color.rgb = DocxRGBColor(220, 38, 38)
+                r_mst = p_mst.add_run(ex.get("common_mistakes"))
+                r_mst.font.size = DocxPt(9.5)
+
+    # Bölüm 5: Modül Ünite Sonu Soruları ve Cevapları
+    h5 = doc.add_heading("V. MEB DERS MODÜLÜ ÜNİTE SONU DEĞERLENDİRME SORULARI VE ÇÖZÜMLERİ", level=2)
+    h5.paragraph_format.space_before = DocxPt(8)
+    h5.paragraph_format.space_after = DocxPt(4)
+
+    if unit_questions:
+        for q_idx, uq in enumerate(unit_questions, start=1):
+            q_txt = uq.get("question", f"Soru {q_idx}")
+            a_txt = uq.get("answer", "Çözüm ve açıklama...")
+
+            tbl_q = doc.add_table(rows=2, cols=1)
+            tbl_q.alignment = WD_TABLE_ALIGNMENT.CENTER
+            set_cell_background(tbl_q.rows[0].cells[0], "F1F5F9")
+            set_cell_background(tbl_q.rows[1].cells[0], "FFFFFF")
+
+            pq = tbl_q.rows[0].cells[0].paragraphs[0]
+            rq = pq.add_run(f"❓ {q_txt}")
+            rq.font.bold = True
+            rq.font.size = DocxPt(9.5)
+            rq.font.color.rgb = DocxRGBColor(15, 23, 42)
+
+            pa = tbl_q.rows[1].cells[0].paragraphs[0]
+            ra_lbl = pa.add_run("✓ Cevap / Çözüm: ")
+            ra_lbl.font.bold = True
+            ra_lbl.font.size = DocxPt(9.5)
+            ra_lbl.font.color.rgb = DocxRGBColor(16, 185, 129)
+            ra = pa.add_run(a_txt)
+            ra.font.size = DocxPt(9.5)
+            ra.font.color.rgb = DocxRGBColor(30, 41, 59)
+
+            doc.add_paragraph()
+
+    # Bölüm 6: İmza ve Onay Alanı
+    doc.add_paragraph()
+    sig_table = doc.add_table(rows=3, cols=2)
+    sig_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    sig_table.rows[0].cells[0].paragraphs[0].add_run("Ders Öğretmeni").font.bold = True
+    sig_table.rows[0].cells[0].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sig_table.rows[0].cells[1].paragraphs[0].add_run("Bilişim Teknolojileri Alan Şefi").font.bold = True
+    sig_table.rows[0].cells[1].paragraphs[0].alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    sig_table.rows[1].cells[0].paragraphs[0].add_run("İmza: .......................................").alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sig_table.rows[1].cells[1].paragraphs[0].add_run("UYGUNDUR / İmza: .......................................").alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    sig_table.rows[2].cells[0].paragraphs[0].add_run("Tarih: ..... / ..... / 2026").alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sig_table.rows[2].cells[1].paragraphs[0].add_run("Tarih: ..... / ..... / 2026").alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    doc.save(output_path)
+    return output_path
+
+def build_docx_topic_example(
+    material_data: Dict[str, Any],
+    course_name: str,
+    grade_level: str,
+    week_number: int,
+    output_path: str
+) -> str:
+    """
+    Seçilen haftanın kazanım odaklı konu örneği, çalışır kodları ve modül ünite sonu sorularını
+    öğretmen ve öğrencilerin doğrudan indirip inceleyebileceği Word (.docx) belgesi olarak üretir.
+    """
+    doc = docx.Document()
+
+    for section in doc.sections:
+        section.top_margin = DocxInches(0.75)
+        section.bottom_margin = DocxInches(0.75)
+        section.left_margin = DocxInches(0.8)
+        section.right_margin = DocxInches(0.8)
+
+    topic = material_data.get("topic", f"{week_number}. Hafta Konusu")
+    outcomes = material_data.get("learning_outcomes", [])
+    if isinstance(outcomes, str):
+        try:
+            outcomes = json.loads(outcomes)
+        except Exception:
+            outcomes = [outcomes]
+
+    code_examples = material_data.get("code_examples", [])
+    if isinstance(code_examples, str):
+        try:
+            code_examples = json.loads(code_examples)
+        except Exception:
+            code_examples = []
+
+    guide = material_data.get("teaching_guide", {})
+    if isinstance(guide, str):
+        try:
+            guide = json.loads(guide)
+        except Exception:
+            guide = {}
+
+    unit_questions = material_data.get("unit_questions") or guide.get("unit_questions") or []
+    if isinstance(unit_questions, str):
+        try:
+            unit_questions = json.loads(unit_questions)
+        except Exception:
+            unit_questions = []
+
+    # Başlık
+    hp = doc.add_paragraph()
+    hp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    hr1 = hp.add_run("TORBALI PİRİ REİS MESLEKİ VE TEKNİK ANADOLU LİSESİ\nBİLİŞİM TEKNOLOJİLERİ ALANI\n")
+    hr1.font.bold = True
+    hr1.font.size = DocxPt(11)
+    hr1.font.color.rgb = DocxRGBColor(71, 85, 105)
+
+    hr2 = hp.add_run(f"{course_name.upper()}\n{week_number}. HAFTA KONU ANLATIMI, ÇALIŞIR ÖRNEKLER VE MODÜL SORU ÇÖZÜMLERİ\n")
+    hr2.font.bold = True
+    hr2.font.size = DocxPt(13)
+    hr2.font.color.rgb = DocxRGBColor(14, 116, 144)
+
+    # 1. Konu ve Kazanımlar
+    doc.add_heading("📌 Haftanın Konusu ve MEB Kazanımları", level=2)
+    p_top = doc.add_paragraph()
+    r_tp = p_top.add_run(f"Konu: {topic} ({grade_level})")
+    r_tp.font.bold = True
+    r_tp.font.size = DocxPt(10.5)
+
+    for out in outcomes:
+        p = doc.add_paragraph(style='List Bullet')
+        p.add_run(str(out)).font.size = DocxPt(10)
+
+    # 2. Çalışır Kod ve Uygulama Örnekleri
+    doc.add_heading("💻 Kazanım Odaklı Çalışır Kod ve Uygulama Örnekleri", level=2)
+    for ex in code_examples:
+        p_t = doc.add_paragraph()
+        r_t = p_t.add_run(ex.get("title", "Konu Örneği"))
+        r_t.font.bold = True
+        r_t.font.size = DocxPt(11)
+        r_t.font.color.rgb = DocxRGBColor(14, 116, 144)
+
+        code_text = ex.get("code", "")
+        if code_text:
+            tbl_c = doc.add_table(rows=1, cols=1)
+            tbl_c.alignment = WD_TABLE_ALIGNMENT.CENTER
+            set_cell_background(tbl_c.rows[0].cells[0], "F8FAFC")
+            pc = tbl_c.rows[0].cells[0].paragraphs[0]
+            rc = pc.add_run(code_text)
+            rc.font.name = "Consolas"
+            rc.font.size = DocxPt(9)
+
+        if ex.get("explanation"):
+            pe = doc.add_paragraph()
+            pe.add_run("Açıklama: ").font.bold = True
+            pe.add_run(ex.get("explanation")).font.size = DocxPt(9.5)
+
+        if ex.get("common_mistakes"):
+            pm = doc.add_paragraph()
+            pm.add_run("Dikkat Edilecek Noktalar: ").font.bold = True
+            pm.add_run(ex.get("common_mistakes")).font.size = DocxPt(9.5)
+
+    # 3. Modül Ünite Sonu Değerlendirme Soruları ve Çözümleri
+    doc.add_heading("📝 MEB Ders Modülü Ünite Sonu Soruları ve Çözümleri", level=2)
+    for q_idx, uq in enumerate(unit_questions, start=1):
+        q_txt = uq.get("question", f"Soru {q_idx}")
+        a_txt = uq.get("answer", "Cevap...")
+
+        tbl_q = doc.add_table(rows=2, cols=1)
+        tbl_q.alignment = WD_TABLE_ALIGNMENT.CENTER
+        set_cell_background(tbl_q.rows[0].cells[0], "F1F5F9")
+        set_cell_background(tbl_q.rows[1].cells[0], "FFFFFF")
+
+        pq = tbl_q.rows[0].cells[0].paragraphs[0]
+        rq = pq.add_run(f"Soru {q_idx}: {q_txt}")
+        rq.font.bold = True
+        rq.font.size = DocxPt(10)
+
+        pa = tbl_q.rows[1].cells[0].paragraphs[0]
+        ra_lbl = pa.add_run("Çözüm & Cevap: ")
+        ra_lbl.font.bold = True
+        ra_lbl.font.size = DocxPt(9.5)
+        ra_lbl.font.color.rgb = DocxRGBColor(16, 185, 129)
+        pa.add_run(a_txt).font.size = DocxPt(9.5)
+
+        doc.add_paragraph()
+
+    doc.save(output_path)
     return output_path
