@@ -107,6 +107,12 @@ export default function StudentDashboard({ user }) {
     setTimeout(() => setCopiedCodeIndex(null), 2000);
   };
 
+  // Secure File Download Helper
+  const handleDownload = async (e, relativeUrl, fallbackName) => {
+    if (e && e.preventDefault) e.preventDefault();
+    await bilisimService.downloadFile(relativeUrl, fallbackName);
+  };
+
   // Homework Form Handlers
   const handleFileChange = (assignId, file) => {
     setUploadFiles(prev => ({ ...prev, [assignId]: file }));
@@ -351,7 +357,8 @@ export default function StudentDashboard({ user }) {
                     <a
                       href={bilisimService.getDownloadUrl(material.id)}
                       download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105"
+                      onClick={(e) => handleDownload(e, `/api/bilisim/download-presentation/${material.id}`, `Sunum_Hafta_${currentWeekInfo.current_week}.pptx`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105 cursor-pointer"
                       title="Ders Sunusunu (.pptx) indir"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -363,7 +370,8 @@ export default function StudentDashboard({ user }) {
                     <a
                       href={bilisimService.getTopicExampleDownloadUrl(material.id)}
                       download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105"
+                      onClick={(e) => handleDownload(e, `/api/bilisim/download-topic-example/${material.id}`, `Konu_Ornegi_Hafta_${currentWeekInfo.current_week}.docx`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105 cursor-pointer"
                       title="Konu Örneğini ve Çözümleri (.docx) indir"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -503,7 +511,8 @@ export default function StudentDashboard({ user }) {
                             <a
                               href={bilisimService.getTopicExampleDownloadUrl(material.id)}
                               download
-                              className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline inline-flex items-center gap-1"
+                              onClick={(e) => handleDownload(e, `/api/bilisim/download-topic-example/${material.id}`, `Konu_Ornegi_Hafta_${currentWeekInfo.current_week}.docx`)}
+                              className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
                             >
                               <Download className="w-3.5 h-3.5" />
                               Belge Olarak İndir (.docx)
@@ -519,6 +528,26 @@ export default function StudentDashboard({ user }) {
                             {material.daily_plan.topic_example.explanation}
                           </p>
                         </div>
+
+                        {/* ÖRNEK UYGULAMA GÖRSELİ VE CANLI EKRAN ÇIKTISI (SİMÜLASYON) */}
+                        {material?.visual_image_url && (
+                          <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-slate-950 p-3 space-y-2 shadow-sm">
+                            <div className="flex items-center justify-between text-xs px-1">
+                              <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+                                <Layers className="w-4 h-4" />
+                                Örnek Uygulama Görseli ve Canlı Ekran Çıktısı (Simülasyon)
+                              </span>
+                              <span className="text-[11px] text-zinc-400 bg-slate-800 px-2 py-0.5 rounded font-mono">
+                                16:9 HD Çıktı
+                              </span>
+                            </div>
+                            <img
+                              src={getFileUrl(material.visual_image_url)}
+                              alt="Uygulama Ekran Çıktısı Görseli"
+                              className="w-full rounded-lg object-contain shadow-inner max-h-[460px] bg-slate-900"
+                            />
+                          </div>
+                        )}
 
                         {material.daily_plan.topic_example.code_or_design && (
                           <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">

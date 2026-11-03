@@ -27,6 +27,10 @@ backend/uploads/modules/*
 !backend/uploads/modules/.gitkeep
 backend/uploads/presentations/*
 !backend/uploads/presentations/.gitkeep
+backend/uploads/documents/*
+!backend/uploads/documents/.gitkeep
+backend/uploads/images/*
+!backend/uploads/images/.gitkeep
 
 # Frontend Build
 frontend/dist/

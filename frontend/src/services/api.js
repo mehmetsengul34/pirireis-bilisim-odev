@@ -368,18 +368,33 @@ export const bilisimService = {
     const res = await api.post(`/bilisim/courses/${courseId}/generate/${weekNumber}`, payload);
     return res.data;
   },
-  getDownloadUrl: (materialId) => {
-    const base = apiBase ? `${apiBase.replace(/\/$/, '')}` : '';
-    return `${base}/api/bilisim/download-presentation/${materialId}`;
+  downloadFile: async (relativeUrl, fallbackFilename) => {
+    try {
+      const response = await api.get(relativeUrl, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], {
+        type: response.headers['content-type'] || 'application/octet-stream'
+      });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.setAttribute('download', fallbackFilename || 'belge');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 1000);
+      return true;
+    } catch (err) {
+      console.warn('Blob indirme başarısız, doğrudan bağlantı deneniyor:', err);
+      const fullUrl = getFileUrl(relativeUrl);
+      window.open(fullUrl, '_blank');
+      return false;
+    }
   },
-  getDailyPlanDownloadUrl: (materialId) => {
-    const base = apiBase ? `${apiBase.replace(/\/$/, '')}` : '';
-    return `${base}/api/bilisim/download-daily-plan/${materialId}`;
-  },
-  getTopicExampleDownloadUrl: (materialId) => {
-    const base = apiBase ? `${apiBase.replace(/\/$/, '')}` : '';
-    return `${base}/api/bilisim/download-topic-example/${materialId}`;
-  }
+  getDownloadUrl: (materialId) => getFileUrl(`/api/bilisim/download-presentation/${materialId}`),
+  getDailyPlanDownloadUrl: (materialId) => getFileUrl(`/api/bilisim/download-daily-plan/${materialId}`),
+  getTopicExampleDownloadUrl: (materialId) => getFileUrl(`/api/bilisim/download-topic-example/${materialId}`)
 };
 
 export default api;

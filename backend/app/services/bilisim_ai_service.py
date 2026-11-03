@@ -1547,6 +1547,25 @@ def build_docx_daily_plan(
     h4.paragraph_format.space_before = DocxPt(8)
     h4.paragraph_format.space_after = DocxPt(4)
 
+    # Görsel simülasyonu ekle
+    daily_img_target = output_path.replace(".docx", "_visual.png")
+    first_code = code_examples[0].get("code", "") if code_examples else ""
+    try:
+        if not os.path.exists(daily_img_target):
+            generate_topic_visual_mockup(course_name, topic, first_code, daily_img_target)
+        if os.path.exists(daily_img_target):
+            p_img = doc.add_paragraph()
+            p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            doc.add_picture(daily_img_target, width=DocxInches(5.4))
+            p_c = doc.add_paragraph()
+            p_c.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            rc = p_c.add_run(f"Şekil: {topic} Uygulama Ekranı ve Canlı Çıktı Simülasyonu")
+            rc.font.size = DocxPt(8.5)
+            rc.font.italic = True
+            rc.font.color.rgb = DocxRGBColor(100, 116, 139)
+    except Exception as img_err:
+        print(f"[Daily Plan Visual Embed Warning] {img_err}")
+
     if code_examples:
         for ex in code_examples:
             p_ex_title = doc.add_paragraph()
@@ -1635,16 +1654,289 @@ def build_docx_daily_plan(
     doc.save(output_path)
     return output_path
 
+def generate_topic_visual_mockup(
+    course_name: str,
+    topic: str,
+    code_snippet: str = "",
+    output_path: str = ""
+) -> str:
+    """
+    Konu anlatımı ve kod örneğine ait 16:9 HD çözünürlükte profesyonel arayüz simülasyonu /
+    ekran çıktısı görseli (PNG) üretir. Hem Word belgesine gömülür hem de web arayüzünde gösterilir.
+    """
+    from PIL import Image, ImageDraw, ImageFont
+
+    def get_font(size=14, bold=False):
+        font_candidates = (
+            ['segoeub.ttf', 'arialbd.ttf', 'DejaVuSans-Bold.ttf'] if bold
+            else ['segoeui.ttf', 'arial.ttf', 'DejaVuSans.ttf']
+        )
+        for f in font_candidates:
+            try:
+                return ImageFont.truetype(f, size)
+            except Exception:
+                pass
+        return ImageFont.load_default()
+
+    w, h = 1000, 620
+    im = Image.new('RGB', (w, h), color=(15, 23, 42))  # Deep slate background
+    draw = ImageDraw.Draw(im)
+
+    # 1. Dış Çerçeve
+    draw.rounded_rectangle([12, 12, w-12, h-12], radius=14, outline=(51, 65, 85), width=2)
+    # Başlık Çubuğu
+    draw.rounded_rectangle([12, 12, w-12, 58], radius=14, fill=(30, 41, 59))
+    draw.rectangle([12, 45, w-12, 58], fill=(30, 41, 59))
+
+    # Pencere Butonları (Kırmızı, Sarı, Yeşil)
+    draw.ellipse([30, 27, 42, 39], fill=(239, 68, 68))
+    draw.ellipse([48, 27, 60, 39], fill=(245, 158, 11))
+    draw.ellipse([66, 27, 78, 39], fill=(34, 197, 94))
+
+    norm_c = normalize_turkish(course_name)
+    if "grafik" in norm_c or "canlandirma" in norm_c:
+        app_title = f"Adobe Photoshop 2026 - [Çalışma Tuvali: {topic[:38]}]"
+        theme = "graphic"
+    elif "mobil" in norm_c:
+        app_title = f"Android Studio Giraffe - Running Devices [Pixel 7 • API 33]"
+        theme = "mobile"
+    elif "web" in norm_c:
+        app_title = f"Google Chrome - [React Modern Web Arayüzü: {topic[:35]}]"
+        theme = "web"
+    else:
+        app_title = f"Visual Studio 2026 - [Form1.cs Tasarım & Debug Çıktısı]"
+        theme = "oop"
+
+    draw.text((95, 24), app_title, fill=(241, 245, 249), font=get_font(15, bold=True))
+    draw.text((w-185, 25), "16:9 HD ÇIKTI", fill=(56, 189, 248), font=get_font(13, bold=True))
+
+    # 2. SOL PANEL: KOD VE MİMARİ KARTI (x: 28 to 475, y: 72 to 565)
+    draw.rounded_rectangle([28, 72, 475, 565], radius=12, fill=(30, 41, 59), outline=(71, 85, 105), width=1)
+
+    # Sol Başlık
+    draw.text((45, 88), "KAZANIM ODAKLI ÇALIŞMA KODU & MANTIK", fill=(56, 189, 248), font=get_font(11, bold=True))
+    draw.text((45, 110), topic[:35], fill=(255, 255, 255), font=get_font(15, bold=True))
+
+    # Mini Kod Editör Kutusu
+    draw.rounded_rectangle([42, 145, 460, 420], radius=8, fill=(15, 23, 42), outline=(51, 65, 85), width=1)
+    draw.rectangle([42, 145, 460, 172], fill=(30, 41, 59))
+    draw.text((54, 150), "💻 Kod Editörü (Uygulama Mantığı)", fill=(148, 163, 184), font=get_font(11, bold=True))
+
+    # Örnek Kod Satırları
+    code_lines = [line.strip() for line in (code_snippet or "").split("\n") if line.strip()][:9]
+    if not code_lines:
+        if theme == "graphic":
+            code_lines = [
+                "// Photoshop / Scripting & Maske Adımları",
+                "var doc = app.activeDocument;",
+                "doc.selection.select([[100,100],[400,100],[400,400],[100,400]]);",
+                "var maskLayer = doc.activeLayer.mask;",
+                "maskLayer.applyFeather(15); // Yumuşak geçiş",
+                "doc.adjustLevels(10, 1.2, 245); // Ton/Kontrast",
+                "// Çıktı: Katman maskesi başarıyla uygulandı."
+            ]
+        elif theme == "mobile":
+            code_lines = [
+                "// Android Studio Java - Validation & Toast",
+                "EditText txtEmail = findViewById(R.id.txtEmail);",
+                "Button btnLogin = findViewById(R.id.btnLogin);",
+                "btnLogin.setOnClickListener(v -> {",
+                "    String email = txtEmail.getText().toString();",
+                "    if(Patterns.EMAIL_ADDRESS.matcher(email).matches()){",
+                "        Toast.makeText(this, 'Giriş Başarılı', Toast.LENGTH_SHORT).show();",
+                "    }",
+                "});"
+            ]
+        elif theme == "web":
+            code_lines = [
+                "// React Component & State",
+                "const [status, setStatus] = useState('Hazır');",
+                "const handleSave = () => {",
+                "    setStatus('İşlem Başarılı ✓');",
+                "};",
+                "return (",
+                "    <button onClick={handleSave} className='btn-primary'>",
+                "        {status}",
+                "    </button>",
+                ");"
+            ]
+        else:
+            code_lines = [
+                "// C# OOP & Konsol Çıktısı",
+                "Ogrenci ogr = new Ogrenci('Ahmet Yılmaz', 1042);",
+                "ogr.NotHesapla(85, 90);",
+                "Console.WriteLine($'Öğrenci: {ogr.Ad} | Sonuç: {ogr.Durum}');",
+                "// Çıktı: Öğrenci: Ahmet Yılmaz | Sonuç: Geçti (AA)"
+            ]
+
+    cur_y = 182
+    for line in code_lines:
+        col = (56, 189, 248) if ("(" in line or "{" in line) else (226, 232, 240)
+        if "//" in line:
+            col = (148, 163, 184)
+        draw.text((54, cur_y), line[:52], fill=col, font=get_font(11))
+        cur_y += 24
+
+    # İpucu Kutusu
+    draw.rounded_rectangle([42, 435, 460, 545], radius=8, fill=(69, 26, 3), outline=(180, 83, 9), width=1)
+    draw.text((54, 445), "⚠️ ÖĞRENCİ TUZAĞI & DİKKAT EDİLECEK NOKTA:", fill=(251, 191, 36), font=get_font(11, bold=True))
+    draw.text((54, 470), "Yazılım ve tasarımda en sık yapılan hata; maske/kod", fill=(254, 243, 199), font=get_font(11))
+    draw.text((54, 492), "hiyerarşisini karıştırmak veya null referans almaktır.", fill=(254, 243, 199), font=get_font(11))
+    draw.text((54, 514), "Bu örnekteki adımları sırasıyla laboratuvarda test ediniz.", fill=(254, 243, 199), font=get_font(11))
+
+    # 3. SAĞ PANEL: CANLI UYGULAMA VE EKRAN ÇIKTISI SİMÜLASYONU (x: 495 to 972, y: 72 to 565)
+    draw.rounded_rectangle([495, 72, 972, 565], radius=12, fill=(24, 24, 27), outline=(63, 63, 70), width=1)
+
+    if theme == "graphic":
+        # Photoshop Tuval Simülasyonu
+        draw.rectangle([495, 72, 972, 108], fill=(39, 39, 42))
+        draw.text((512, 83), "Adobe Photoshop Çalışma Alanı • RGB 8-bit • 300 DPI", fill=(212, 212, 216), font=get_font(12, bold=True))
+
+        # Sol Araç Çubuğu (Tools)
+        draw.rectangle([495, 108, 540, 565], fill=(39, 39, 42))
+        tools = ["🔍", "✂️", "✏️", "📐", "🪣", "T", "⬚", "🎭"]
+        t_y = 120
+        for tool in tools:
+            draw.text((510, t_y), tool, fill=(228, 228, 231), font=get_font(14))
+            t_y += 45
+
+        # Tuval Alanı
+        draw.rectangle([555, 125, 805, 545], fill=(255, 255, 255), outline=(161, 161, 170), width=2)
+        # Tuvaldeki Görsel ve Seçim Alanı
+        draw.rounded_rectangle([575, 150, 785, 330], radius=8, fill=(14, 165, 233))
+        # Kesikli Çizgi / Marquee
+        draw.rectangle([570, 145, 790, 335], outline=(2, 132, 199), width=2)
+        draw.text((600, 220), "SEÇİLİ ALAN & MASKE", fill=(255, 255, 255), font=get_font(14, bold=True))
+        draw.text((585, 250), "Feather: 15px • Opacity: 100%", fill=(224, 242, 254), font=get_font(12))
+
+        # Histogram / Seviyeler Eğrisi
+        draw.rounded_rectangle([575, 355, 785, 525], radius=8, fill=(15, 23, 42))
+        draw.text((590, 368), "Ton & Kontrast Eğrisi (Curves/Levels)", fill=(56, 189, 248), font=get_font(11, bold=True))
+        draw.line([(590, 500), (640, 480), (690, 430), (740, 400), (770, 395)], fill=(34, 197, 94), width=3)
+        draw.text((590, 505), "Girdi: 0", fill=(148, 163, 184), font=get_font(9))
+        draw.text((725, 505), "Çıktı: 255", fill=(148, 163, 184), font=get_font(9))
+
+        # Sağ Katmanlar Paneli (Layers)
+        draw.rectangle([820, 108, 972, 565], fill=(39, 39, 42))
+        draw.text((830, 118), "KATMANLAR (LAYERS)", fill=(161, 161, 170), font=get_font(10, bold=True))
+        layers = [
+            ("Katman 2", "Metin / Efekt", (56, 189, 248)),
+            ("Katman 1", "Maskeli Görsel [🎭]", (34, 197, 94)),
+            ("Arka Plan", "Kilitli [🔒]", (148, 163, 184))
+        ]
+        lay_y = 145
+        for l_num, l_desc, l_col in layers:
+            draw.rounded_rectangle([828, lay_y, 964, lay_y+65], radius=6, fill=(24, 24, 27), outline=(63, 63, 70), width=1)
+            draw.text((836, lay_y+8), l_num, fill=l_col, font=get_font(11, bold=True))
+            draw.text((836, lay_y+30), l_desc, fill=(212, 212, 216), font=get_font(10))
+            lay_y += 75
+
+    elif theme == "mobile":
+        # Akıllı Telefon Ekran Simülasyonu
+        phone_x1, phone_y1, phone_x2, phone_y2 = 580, 85, 885, 555
+        draw.rounded_rectangle([phone_x1, phone_y1, phone_x2, phone_y2], radius=28, fill=(11, 15, 25), outline=(51, 65, 85), width=3)
+        draw.ellipse([(phone_x1+phone_x2)//2 - 6, phone_y1+12, (phone_x1+phone_x2)//2 + 6, phone_y1+24], fill=(30, 41, 59))
+
+        scr_x1, scr_y1, scr_x2, scr_y2 = phone_x1+10, phone_y1+32, phone_x2-10, phone_y2-14
+        draw.rounded_rectangle([scr_x1, scr_y1, scr_x2, scr_y2], radius=18, fill=(248, 250, 252))
+
+        # Status Bar
+        draw.text((scr_x1+15, scr_y1+6), "09:41", fill=(15, 23, 42), font=get_font(10, bold=True))
+        draw.text((scr_x2-65, scr_y1+6), "5G  85%", fill=(15, 23, 42), font=get_font(10, bold=True))
+
+        # App Bar
+        draw.rectangle([scr_x1, scr_y1+24, scr_x2, scr_y1+64], fill=(2, 132, 199))
+        draw.text((scr_x1+15, scr_y1+34), "Piri Reis Mobil Uygulama", fill=(255, 255, 255), font=get_font(12, bold=True))
+
+        # Form Kartı
+        form_y = scr_y1+80
+        draw.text((scr_x1+18, form_y), "Kullanıcı Girişi & Doğrulama", fill=(15, 23, 42), font=get_font(12, bold=True))
+
+        # Input 1
+        draw.rounded_rectangle([scr_x1+15, form_y+25, scr_x2-15, form_y+65], radius=6, fill=(255, 255, 255), outline=(2, 132, 199), width=2)
+        draw.text((scr_x1+24, form_y+36), "ogrenci@pirireis.k12.tr |", fill=(15, 23, 42), font=get_font(11))
+
+        # Input 2
+        draw.rounded_rectangle([scr_x1+15, form_y+75, scr_x2-15, form_y+115], radius=6, fill=(255, 255, 255), outline=(203, 213, 225), width=1)
+        draw.text((scr_x1+24, form_y+86), "••••••••••••", fill=(100, 116, 139), font=get_font(11))
+
+        # Buton
+        draw.rounded_rectangle([scr_x1+15, form_y+130, scr_x2-15, form_y+175], radius=8, fill=(2, 132, 199))
+        draw.text((scr_x1+75, form_y+143), "GİRİŞ YAP & ÇALIŞTIR", fill=(255, 255, 255), font=get_font(11, bold=True))
+
+        # Toast Mesajı (Yeşil Başarı Bildirimi)
+        draw.rounded_rectangle([scr_x1+20, scr_y2-65, scr_x2-20, scr_y2-20], radius=10, fill=(5, 150, 105))
+        draw.text((scr_x1+35, scr_y2-50), "✓ Doğrulandı: Toast Başarılı!", fill=(255, 255, 255), font=get_font(11, bold=True))
+
+    elif theme == "web":
+        # Web Tarayıcı Önizlemesi
+        draw.rectangle([495, 72, 972, 115], fill=(30, 41, 59))
+        draw.rounded_rectangle([515, 82, 952, 108], radius=6, fill=(15, 23, 42), outline=(51, 65, 85), width=1)
+        draw.text((530, 87), "🔒 https://bilisim.pirireis.k12.tr/demo-app", fill=(148, 163, 184), font=get_font(11))
+
+        web_y = 125
+        draw.rounded_rectangle([515, web_y, 952, 545], radius=8, fill=(255, 255, 255))
+        # Navbar
+        draw.rectangle([515, web_y, 952, web_y+45], fill=(2, 132, 199))
+        draw.text((530, web_y+12), "Piri Reis Web Programlama", fill=(255, 255, 255), font=get_font(13, bold=True))
+
+        # İçerik Kartı
+        draw.rounded_rectangle([535, web_y+65, 932, web_y+240], radius=8, fill=(248, 250, 252), outline=(226, 232, 240), width=1)
+        draw.text((550, web_y+80), f"Dinamik Arayüz: {topic[:30]}", fill=(15, 23, 42), font=get_font(13, bold=True))
+        draw.text((550, web_y+110), "React Hooks, Flexbox & Tailwind CSS", fill=(100, 116, 139), font=get_font(11))
+
+        draw.rounded_rectangle([550, web_y+150, 680, web_y+190], radius=6, fill=(16, 185, 129))
+        draw.text((565, web_y+162), "Aktif Durum ✓", fill=(255, 255, 255), font=get_font(11, bold=True))
+
+        # Log Çıktısı
+        draw.rounded_rectangle([535, web_y+260, 932, 530], radius=8, fill=(15, 23, 42))
+        draw.text((550, web_y+275), "Tarayıcı Konsol Çıktısı (Developer Tools):", fill=(56, 189, 248), font=get_font(11, bold=True))
+        draw.text((550, web_y+305), "> Fetch API: /api/veri başarıyla çekildi (200 OK)", fill=(34, 197, 94), font=get_font(10))
+        draw.text((550, web_y+330), "> DOM Ağacı güncellendi, bileşen yeniden render edildi.", fill=(226, 232, 240), font=get_font(10))
+
+    else:
+        # C# / OOP Form ve Konsol Simülasyonu
+        draw.rectangle([495, 72, 972, 110], fill=(30, 41, 59))
+        draw.text((515, 84), "Form1.cs [Tasarım] & Console Output", fill=(241, 245, 249), font=get_font(12, bold=True))
+
+        draw.rounded_rectangle([515, 125, 952, 310], radius=8, fill=(241, 245, 249), outline=(148, 163, 184), width=2)
+        draw.rectangle([515, 125, 952, 155], fill=(2, 132, 199))
+        draw.text((525, 132), "Bilişim OOP Laboratuvar Formu", fill=(255, 255, 255), font=get_font(11, bold=True))
+
+        draw.text((535, 175), "Nesne Değeri Giriniz:", fill=(15, 23, 42), font=get_font(11))
+        draw.rounded_rectangle([680, 170, 930, 205], radius=4, fill=(255, 255, 255), outline=(148, 163, 184), width=1)
+        draw.text((690, 178), "Torbalı Piri Reis MTAL", fill=(15, 23, 42), font=get_font(11))
+
+        draw.rounded_rectangle([750, 230, 930, 280], radius=6, fill=(16, 185, 129))
+        draw.text((780, 247), "HESAPLA & ÇALIŞTIR", fill=(255, 255, 255), font=get_font(11, bold=True))
+
+        draw.rounded_rectangle([515, 330, 952, 545], radius=8, fill=(15, 23, 42), outline=(51, 65, 85), width=1)
+        draw.text((530, 345), "> C:\\PiriReis\\Bilisim\\bin\\Debug\\Program.exe", fill=(148, 163, 184), font=get_font(10))
+        draw.text((530, 375), f"[BAŞLATILDI] {topic[:35]} nesnesi oluşturuldu.", fill=(34, 197, 94), font=get_font(11, bold=True))
+        draw.text((530, 405), "Bellek Tahsisi: Heap üzerinde yeni referans atandı.", fill=(226, 232, 240), font=get_font(10))
+        draw.text((530, 435), "Metot Çağrısı: Hesaplama tamamlandı -> Başarılı (100)", fill=(56, 189, 248), font=get_font(10))
+        draw.text((530, 465), "İşlem Kodu: 0 (Başarıyla Sonlandı)", fill=(245, 158, 11), font=get_font(10))
+
+    # 4. ALT BİLGİ ÇUBUĞU (FOOTER)
+    draw.text((120, 582), "T.C. MİLLÎ EĞİTİM BAKANLIĞI • TORBALI PİRİ REİS MTAL BİLİŞİM TEKNOLOJİLERİ ALANI • RESMÎ UYGULAMA ÇIKTISI", fill=(148, 163, 184), font=get_font(11, bold=True))
+
+    if output_path:
+        os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
+        im.save(output_path)
+    return output_path
+
 def build_docx_topic_example(
     material_data: Dict[str, Any],
     course_name: str,
     grade_level: str,
     week_number: int,
-    output_path: str
+    output_path: str,
+    visual_image_path: Optional[str] = None
 ) -> str:
     """
-    Seçilen haftanın kazanım odaklı konu örneği, çalışır kodları ve modül ünite sonu sorularını
-    öğretmen ve öğrencilerin doğrudan indirip inceleyebileceği Word (.docx) belgesi olarak üretir.
+    Seçilen haftanın kazanım odaklı konu örneği, çalışır kodları, profesyonel ekran çıktısı görseli
+    ve modül ünite sonu sorularını öğretmen ve öğrencilerin doğrudan indirip inceleyebileceği
+    Word (.docx) belgesi olarak üretir.
     """
     doc = docx.Document()
 
@@ -1691,13 +1983,13 @@ def build_docx_topic_example(
     hr1.font.size = DocxPt(11)
     hr1.font.color.rgb = DocxRGBColor(71, 85, 105)
 
-    hr2 = hp.add_run(f"{course_name.upper()}\n{week_number}. HAFTA KONU ANLATIMI, ÇALIŞIR ÖRNEKLER VE MODÜL SORU ÇÖZÜMLERİ\n")
+    hr2 = hp.add_run(f"{course_name.upper()}\n{week_number}. HAFTA KONU ANLATIMI, ÇALIŞIR KOD VE GÖRSEL ÇIKTILI ÖRNEKLER\n")
     hr2.font.bold = True
     hr2.font.size = DocxPt(13)
     hr2.font.color.rgb = DocxRGBColor(14, 116, 144)
 
     # 1. Konu ve Kazanımlar
-    doc.add_heading("📌 Haftanın Konusu ve MEB Kazanımları", level=2)
+    doc.add_heading("📌 1. Haftanın Konusu ve MEB Kazanımları", level=2)
     p_top = doc.add_paragraph()
     r_tp = p_top.add_run(f"Konu: {topic} ({grade_level})")
     r_tp.font.bold = True
@@ -1707,8 +1999,33 @@ def build_docx_topic_example(
         p = doc.add_paragraph(style='List Bullet')
         p.add_run(str(out)).font.size = DocxPt(10)
 
-    # 2. Çalışır Kod ve Uygulama Örnekleri
-    doc.add_heading("💻 Kazanım Odaklı Çalışır Kod ve Uygulama Örnekleri", level=2)
+    # 2. Örnek Uygulama Görseli ve Arayüz Tasarımı (Ekran Çıktısı)
+    doc.add_heading("📷 2. Örnek Uygulama Görseli ve Arayüz Tasarımı (Ekran Çıktısı)", level=2)
+    p_desc = doc.add_paragraph("Aşağıdaki görselde; derste işlenen konunun canlı arayüz simülasyonu, çalışan bileşen tasarımı ve beklenen çıktı görseli yer almaktadır:")
+    p_desc.paragraph_format.space_after = DocxPt(6)
+
+    # Görseli hazırla veya var olanı kontrol et
+    img_target = visual_image_path or output_path.replace(".docx", "_visual.png")
+    first_code = code_examples[0].get("code", "") if code_examples else ""
+    try:
+        if not os.path.exists(img_target):
+            generate_topic_visual_mockup(course_name, topic, first_code, img_target)
+
+        if os.path.exists(img_target):
+            p_pic = doc.add_paragraph()
+            p_pic.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            doc.add_picture(img_target, width=DocxInches(5.8))
+            p_cap = doc.add_paragraph()
+            p_cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            rcap = p_cap.add_run(f"Şekil 1: {course_name} - {topic} Canlı Ekran Çıktısı ve Simülasyonu")
+            rcap.font.size = DocxPt(9)
+            rcap.font.italic = True
+            rcap.font.color.rgb = DocxRGBColor(100, 116, 139)
+    except Exception as img_err:
+        print(f"[Word Docx Visual Embed Warning] {img_err}")
+
+    # 3. Çalışır Kod ve Uygulama Örnekleri
+    doc.add_heading("💻 3. Kazanım Odaklı Çalışır Kod ve Uygulama Örnekleri", level=2)
     for ex in code_examples:
         p_t = doc.add_paragraph()
         r_t = p_t.add_run(ex.get("title", "Konu Örneği"))
@@ -1736,8 +2053,8 @@ def build_docx_topic_example(
             pm.add_run("Dikkat Edilecek Noktalar: ").font.bold = True
             pm.add_run(ex.get("common_mistakes")).font.size = DocxPt(9.5)
 
-    # 3. Modül Ünite Sonu Değerlendirme Soruları ve Çözümleri
-    doc.add_heading("📝 MEB Ders Modülü Ünite Sonu Soruları ve Çözümleri", level=2)
+    # 4. Modül Ünite Sonu Değerlendirme Soruları ve Çözümleri
+    doc.add_heading("📝 4. MEB Ders Modülü Ünite Sonu Soruları ve Çözümleri", level=2)
     for q_idx, uq in enumerate(unit_questions, start=1):
         q_txt = uq.get("question", f"Soru {q_idx}")
         a_txt = uq.get("answer", "Cevap...")

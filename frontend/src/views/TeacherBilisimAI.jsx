@@ -373,6 +373,12 @@ export default function TeacherBilisimAI({ user }) {
     setTimeout(() => setCopiedCodeIndex(null), 2000);
   };
 
+  // Secure File Download Helper
+  const handleDownload = async (e, relativeUrl, fallbackName) => {
+    if (e && e.preventDefault) e.preventDefault();
+    await bilisimService.downloadFile(relativeUrl, fallbackName);
+  };
+
   const selectedCourse = courses.find(c => c.id === selectedCourseId);
   const currentWeekTopic = planData?.parsed_weeks?.find(w => w.week === selectedWeek)?.topic || `${selectedWeek}. Hafta Bilişim Dersi`;
   const currentWeekOutcomes = planData?.parsed_weeks?.find(w => w.week === selectedWeek)?.outcomes || '';
@@ -867,7 +873,8 @@ export default function TeacherBilisimAI({ user }) {
                     <a
                       href={bilisimService.getDailyPlanDownloadUrl(material.id)}
                       download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105"
+                      onClick={(e) => handleDownload(e, `/api/bilisim/download-daily-plan/${material.id}`, `Gunluk_Plan_Hafta_${selectedWeek}.docx`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105 cursor-pointer"
                       title="Resmî MEB Günlük Ders Planını Word (.docx) olarak indir"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -878,8 +885,9 @@ export default function TeacherBilisimAI({ user }) {
                     <a
                       href={bilisimService.getTopicExampleDownloadUrl(material.id)}
                       download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105"
-                      title="Haftanın Konu Örneği ve Modül Soru Çözümlerini Word (.docx) olarak indir"
+                      onClick={(e) => handleDownload(e, `/api/bilisim/download-topic-example/${material.id}`, `Konu_Ornegi_Hafta_${selectedWeek}.docx`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105 cursor-pointer"
+                      title="Haftanın Konu Örneği, Görseli ve Modül Soru Çözümlerini Word (.docx) olarak indir"
                     >
                       <Download className="w-3.5 h-3.5" />
                       Konu Örneği (.docx)
@@ -889,7 +897,8 @@ export default function TeacherBilisimAI({ user }) {
                     <a
                       href={bilisimService.getDownloadUrl(material.id)}
                       download
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105"
+                      onClick={(e) => handleDownload(e, `/api/bilisim/download-presentation/${material.id}`, `Sunum_Hafta_${selectedWeek}.pptx`)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105 cursor-pointer"
                       title="16:9 PowerPoint (.pptx) sunusunu indir"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -915,7 +924,7 @@ export default function TeacherBilisimAI({ user }) {
                             {selectedWeek}. Hafta: {material.daily_plan.topic || currentWeekTopic}
                           </h3>
                           <p className="text-xs text-zinc-300">
-                            Haftalık kazanımlar, ünite sonu sorularının çözümleri ve laboratuvar konusu eksiksiz dahil edilmiştir.
+                            Haftalık kazanımlar, ünite sonu sorularının çözümleri, kod ve görsel çıktısı eksiksiz dahil edilmiştir.
                           </p>
                         </div>
 
@@ -923,7 +932,8 @@ export default function TeacherBilisimAI({ user }) {
                           <a
                             href={bilisimService.getDailyPlanDownloadUrl(material.id)}
                             download
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-md hover:scale-105"
+                            onClick={(e) => handleDownload(e, `/api/bilisim/download-daily-plan/${material.id}`, `Gunluk_Plan_Hafta_${selectedWeek}.docx`)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-lg transition-all shadow-md hover:scale-105 cursor-pointer"
                           >
                             <Download className="w-4 h-4" />
                             Günlük Planı İndir (.docx)
@@ -931,7 +941,8 @@ export default function TeacherBilisimAI({ user }) {
                           <a
                             href={bilisimService.getTopicExampleDownloadUrl(material.id)}
                             download
-                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-lg transition-all shadow-md hover:scale-105"
+                            onClick={(e) => handleDownload(e, `/api/bilisim/download-topic-example/${material.id}`, `Konu_Ornegi_Hafta_${selectedWeek}.docx`)}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold rounded-lg transition-all shadow-md hover:scale-105 cursor-pointer"
                           >
                             <Download className="w-4 h-4" />
                             Konu Örneğini İndir (.docx)
@@ -1045,7 +1056,8 @@ export default function TeacherBilisimAI({ user }) {
                             <a
                               href={bilisimService.getTopicExampleDownloadUrl(material.id)}
                               download
-                              className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline inline-flex items-center gap-1"
+                              onClick={(e) => handleDownload(e, `/api/bilisim/download-topic-example/${material.id}`, `Konu_Ornegi_Hafta_${selectedWeek}.docx`)}
+                              className="text-xs text-teal-600 dark:text-teal-400 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
                             >
                               <Download className="w-3.5 h-3.5" />
                               Konu Örneğini İndir (.docx)
@@ -1060,6 +1072,26 @@ export default function TeacherBilisimAI({ user }) {
                               {material.daily_plan.topic_example.explanation}
                             </p>
                           </div>
+
+                          {/* CANLI KONU ÖRNEĞİ EKRAN ÇIKTISI GÖRSELİ */}
+                          {material?.visual_image_url && (
+                            <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-slate-950 p-3 space-y-2 shadow-sm">
+                              <div className="flex items-center justify-between text-xs px-1">
+                                <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+                                  <Layers className="w-4 h-4" />
+                                  Örnek Uygulama Görseli ve Canlı Ekran Çıktısı (Simülasyon)
+                                </span>
+                                <span className="text-[11px] text-zinc-400 bg-slate-800 px-2 py-0.5 rounded font-mono">
+                                  16:9 HD Görsel Çıktı
+                                </span>
+                              </div>
+                              <img
+                                src={getFileUrl(material.visual_image_url)}
+                                alt="Uygulama Ekran Çıktısı Görseli"
+                                className="w-full rounded-lg object-contain shadow-inner max-h-[460px] bg-slate-900"
+                              />
+                            </div>
+                          )}
 
                           {material.daily_plan.topic_example.code_or_design && (
                             <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
@@ -1286,13 +1318,34 @@ export default function TeacherBilisimAI({ user }) {
                       <a
                         href={bilisimService.getTopicExampleDownloadUrl(material.id)}
                         download
-                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105 flex-shrink-0"
+                        onClick={(e) => handleDownload(e, `/api/bilisim/download-topic-example/${material.id}`, `Konu_Ornegi_Hafta_${selectedWeek}.docx`)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold shadow-sm transition-transform hover:scale-105 flex-shrink-0 cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
                         Konu Örneğini ve Çözümleri İndir (.docx)
                       </a>
                     )}
                   </div>
+
+                  {/* CANLI KONU ÖRNEĞİ EKRAN ÇIKTISI GÖRSELİ */}
+                  {material?.visual_image_url && (
+                    <div className="rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-slate-950 p-3 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between text-xs px-1">
+                        <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+                          <Layers className="w-4 h-4" />
+                          Haftalık Uygulama Görseli ve Canlı Ekran Çıktısı (Simülasyon)
+                        </span>
+                        <span className="text-[11px] text-zinc-400 bg-slate-800 px-2 py-0.5 rounded font-mono">
+                          16:9 HD Çıktı
+                        </span>
+                      </div>
+                      <img
+                        src={getFileUrl(material.visual_image_url)}
+                        alt="Uygulama Ekran Çıktısı Görseli"
+                        className="w-full rounded-lg object-contain shadow-inner max-h-[460px] bg-slate-900"
+                      />
+                    </div>
+                  )}
 
                   {material?.code_examples?.length > 0 ? (
                     material.code_examples.map((item, idx) => (
