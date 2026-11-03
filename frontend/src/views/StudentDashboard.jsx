@@ -3,16 +3,18 @@ import {
   FileText, Upload, CheckCircle2, Clock, Download, Award, 
   MessageSquare, BookOpen, FileCheck, Sparkles, MonitorPlay, Code2, 
   ChevronLeft, ChevronRight, Copy, Check, AlertCircle, HelpCircle, 
-  RefreshCw, Terminal, Layers
+  RefreshCw, Terminal, Layers, KeyRound
 } from 'lucide-react';
 import { 
   assignmentService, submissionService, bilisimService, getFileUrl 
 } from '../services/api';
 import StudentYksManager from './StudentYksManager';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 export default function StudentDashboard({ user }) {
   // Navigation Tabs: 'materials' | 'assignments' | 'yks'
   const [activeTab, setActiveTab] = useState('materials');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // Bilişim Weekly Materials State
   const [courses, setCourses] = useState([]);
@@ -181,6 +183,13 @@ export default function StudentDashboard({ user }) {
                 {user.student_number || user.username}
               </span>
             </div>
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl p-3 text-center flex flex-col items-center justify-center gap-1 min-w-[115px] transition shadow-sm"
+            >
+              <KeyRound className="w-4 h-4" />
+              <span className="text-xs font-semibold">Şifre Değiştir</span>
+            </button>
             <div className="bg-cyan-50/60 dark:bg-cyan-950/30 border border-cyan-200 dark:border-cyan-800/60 rounded-xl p-3 text-center min-w-[130px]">
               <span className="text-[11px] text-cyan-700 dark:text-cyan-300 block font-medium">Akademik Takvim</span>
               <span className="text-sm font-bold text-cyan-800 dark:text-cyan-200">
@@ -190,6 +199,10 @@ export default function StudentDashboard({ user }) {
           </div>
         </div>
       </div>
+
+      {showPasswordModal && (
+        <ChangePasswordModal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
+      )}
 
       {/* Navigation Tabs */}
       <div className="flex flex-nowrap sm:flex-wrap overflow-x-auto max-w-full items-center gap-1.5 p-1 bg-zinc-100/90 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 scrollbar-thin">

@@ -89,7 +89,7 @@ export default function Navbar({ user }) {
                 className="p-2 sm:px-2.5 sm:py-1.5 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition flex items-center gap-1.5 text-xs font-medium"
               >
                 <KeyRound className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-                <span className="hidden lg:inline">Şifre Değiştir</span>
+                <span className="hidden sm:inline">Şifre Değiştir</span>
               </button>
 
               {/* Logout Button */}
@@ -107,7 +107,7 @@ export default function Navbar({ user }) {
 
       {/* Change Password Modal */}
       {showPasswordModal && (
-        <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />
+        <ChangePasswordModal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
       )}
     </>
   );

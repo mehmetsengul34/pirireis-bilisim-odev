@@ -280,6 +280,8 @@ def add_student_to_classroom(
             student.student_number = request.student_number.strip()
         if request.full_name:
             student.full_name = request.full_name.strip()
+        if request.password and request.password.strip():
+            student.password_hash = hash_password(request.password.strip())
         db.commit()
     else:
         # Create new student account
