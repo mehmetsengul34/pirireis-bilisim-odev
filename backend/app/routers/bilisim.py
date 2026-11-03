@@ -5,6 +5,7 @@ Bilişim Dersleri, Yıllık Plan & Ders Materyali AI Router'ı
 """
 
 import os
+import re
 import uuid
 import json
 import aiofiles
@@ -44,6 +45,16 @@ os.makedirs(UPLOADS_MODULE_DIR, exist_ok=True)
 os.makedirs(UPLOADS_PPTX_DIR, exist_ok=True)
 os.makedirs(UPLOADS_DOCX_DIR, exist_ok=True)
 os.makedirs(UPLOADS_IMAGES_DIR, exist_ok=True)
+
+def to_safe_ascii_filename(text: str) -> str:
+    """Türkçe karakterleri ASCII'ye dönüştürerek HTTP başlıklarında güvenli dosya ismi üretir."""
+    if not text:
+        return "Bilisim_Dersi"
+    tr_map = str.maketrans("çğışöüÇĞİŞÖÜ", "cgisouCGISOU")
+    ascii_text = text.translate(tr_map)
+    clean = re.sub(r'[^a-zA-Z0-9_\-]', '_', ascii_text)
+    clean = re.sub(r'_+', '_', clean).strip('_')
+    return clean[:30] or "Bilisim_Dersi"
 
 # ================= 1. GÜNCEL AKADEMİK HAFTA & ŞABLONLAR =================
 
@@ -938,60 +949,67 @@ def download_presentation(
     Oluşturulan PowerPoint (.pptx) sunum dosyasını indirir.
     Dosya diskte yoksa anında on-the-fly oluşturur ve teslim eder.
     """
-    mat = db.query(BilisimWeeklyMaterial).filter(BilisimWeeklyMaterial.id == material_id).first()
-    if not mat:
-        raise HTTPException(status_code=404, detail="Ders materyali bulunamadı.")
+    try:
+        mat = db.query(BilisimWeeklyMaterial).filter(BilisimWeeklyMaterial.id == material_id).first()
+        if not mat:
+            raise HTTPException(status_code=404, detail="Ders materyali bulunamadı.")
 
-    course = db.query(BilisimCourse).filter(BilisimCourse.id == mat.course_id).first()
-    course_name = course.name if course else "Bilisim_Dersi"
+        course = db.query(BilisimCourse).filter(BilisimCourse.id == mat.course_id).first()
+        course_name = course.name if course else "Bilisim_Dersi"
 
-    pptx_filename = f"Sunum_Hafta_{mat.week_number}_{mat.id}.pptx"
-    full_path = os.path.join(UPLOADS_PPTX_DIR, pptx_filename)
+        pptx_filename = f"Sunum_Hafta_{mat.week_number}_{mat.id}.pptx"
+        full_path = os.path.join(UPLOADS_PPTX_DIR, pptx_filename)
 
-    # Diskte yoksa anında oluştur
-    if not os.path.exists(full_path):
-        guide = json.loads(mat.teaching_guide) if mat.teaching_guide else {}
-        slides_list = json.loads(mat.slides_json) if mat.slides_json else []
-        if not slides_list:
-            proc = generate_procedural_bilisim_material(
+        # Diskte yoksa anında oluştur
+        if not os.path.exists(full_path):
+            guide = json.loads(mat.teaching_guide) if mat.teaching_guide else {}
+            slides_list = json.loads(mat.slides_json) if mat.slides_json else []
+            if not slides_list:
+                proc = generate_procedural_bilisim_material(
+                    course_name=course_name,
+                    grade_level=course.grade_level if course else "11. Sınıf",
+                    week_number=mat.week_number,
+                    topic=mat.topic,
+                    outcomes=mat.learning_outcomes or ""
+                )
+                slides_list = proc.get("slides", [])
+                mat.slides_json = json.dumps(slides_list, ensure_ascii=False)
+                db.commit()
+
+            mat_data = {
+                "topic": mat.topic,
+                "subtopics": json.loads(mat.subtopics) if mat.subtopics else [],
+                "learning_outcomes": json.loads(mat.learning_outcomes) if mat.learning_outcomes else [],
+                "teaching_guide": guide,
+                "code_examples": json.loads(mat.code_examples) if mat.code_examples else [],
+                "lab_exercises": json.loads(mat.lab_exercises) if mat.lab_exercises else {},
+                "quiz_questions": json.loads(mat.quiz_questions) if mat.quiz_questions else [],
+                "slides": slides_list
+            }
+            build_pptx_presentation(
+                material_data=mat_data,
                 course_name=course_name,
-                grade_level=course.grade_level if course else "11. Sınıf",
                 week_number=mat.week_number,
-                topic=mat.topic,
-                outcomes=mat.learning_outcomes or ""
+                output_path=full_path
             )
-            slides_list = proc.get("slides", [])
-            mat.slides_json = json.dumps(slides_list, ensure_ascii=False)
+            mat.pptx_file_path = f"/uploads/presentations/{pptx_filename}"
             db.commit()
 
-        mat_data = {
-            "topic": mat.topic,
-            "subtopics": json.loads(mat.subtopics) if mat.subtopics else [],
-            "learning_outcomes": json.loads(mat.learning_outcomes) if mat.learning_outcomes else [],
-            "teaching_guide": guide,
-            "code_examples": json.loads(mat.code_examples) if mat.code_examples else [],
-            "lab_exercises": json.loads(mat.lab_exercises) if mat.lab_exercises else {},
-            "quiz_questions": json.loads(mat.quiz_questions) if mat.quiz_questions else [],
-            "slides": slides_list
-        }
-        build_pptx_presentation(
-            material_data=mat_data,
-            course_name=course_name,
-            week_number=mat.week_number,
-            output_path=full_path
+        clean_title = to_safe_ascii_filename(course_name)
+        download_name = f"PiriReis_{clean_title}_Hafta_{mat.week_number}_Sunusu.pptx"
+
+        return FileResponse(
+            path=full_path,
+            filename=download_name,
+            media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation"
         )
-        mat.pptx_file_path = f"/uploads/presentations/{pptx_filename}"
-        db.commit()
-
-    clean_title = re.sub(r'[^a-zA-Z0-9_\-ÇĞİÖŞÜçğıöşü]', '_', course_name)[:25]
-    filename = f"PiriReis_{clean_title}_Hafta_{mat.week_number}_Sunusu.pptx"
-
-    return FileResponse(
-        path=full_path,
-        filename=filename,
-        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Download Presentation Error] {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Sunum indirilirken hata oluştu: {str(e)}")
 
 @router.get("/download-daily-plan/{material_id}")
 def download_daily_plan(
@@ -1002,58 +1020,65 @@ def download_daily_plan(
     MEB formatında hazırlanmış Günlük Ders Planı (.docx) dosyasını indirir.
     Dosya diskte yoksa anında on-the-fly oluşturur ve teslim eder.
     """
-    mat = db.query(BilisimWeeklyMaterial).filter(BilisimWeeklyMaterial.id == material_id).first()
-    if not mat:
-        raise HTTPException(status_code=404, detail="Ders materyali bulunamadı.")
+    try:
+        mat = db.query(BilisimWeeklyMaterial).filter(BilisimWeeklyMaterial.id == material_id).first()
+        if not mat:
+            raise HTTPException(status_code=404, detail="Ders materyali bulunamadı.")
 
-    course = db.query(BilisimCourse).filter(BilisimCourse.id == mat.course_id).first()
-    course_name = course.name if course else "Bilisim_Dersi"
-    grade_level = course.grade_level if course else "11. Sınıf"
+        course = db.query(BilisimCourse).filter(BilisimCourse.id == mat.course_id).first()
+        course_name = course.name if course else "Bilisim_Dersi"
+        grade_level = course.grade_level if course else "11. Sınıf"
 
-    docx_filename = f"Gunluk_Plan_Hafta_{mat.week_number}_{mat.id}.docx"
-    full_path = os.path.join(UPLOADS_DOCX_DIR, docx_filename)
+        docx_filename = f"Gunluk_Plan_Hafta_{mat.week_number}_{mat.id}.docx"
+        full_path = os.path.join(UPLOADS_DOCX_DIR, docx_filename)
 
-    if not os.path.exists(full_path):
-        guide = json.loads(mat.teaching_guide) if mat.teaching_guide else {}
-        daily_plan_data = guide.get("daily_plan")
-        if not daily_plan_data:
-            proc = generate_procedural_bilisim_material(
+        if not os.path.exists(full_path):
+            guide = json.loads(mat.teaching_guide) if mat.teaching_guide else {}
+            daily_plan_data = guide.get("daily_plan")
+            if not daily_plan_data:
+                proc = generate_procedural_bilisim_material(
+                    course_name=course_name,
+                    grade_level=grade_level,
+                    week_number=mat.week_number,
+                    topic=mat.topic,
+                    outcomes=mat.learning_outcomes or ""
+                )
+                daily_plan_data = proc.get("daily_plan", {})
+                guide["daily_plan"] = daily_plan_data
+                mat.teaching_guide = json.dumps(guide, ensure_ascii=False)
+                db.commit()
+
+            mat_data = {
+                "topic": mat.topic,
+                "learning_outcomes": json.loads(mat.learning_outcomes) if mat.learning_outcomes else [],
+                "teaching_guide": guide,
+                "code_examples": json.loads(mat.code_examples) if mat.code_examples else [],
+                "unit_questions": guide.get("unit_questions", []),
+                "daily_plan": daily_plan_data
+            }
+            build_docx_daily_plan(
+                material_data=mat_data,
                 course_name=course_name,
                 grade_level=grade_level,
                 week_number=mat.week_number,
-                topic=mat.topic,
-                outcomes=mat.learning_outcomes or ""
+                output_path=full_path
             )
-            daily_plan_data = proc.get("daily_plan", {})
-            guide["daily_plan"] = daily_plan_data
-            mat.teaching_guide = json.dumps(guide, ensure_ascii=False)
-            db.commit()
 
-        mat_data = {
-            "topic": mat.topic,
-            "learning_outcomes": json.loads(mat.learning_outcomes) if mat.learning_outcomes else [],
-            "teaching_guide": guide,
-            "code_examples": json.loads(mat.code_examples) if mat.code_examples else [],
-            "unit_questions": guide.get("unit_questions", []),
-            "daily_plan": daily_plan_data
-        }
-        build_docx_daily_plan(
-            material_data=mat_data,
-            course_name=course_name,
-            grade_level=grade_level,
-            week_number=mat.week_number,
-            output_path=full_path
+        clean_title = to_safe_ascii_filename(course_name)
+        download_name = f"PiriReis_{clean_title}_Hafta_{mat.week_number}_Gunluk_Plani.docx"
+
+        return FileResponse(
+            path=full_path,
+            filename=download_name,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
-
-    clean_title = re.sub(r'[^a-zA-Z0-9_\-ÇĞİÖŞÜçğıöşü]', '_', course_name)[:25]
-    download_name = f"PiriReis_{clean_title}_Hafta_{mat.week_number}_Gunluk_Plani.docx"
-
-    return FileResponse(
-        path=full_path,
-        filename=download_name,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="{download_name}"'}
-    )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Download Daily Plan Error] {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Günlük plan indirilirken hata oluştu: {str(e)}")
 
 @router.get("/download-topic-example/{material_id}")
 def download_topic_example(
@@ -1064,43 +1089,44 @@ def download_topic_example(
     Haftanın çalışan konu örneği, canlı görsel ekran simülasyonu ve modül soru çözümlerini (.docx) indirir.
     Dosya diskte yoksa anında on-the-fly oluşturur ve teslim eder.
     """
-    mat = db.query(BilisimWeeklyMaterial).filter(BilisimWeeklyMaterial.id == material_id).first()
-    if not mat:
-        raise HTTPException(status_code=404, detail="Ders materyali bulunamadı.")
+    try:
+        mat = db.query(BilisimWeeklyMaterial).filter(BilisimWeeklyMaterial.id == material_id).first()
+        if not mat:
+            raise HTTPException(status_code=404, detail="Ders materyali bulunamadı.")
 
-    course = db.query(BilisimCourse).filter(BilisimCourse.id == mat.course_id).first()
-    course_name = course.name if course else "Bilisim_Dersi"
-    grade_level = course.grade_level if course else "11. Sınıf"
+        course = db.query(BilisimCourse).filter(BilisimCourse.id == mat.course_id).first()
+        course_name = course.name if course else "Bilisim_Dersi"
+        grade_level = course.grade_level if course else "11. Sınıf"
 
-    docx_filename = f"Konu_Ornegi_Hafta_{mat.week_number}_{mat.id}.docx"
-    full_path = os.path.join(UPLOADS_DOCX_DIR, docx_filename)
+        docx_filename = f"Konu_Ornegi_Hafta_{mat.week_number}_{mat.id}.docx"
+        full_path = os.path.join(UPLOADS_DOCX_DIR, docx_filename)
 
-    # Görsel dosyasını hazırla
-    visual_filename = f"visual_Hafta_{mat.week_number}_{mat.id}.png"
-    visual_path = os.path.join(UPLOADS_IMAGES_DIR, visual_filename)
+        # Görsel dosyasını hazırla
+        visual_filename = f"visual_Hafta_{mat.week_number}_{mat.id}.png"
+        visual_path = os.path.join(UPLOADS_IMAGES_DIR, visual_filename)
 
-    if not os.path.exists(full_path):
-        guide = json.loads(mat.teaching_guide) if mat.teaching_guide else {}
-        code_list = json.loads(mat.code_examples) if mat.code_examples else []
-        unit_q = guide.get("unit_questions", [])
-        daily_p = guide.get("daily_plan", {})
-        
-        if not unit_q or not daily_p or not code_list:
-            proc = generate_procedural_bilisim_material(
-                course_name=course_name,
-                grade_level=grade_level,
-                week_number=mat.week_number,
-                topic=mat.topic,
-                outcomes=mat.learning_outcomes or ""
-            )
-            unit_q = proc.get("unit_questions", [])
-            daily_p = proc.get("daily_plan", {})
-            code_list = proc.get("code_examples", [])
-            guide["unit_questions"] = unit_q
-            guide["daily_plan"] = daily_p
-            mat.teaching_guide = json.dumps(guide, ensure_ascii=False)
-            mat.code_examples = json.dumps(code_list, ensure_ascii=False)
-            db.commit()
+        if not os.path.exists(full_path):
+            guide = json.loads(mat.teaching_guide) if mat.teaching_guide else {}
+            code_list = json.loads(mat.code_examples) if mat.code_examples else []
+            unit_q = guide.get("unit_questions", [])
+            daily_p = guide.get("daily_plan", {})
+            
+            if not unit_q or not daily_p or not code_list:
+                proc = generate_procedural_bilisim_material(
+                    course_name=course_name,
+                    grade_level=grade_level,
+                    week_number=mat.week_number,
+                    topic=mat.topic,
+                    outcomes=mat.learning_outcomes or ""
+                )
+                unit_q = proc.get("unit_questions", [])
+                daily_p = proc.get("daily_plan", {})
+                code_list = proc.get("code_examples", [])
+                guide["unit_questions"] = unit_q
+                guide["daily_plan"] = daily_p
+                mat.teaching_guide = json.dumps(guide, ensure_ascii=False)
+                mat.code_examples = json.dumps(code_list, ensure_ascii=False)
+                db.commit()
 
         if not os.path.exists(visual_path):
             first_code = code_list[0].get("code", "") if code_list else ""
@@ -1131,13 +1157,19 @@ def download_topic_example(
             visual_image_path=visual_path if os.path.exists(visual_path) else None
         )
 
-    clean_title = re.sub(r'[^a-zA-Z0-9_\-ÇĞİÖŞÜçğıöşü]', '_', course_name)[:25]
-    download_name = f"PiriReis_{clean_title}_Hafta_{mat.week_number}_Konu_Ornegi.docx"
+        clean_title = to_safe_ascii_filename(course_name)
+        download_name = f"PiriReis_{clean_title}_Hafta_{mat.week_number}_Konu_Ornegi.docx"
 
-    return FileResponse(
-        path=full_path,
-        filename=download_name,
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="{download_name}"'}
-    )
+        return FileResponse(
+            path=full_path,
+            filename=download_name,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Download Topic Example Error] {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Konu örneği indirilirken hata oluştu: {str(e)}")
 
