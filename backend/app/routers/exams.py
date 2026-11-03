@@ -713,7 +713,7 @@ async def upload_training_pdf(
                 extracted_pages.append(txt.strip())
 
         full_text = "\n\n--- SAYFA AYRACI ---\n\n".join(extracted_pages)
-        if len(full_text.strip()) < 40:
+        if len(full_text.strip()) < 5:
             raise HTTPException(status_code=400, detail="PDF'ten metin çıkarılamadı veya taranmış resim PDF'i.")
 
         # Soru kökleri tespiti

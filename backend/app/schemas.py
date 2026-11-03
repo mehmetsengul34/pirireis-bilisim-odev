@@ -173,7 +173,7 @@ class GenerateQuestionsRequest(BaseModel):
     subject: str # "Temel Matematik", "Türkçe", "Fizik", etc.
     topic: str = "Karma" # "Karma" or specific topic e.g. "Türev"
     difficulty: str = "ÖSYM / Yeni Nesil"
-    question_count: int = Field(5, ge=1, le=40)
+    question_count: int = Field(5, ge=1, le=120)
     include_diagrams: bool = True
     custom_prompt: Optional[str] = None
     gemini_api_key: Optional[str] = None

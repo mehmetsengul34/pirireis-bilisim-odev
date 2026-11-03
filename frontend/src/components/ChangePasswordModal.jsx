@@ -22,11 +22,6 @@ export default function ChangePasswordModal({ isOpen = true, onClose }) {
       return;
     }
 
-    if (newPassword.length < 4) {
-      setError('Yeni şifre en az 4 karakter olmalıdır.');
-      return;
-    }
-
     if (newPassword !== confirmPassword) {
       setError('Yeni şifreler birbiriyle uyuşmuyor.');
       return;

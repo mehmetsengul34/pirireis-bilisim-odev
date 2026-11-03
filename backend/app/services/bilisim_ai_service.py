@@ -547,7 +547,7 @@ Sınıf Düzeyi: {grade_level}
 Hafta Numarası: {week_number}. Hafta
 Haftanın Konusu: {topic}
 MEB Kazanımları: {outcomes}
-Ders Modülü Bağlamı: {module_summaries[:2000] if module_summaries else "Genel MEB Bilişim Müfredatı"}
+Ders Modülü Bağlamı: {module_summaries[:15000] if module_summaries else "Genel MEB Bilişim Müfredatı"}
 
 GÖREVİN:
 Öğretmenin bu hafta laboratuvarda/derste doğrudan ekrana yansıtacağı, öğrencilere kodlatacağı ve sunacağı EKSİKSİZ ders materyal paketini hazırla.
@@ -699,6 +699,13 @@ JSON ÇIKTISI ŞU STANDARTTA OLMALIDIR (SADECE GEÇERLİ JSON DÖNDÜR):
         models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash", "gemini-flash-latest"]
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
+            "safetySettings": [
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_CIVIC_INTEGRITY", "threshold": "BLOCK_NONE"},
+            ],
             "generationConfig": {
                 "temperature": 0.7,
                 "topP": 0.9,

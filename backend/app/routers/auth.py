@@ -47,10 +47,10 @@ def change_password(
             detail="Mevcut şifreniz hatalı!"
         )
 
-    if len(request.new_password.strip()) < 4:
+    if len(request.new_password.strip()) < 1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Yeni şifreniz en az 4 karakter olmalıdır."
+            detail="Yeni şifreniz boş olamaz."
         )
 
     current_user.password_hash = hash_password(request.new_password.strip())

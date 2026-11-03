@@ -318,7 +318,7 @@ async def upload_course_plan(
             raise HTTPException(status_code=400, detail="Lütfen bir yıllık plan dosyası yükleyin veya metin girin.")
 
         # PostgreSQL Güvenliği: NUL byte ve aşırı uzunluk temizliği
-        clean_content = (extracted_content or "").replace("\x00", "")[:300000]
+        clean_content = (extracted_content or "").replace("\x00", "")[:1000000]
         clean_filename = (saved_filename or "").replace("\x00", "")
 
         # Plandan ders adı, sınıf seviyesi ve öğretim yılını tespit et ve dersi güncelle
@@ -405,7 +405,7 @@ async def upload_new_course_plan(
         else:
             raise HTTPException(status_code=400, detail="Lütfen bir yıllık plan dosyası yükleyin veya metin girin.")
 
-        clean_content = (extracted_content or "").replace("\x00", "")[:300000]
+        clean_content = (extracted_content or "").replace("\x00", "")[:1000000]
         clean_filename = (saved_filename or "").replace("\x00", "")
 
         # Plandan ders adı, sınıf seviyesi ve öğretim yılını tespit et
@@ -522,7 +522,7 @@ async def upload_course_module(
             await f.write(content_bytes)
 
         extracted_text, page_count = extract_text_from_file(file_path, file.filename)
-        clean_mod_text = (extracted_text or "").replace("\x00", "")[:300000]
+        clean_mod_text = (extracted_text or "").replace("\x00", "")[:1000000]
         summary_preview = (clean_mod_text[:300].replace("\n", " ").strip() if clean_mod_text else "Metin ayrıştırılamadı.").replace("\x00", "")
         clean_title = (title or file.filename).strip().replace("\x00", "")
 
@@ -584,7 +584,7 @@ async def upload_new_course_module(
             await f.write(content_bytes)
 
         extracted_text, page_count = extract_text_from_file(file_path, file.filename)
-        clean_mod_text = (extracted_text or "").replace("\x00", "")[:300000]
+        clean_mod_text = (extracted_text or "").replace("\x00", "")[:1000000]
         summary_preview = (clean_mod_text[:300].replace("\n", " ").strip() if clean_mod_text else "Metin ayrıştırılamadı.").replace("\x00", "")
         clean_title = (title or file.filename).strip().replace("\x00", "")
 
