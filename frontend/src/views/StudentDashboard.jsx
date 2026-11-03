@@ -164,7 +164,7 @@ export default function StudentDashboard({ user }) {
           <div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 text-xs font-semibold mb-2 border border-cyan-200 dark:border-cyan-800">
               <BookOpen className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
-              <span>Öğrenci Portalı • Torbalı Piri Reis MTAL</span>
+              <span>Öğrenci Portalı • Torbalı Piri Reis Ticaret MTAL</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
               Merhaba, {user.full_name}
