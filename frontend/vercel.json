@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/vr",
+      "destination": "/vr/index.html"
+    },
+    {
+      "source": "/vr/:path*",
+      "destination": "/vr/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }

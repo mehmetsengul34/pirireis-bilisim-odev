@@ -37,9 +37,21 @@ export default function Navbar({ user }) {
             <Logo className="w-8 h-8 sm:w-9 sm:h-9" />
           </div>
 
-          {user && (
-            <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
-              {/* Notification Center */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
+            <a
+              href="/vr"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="İzmir Torbalı BİLSEM VR Duyu & Dil Atölyesi (Meta Quest 3)"
+              className="px-2.5 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800 rounded-lg transition flex items-center gap-1.5 shadow-sm"
+            >
+              <span className="text-sm">🥽</span>
+              <span className="hidden sm:inline">VR Atölye</span>
+            </a>
+
+            {user && (
+              <div className="flex items-center gap-1.5 sm:gap-2.5">
+                {/* Notification Center */}
               <NotificationCenter user={user} />
 
               {/* Theme Toggle Button */}
@@ -102,6 +114,7 @@ export default function Navbar({ user }) {
               </button>
             </div>
           )}
+          </div>
         </div>
       </header>
 
