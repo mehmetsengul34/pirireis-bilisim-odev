@@ -49,6 +49,17 @@ export default function Navbar({ user }) {
               <span className="hidden sm:inline">VR Atölye</span>
             </a>
 
+            <a
+              href="/vr2"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Sayı Adası Macerası - Çocuklar İçin Somut VR Matematik"
+              className="px-2.5 py-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200/80 dark:border-emerald-800 rounded-lg transition flex items-center gap-1.5 shadow-sm"
+            >
+              <span className="text-sm">🏝️</span>
+              <span className="hidden sm:inline">Sayı Adası VR</span>
+            </a>
+
             {user && (
               <div className="flex items-center gap-1.5 sm:gap-2.5">
                 {/* Notification Center */}

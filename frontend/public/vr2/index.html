@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sayı Adası Macerası - Çocuklar İçin VR Matematik (Meta Quest 3)</title>
+  <script type="module" crossorigin src="/vr2/assets/index-DUxrsZhk.js"></script>
+  <link rel="stylesheet" crossorigin href="/vr2/assets/index-ByfFAmdH.css">
+</head>
+
+<body>
+  <!-- 2D HUD Visor Overlay -->
+  <div id="hud-visor">
+    <!-- Top Header -->
+    <div class="hud-top">
+      <div class="island-title-badge">
+        <span>🏝️</span>
+        <span class="island-title">Sayı Adası Macerası</span>
+      </div>
+
+      <div class="hud-stars-capsule">
+        <span id="hud-star-count">30 ⭐</span>
+      </div>
+
+      <div class="hud-controls">
+        <button class="hud-btn" id="btn-sound" title="Ses Aç/Kapat">🔊</button>
+        <button class="hud-btn" id="btn-home" title="Sayı Adası'na Dön">🏠</button>
+      </div>
+    </div>
+
+    <!-- Bottom Footer -->
+    <div class="hud-bottom">
+      <button class="guide-trigger" id="btn-open-guide">
+        <span>🥽 Meta Quest 3 Rehberi</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Meta Quest 3 Connection Modal -->
+  <div id="quest-modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span>🥽</span> Meta Quest 3 ile Bağlantı
+      </div>
+      <button class="modal-close" id="btn-close-guide">&times;</button>
+    </div>
+    <div class="modal-body">
+      <ol>
+        <li>Meta Quest 3 başlığınızdan <strong>Meta Quest Browser</strong> tarayıcısını açın.</li>
+        <li>Adres çubuğuna canlı adresi yazın: <code>https://ogretmenlerodasi.info/vr2</code></li>
+        <li>Doğrudan güvenli SSL bağlantısı ile açılır (herhangi bir APK kurulumu gerekmez).</li>
+        <li>Ekranın altındaki parlayan <strong>ENTER VR</strong> butonuna dokunarak Sayı Adası'na ışınlanın!</li>
+      </ol>
+    </div>
+    <div class="modal-footer">
+      🎮 <strong>Kontroller:</strong> Quest 3 kontrolcüsünün Trigger veya Grip tuşu ile meyveleri, taşları ve pasta dilimlerini tutup bırakabilirsiniz. PC'de fare ile tıklayıp sürükleyebilirsiniz.
+    </div>
+  </div>
+
+  <!-- Main Application Script -->
+</body>
+
+</html>

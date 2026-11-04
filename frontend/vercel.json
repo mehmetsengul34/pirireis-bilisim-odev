@@ -9,6 +9,14 @@
       "destination": "/vr/:path*"
     },
     {
+      "source": "/vr2",
+      "destination": "/vr2/index.html"
+    },
+    {
+      "source": "/vr2/:path*",
+      "destination": "/vr2/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
