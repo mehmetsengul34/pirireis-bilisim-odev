@@ -71,6 +71,17 @@ export default function Navbar({ user }) {
               <span className="hidden sm:inline">Piyano VR</span>
             </a>
 
+            <a
+              href="/vr4"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Ritim Adası Bateri Kulübü - Çocuklar İçin VR Bateri ve Perküsyon (Meta Quest 3)"
+              className="px-2.5 py-1.5 text-xs font-medium text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 border border-amber-200/80 dark:border-amber-800 rounded-lg transition flex items-center gap-1.5 shadow-sm"
+            >
+              <span className="text-sm">🥁</span>
+              <span className="hidden sm:inline">Bateri VR</span>
+            </a>
+
             {user && (
               <div className="flex items-center gap-1.5 sm:gap-2.5">
                 {/* Notification Center */}

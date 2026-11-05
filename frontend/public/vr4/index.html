@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ritim Adası Bateri Kulübü - Çocuklar İçin VR Bateri ve Perküsyon Atölyesi (Meta Quest 3)</title>
+  <script type="module" crossorigin src="/vr4/assets/index-DL0GDb9n.js"></script>
+  <link rel="stylesheet" crossorigin href="/vr4/assets/index-Bq_zMCWQ.css">
+</head>
+
+<body>
+  <!-- 2D HUD Visor Overlay -->
+  <div id="hud-visor">
+    <div class="hud-top">
+      <div class="island-title-badge">
+        <span>🥁</span>
+        <span class="island-title">Ritim Adası Bateri Kulübü</span>
+      </div>
+
+      <div class="hud-stars-capsule">
+        <span id="hud-rhythm-label">🌈 Serbest Ritim & Çalma Modu</span>
+      </div>
+
+      <div class="hud-kit-badge" id="hud-kit-badge">
+        <span>🥁 Kit: <strong id="hud-current-kit">Akustik Rock Bateri</strong></span>
+      </div>
+
+      <div class="hud-controls">
+        <button class="hud-btn" id="btn-sound" title="Ses Aç/Kapat">🔊</button>
+        <button class="hud-btn" id="btn-metronome" title="Ritim Metronomu Aç/Kapat">⏱️</button>
+        <button class="hud-btn" id="btn-freeplay" title="Serbest Çalma Modu">🎵</button>
+      </div>
+    </div>
+
+    <div class="hud-bottom">
+      <!-- 2D Quick Drum Pads for PC / Mobile / Tablet -->
+      <div class="drum-quick-bar" id="drum-quick-bar">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <button class="guide-trigger" id="btn-open-guide">
+        <span>🥽 Meta Quest 3 & Kontrol Rehberi</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Meta Quest 3 & Controls Modal -->
+  <div id="quest-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>🥁</span> Ritim Adası Bateri & Perküsyon Rehberi
+        </div>
+        <button class="modal-close" id="btn-close-guide">&times;</button>
+      </div>
+      <div class="modal-body">
+        <ol>
+          <li>Meta Quest 3 başlığınızdan <strong>Meta Quest Browser</strong> tarayıcısını açın ve <code>https://ogretmenlerodasi.info/vr4</code> adresine girin.</li>
+          <li>Ekranın altındaki parlayan <strong>ENTER VR</strong> butonuna dokunarak Konser Sahnesine ışınlanın!</li>
+          <li><strong>3D Gerçek Bagetlerle Çalma:</strong> Quest 3 kontrolcülerinizi elinize aldığınızda elinizde kırmızı ve mavi kavramalı gerçek bateri bagetleri belirecektir. Bagetlerin uçlarıyla doğrudan davul derilerine ve zillere vurarak ritim tutun!</li>
+          <li><strong>El Takibi (Hand Tracking) Modu:</strong> Kontrolcüyü bıraktığınızda çizgi film eldivenli elleriniz belirir ve bagetler elinize takılır. Ellerinizle vurarak çalabilirsiniz!</li>
+          <li><strong>Farklı Davul Kitleri:</strong> Baterinin hemen yukarısındaki panelden (Elektro 808, Çizgi Film, Afrika Orman, Siber Uzay) kitlerine dokunarak ses tonunu dilediğiniz an değiştirin!</li>
+          <li><strong>Ritim Öğrenme Dersleri:</strong> Paneldeki 4 ritim dersinden birine dokunarak altın renkli rehber halkaları ve yıldızları takip edin; bando ve rock ritimlerini adım adım öğrenin!</li>
+        </ol>
+      </div>
+      <div class="modal-footer">
+        💻 <strong>Bilgisayar & Dokunmatik Ekran Desteği:</strong> Fareyle davullara tıklayabilir veya klavyenizdeki <strong>Boşluk/B</strong> (Bas Davul), <strong>S</strong> (Trampet), <strong>H/J</strong> (Hayhet), <strong>T/Y/F</strong> (Tomlar), <strong>C</strong> (Crash), <strong>R</strong> (Ride), <strong>K</strong> (Çan) tuşlarıyla çalabilirsiniz.
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Script -->
+</body>
+
+</html>
