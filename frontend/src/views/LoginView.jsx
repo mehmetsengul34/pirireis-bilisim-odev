@@ -66,7 +66,7 @@ export default function LoginView({ onLoginSuccess }) {
           <div className="w-16 h-16 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex items-center justify-center p-2 mb-4 shadow-sm">
             <Logo className="w-10 h-10" showText={false} />
           </div>
-          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+          <h1 className="text-xl font-bold tracking-tight text-red-600 dark:text-red-500">
             Torbalı Piri Reis Ticaret MTAL
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400 font-normal text-xs mt-1">
@@ -147,7 +147,7 @@ export default function LoginView({ onLoginSuccess }) {
         {/* Footer info */}
         <div className="text-center mt-6">
           <p className="text-[11px] text-zinc-400 dark:text-zinc-600">
-            © 2026 Torbalı Piri Reis Ticaret MTAL • Bilişim Alanı
+            © 2026 <span className="text-red-600 dark:text-red-500 font-semibold">Torbalı Piri Reis Ticaret MTAL</span> • Bilişim Alanı
           </p>
         </div>
       </div>
