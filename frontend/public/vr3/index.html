@@ -4,9 +4,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Neşeli Piyano Adası - Çocuklar İçin VR Müzik Atölyesi (Meta Quest 3)</title>
-  <script type="module" crossorigin src="/vr3/assets/index-Bwbin2C3.js"></script>
-  <link rel="stylesheet" crossorigin href="/vr3/assets/index-CzhUNXj1.css">
+  <title>Neşeli Piyano Adası - Çocuklar İçin VR Müzik ve Enstrüman Atölyesi (Meta Quest 3)</title>
+  <script type="module" crossorigin src="/vr3/assets/index-2fqnsif8.js"></script>
+  <link rel="stylesheet" crossorigin href="/vr3/assets/index-Bcz5I1nH.css">
 </head>
 
 <body>
@@ -22,6 +22,10 @@
         <span id="hud-song-label">🌈 Serbest Çalma & Şarkı Öğrenme</span>
       </div>
 
+      <div class="hud-inst-badge" id="hud-inst-badge">
+        <span>🎵 Enstrüman: <strong id="hud-current-inst">Sevimli Piyano</strong></span>
+      </div>
+
       <div class="hud-controls">
         <button class="hud-btn" id="btn-sound" title="Ses Aç/Kapat">🔊</button>
         <button class="hud-btn" id="btn-freeplay" title="Serbest Çalma Modu">🎵</button>
@@ -29,8 +33,13 @@
     </div>
 
     <div class="hud-bottom">
+      <!-- 2D Quick Instrument Bar for PC/Tablet -->
+      <div class="inst-quick-bar" id="inst-quick-bar">
+        <!-- Rendered dynamically -->
+      </div>
+
       <button class="guide-trigger" id="btn-open-guide">
-        <span>🥽 Meta Quest 3 & Klavye Rehberi</span>
+        <span>🥽 Meta Quest 3 & Kontrol Rehberi</span>
       </button>
     </div>
   </div>
@@ -39,7 +48,7 @@
   <div id="quest-modal">
     <div class="modal-header">
       <div class="modal-title">
-        <span>🎹</span> Neşeli Piyano Adası Rehberi
+        <span>🎹</span> Neşeli Piyano & Enstrüman Atölyesi Rehberi
       </div>
       <button class="modal-close" id="btn-close-guide">&times;</button>
     </div>
@@ -47,16 +56,17 @@
       <ol>
         <li>Meta Quest 3 başlığınızdan <strong>Meta Quest Browser</strong> tarayıcısını açın ve <code>https://ogretmenlerodasi.info/vr3</code> adresine girin.</li>
         <li>Ekranın altındaki parlayan <strong>ENTER VR</strong> butonuna dokunarak Büyülü Müzik Sahnesine ışınlanın!</li>
-        <li><strong>Mickey Mouse Eldivenleriyle Piyano Çalma:</strong> Kendi ellerinizi ve parmaklarınızı uzatarak doğrudan renkli piyano tuşlarına dokunun! Her parmağınız gerçek zamanlı hareket eder ve tuşlara bastığınızda notalar çalar.</li>
-        <li><strong>Şarkı Öğrenme Modu:</strong> Piyanonun üstündeki 4 çocuk şarkısından birine dokunun; sıradaki tuş altın yıldızla parlar!</li>
+        <li><strong>Gerçek Zamanlı Mickey Mouse Eldivenleriyle Çalma:</strong> Başlık kontrolcüsüz el takibi (Hand Tracking) modundayken ellerinizi uzatın. Parmak uçlarınızla doğrudan renkli piyano tuşlarına dokunarak notaları çalın!</li>
+        <li><strong>Yeni Enstrüman Seçme:</strong> Piyanonun hemen üzerinde yer alan kavisli Enstrüman Konsolundaki butonlara (Ksilofon, Sihirli Flüt, Müzik Kutusu, Marimba, Arp, Trompet, Uzay Orgu, Miyav) elinizle dokunarak sesi anında değiştirin!</li>
+        <li><strong>Şarkı Öğrenme Modu:</strong> Yukarıdaki 4 neşeli çocuk şarkısından birine dokunun; sıradaki tuş parlayan altın yıldızla size yol gösterir!</li>
       </ol>
     </div>
     <div class="modal-footer">
-      💻 <strong>Bilgisayar & Tablet Desteği:</strong> Fare/dokunmatik ekranla veya klavyedeki <strong>A, S, D, F, G, H, J, K</strong> (ve üst oktav için <strong>W, E, R, T, Y, U, I</strong>) tuşlarıyla da çalabilirsiniz!
+      💻 <strong>Bilgisayar & Dokunmatik Ekran Desteği:</strong> Fareyle veya klavyenizdeki <strong>A, S, D, F, G, H, J, K</strong> (ve üst diyezler için <strong>W, E, T, Y, U, O, P</strong>) tuşlarıyla çalabilirsiniz.
     </div>
   </div>
 
+  <!-- Main Application Script -->
 </body>
 
 </html>
-

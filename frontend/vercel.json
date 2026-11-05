@@ -17,6 +17,14 @@
       "destination": "/vr2/:path*"
     },
     {
+      "source": "/vr3",
+      "destination": "/vr3/index.html"
+    },
+    {
+      "source": "/vr3/:path*",
+      "destination": "/vr3/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
