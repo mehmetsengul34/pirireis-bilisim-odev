@@ -33,6 +33,14 @@
       "destination": "/vr4/:path*"
     },
     {
+      "source": "/vr5",
+      "destination": "/vr5/index.html"
+    },
+    {
+      "source": "/vr5/:path*",
+      "destination": "/vr5/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }

@@ -82,6 +82,17 @@ export default function Navbar({ user }) {
               <span className="hidden sm:inline">Bateri VR</span>
             </a>
 
+            <a
+              href="/vr5"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="AI Sunum Stüdyosu - Gerçekçi Kadın Sunucu & İnteraktif Sunum Programı (Meta Quest 3)"
+              className="px-2.5 py-1.5 text-xs font-medium text-sky-600 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 border border-sky-200/80 dark:border-sky-800 rounded-lg transition flex items-center gap-1.5 shadow-sm"
+            >
+              <span className="text-sm">🎙️</span>
+              <span className="hidden sm:inline">AI Sunum</span>
+            </a>
+
             {user && (
               <div className="flex items-center gap-1.5 sm:gap-2.5">
                 {/* Notification Center */}

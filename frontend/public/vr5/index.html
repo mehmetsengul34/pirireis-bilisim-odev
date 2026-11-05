@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Sunum Stüdyosu - Gerçekçi Kadın Sunucu & İnteraktif Sunum Programı (Meta Quest 3 & Web)</title>
+  <script type="module" crossorigin src="/vr5/assets/index-9OganXx3.js"></script>
+  <link rel="stylesheet" crossorigin href="/vr5/assets/index-BDS_q3Uz.css">
+</head>
+
+<body>
+  <!-- 1. Slide Editor & Creator Modal -->
+  <div id="editor-modal">
+    <!-- Top Header -->
+    <header class="editor-header">
+      <div class="app-branding">
+        <span class="app-logo">🎙️</span>
+        <div>
+          <div class="app-title">AI Sunum Stüdyosu</div>
+          <div class="app-subtitle">Gerçekçi Türkçe Kadın Sunucu & Akıllı Slayt Programı</div>
+        </div>
+      </div>
+
+      <div class="header-presets">
+        <span class="preset-label">Örnek Şablonlar:</span>
+        <button class="btn-preset" data-preset="ai_future">🤖 Yapay Zeka</button>
+        <button class="btn-preset" data-preset="solar_system">🪐 Güneş Sistemi</button>
+        <button class="btn-ai-magic" id="btn-open-converter">✨ Metinden Otomatik Slayt Yap</button>
+      </div>
+    </header>
+
+    <!-- Workspace -->
+    <div class="editor-workspace">
+      <!-- Sidebar Slide List -->
+      <aside class="slide-sidebar">
+        <div class="sidebar-top">
+          <span class="sidebar-title">Slayt Listesi</span>
+          <button class="btn-add" id="btn-add-slide">➕ Yeni Slayt</button>
+        </div>
+        <div class="slide-list" id="slide-list">
+          <!-- Dynamically populated -->
+        </div>
+      </aside>
+
+      <!-- Main Slide Edit Form -->
+      <main class="slide-form-area">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="slide-title">📌 Slayt Başlığı</label>
+            <input type="text" id="slide-title" class="form-input" placeholder="Örn: Yapay Zekaya Giriş" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="slide-subtitle">🏷️ Alt Başlık / Kategori</label>
+            <input type="text" id="slide-subtitle" class="form-input" placeholder="Örn: Bilişim Çağının Yeni Dönemi" />
+          </div>
+
+          <div class="form-group full-width">
+            <label class="form-label" for="slide-bullets">📝 Slayt İçeriği & Madde İmleri (Her satıra bir madde)</label>
+            <textarea id="slide-bullets" class="form-textarea" rows="4" placeholder="Birinci madde&#10;İkinci madde&#10;Üçüncü madde"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">🖼️ Slayt Görseli (Dosya Yükle veya Bağlantı Gir)</label>
+            <div class="image-picker-box">
+              <input type="text" id="slide-image-url" class="form-input" placeholder="https://... görsel adresi" />
+              <label class="btn-upload" for="file-upload-input">📁 Bilgisayardan Seç</label>
+              <input type="file" id="file-upload-input" accept="image/*" style="display: none;" />
+            </div>
+            <div class="image-preview-box">
+              <img id="image-preview" src="" alt="Görsel Önizleme" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="slide-speech">👩‍🏫 Kadın Sunucu Seslendirme Metni (Türkçe Konuşma)</label>
+            <textarea id="slide-speech" class="form-textarea" rows="4" placeholder="Sunucu bu slaytta dinleyicilere ne söyleyecek? Buraya yazın, dudak hareketleri konuşmaya tam uyumlu seslendirecektir."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions-bar">
+          <button class="btn-delete" id="btn-delete-slide">🗑️ Bu Slaytı Sil</button>
+          <button class="btn-primary-start" id="btn-convert-and-start">
+            <span>🚀 SUNUYA ÇEVİR VE BAŞLAT</span>
+          </button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 2. Presentation HUD Overlay (Shown when in presentation mode) -->
+  <div id="presentation-hud">
+    <div class="hud-top">
+      <div class="hud-pill hud-pill-accent">
+        <span>🎙️</span>
+        <span id="hud-slide-title">Sunum Başlığı</span>
+      </div>
+
+      <div class="hud-pill" id="hud-voice-badge">
+        <span>👩‍🏫 Ses: Google Türkçe (Kadın)</span>
+      </div>
+
+      <div class="hud-pill">
+        <span>📑 Slayt: <strong id="hud-slide-counter">1 / 4</strong></span>
+      </div>
+
+      <button class="hud-btn" id="btn-fullscreen" title="Tam Ekran">🔲 Tam Ekran</button>
+    </div>
+
+    <div class="hud-bottom">
+      <div class="hud-controls-dock">
+        <button class="hud-btn" id="hud-btn-prev">◀ Önceki Slayt</button>
+        <button class="hud-btn hud-btn-primary" id="hud-btn-play-pause">⏸️ Duraklat</button>
+        <button class="hud-btn" id="hud-btn-next">Sonraki Slayt ▶</button>
+        <button class="hud-btn" id="hud-btn-replay">🔄 Tekrar Oku</button>
+        <button class="hud-btn" id="hud-btn-mute">🔊 Ses Açık</button>
+        <button class="hud-btn" id="btn-back-to-editor">✏️ Düzenleyiciye Dön</button>
+        <button class="hud-btn" id="btn-open-guide">🥽 VR Rehberi</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. AI Text-to-Slide Converter Modal -->
+  <div id="converter-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="font-weight: 800; font-size: 1.1rem;">✨ Metinden Otomatik Slayt Oluşturucu</div>
+        <button class="modal-close" id="btn-close-converter">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 12px; color: #94a3b8; font-size: 0.9rem;">
+          Elinizdeki herhangi bir ders notunu, makaleyi veya özet metnini buraya yapıştırın. Sistem metni otomatik olarak başlıklar, maddeler ve sunucu seslendirme metinleriyle slaytlara ayıracaktır.
+        </p>
+        <textarea id="converter-text" class="form-textarea" rows="8" style="width: 100%; margin-bottom: 16px;" placeholder="Ders notunuzu veya sunum metninizi buraya yapıştırın..."></textarea>
+        <div style="display: flex; justify-content: flex-end; gap: 10px;">
+          <button class="btn-primary-start" id="btn-do-convert" style="padding: 10px 24px; font-size: 0.95rem;">
+            ⚡ Slaytlara Dönüştür
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Meta Quest 3 & VR Rehberi Modal -->
+  <div id="quest-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div style="font-weight: 800; font-size: 1.1rem;">🥽 Meta Quest 3 & Sunum Rehberi</div>
+        <button class="modal-close" id="btn-close-guide">&times;</button>
+      </div>
+      <div class="modal-body">
+        <ol>
+          <li>Meta Quest 3 başlığınızdan <strong>Meta Quest Browser</strong> tarayıcısını açın ve <code>https://ogretmenlerodasi.info/vr5</code> adresine girin.</li>
+          <li>Sununuzu hazırladıktan sonra <strong>SUNUYA ÇEVİR VE BAŞLAT</strong> butonuna basın.</li>
+          <li>Ekranın altındaki parlayan <strong>ENTER VR</strong> butonuna dokunarak sanal stüdyoya ışınlanın!</li>
+          <li><strong>Canlı Kadın Sunucu:</strong> Sunucumuz hemen sağınızda yer alarak slaytları akıcı bir Türkçe tonuyla seslendirir, konuşurken dudakları gerçek zamanlı senkronize olur ve slaytlara doğru sunum hareketleri yapar.</li>
+          <li><strong>Slayt Geçişleri:</strong> Klavyenizdeki <strong>Sağ / Sol Ok</strong> tuşlarıyla veya ekrandaki butonlarla slaytları değiştirebilirsiniz.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Three.js Application Script -->
+</body>
+
+</html>
