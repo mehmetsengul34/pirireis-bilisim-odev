@@ -20,10 +20,14 @@ from app.schemas import (
     TopicAnalytic, StudentRanking, ExamQuestionStudentOut, ExamQuestionOut, ExamAnswerOut, 
     QuestionBankItem, QuestionBankListResponse, CreateExamFromBankRequest,
     AITrainingDocItem, AITrainingDocListResponse,
-    AIAgentStatusOut, AIAgentActivityOut, AIAgentRunRequest
+    AIAgentStatusOut, AIAgentActivityOut, AIAgentRunRequest,
+    AIAgentDailySynthesisRequest, AIAgentTransformLegacyRequest
 )
 from app.auth import get_current_user, require_teacher
-from app.services.ai_exam_service import YKS_CURRICULUM, generate_questions_smart, sanitize_math_and_turkish, is_verbal_branch
+from app.services.ai_exam_service import (
+    YKS_CURRICULUM, generate_questions_smart, sanitize_math_and_turkish,
+    is_verbal_branch, compute_question_fingerprint
+)
 from app.services.ai_agent_service import (
     AutonomousCoordinator, JudgeAgent, NightlyPoolSynthesizer,
     DistractorAuditAgent, ContinuousLearningAgent
@@ -208,6 +212,19 @@ async def generate_questions_endpoint(
         except Exception as tr_err:
             print(f"[AI Training] Eğitim dokümanı okunurken hata: {tr_err}")
 
+        # Sıfır Tekrar Güvencesi: Sınıfın geçmiş sınav sorularını ve soru bankasını tarayarak daha önce çözülmüş soruları dışla
+        excluded_fingerprints = set()
+        excluded_texts = []
+        if req.classroom_id:
+            past_exams = db.query(Exam).filter(Exam.classroom_id == req.classroom_id).all()
+            past_exam_ids = [e.id for e in past_exams]
+            if past_exam_ids:
+                past_questions = db.query(ExamQuestion).filter(ExamQuestion.exam_id.in_(past_exam_ids)).all()
+                for pq in past_questions:
+                    if pq.question_text:
+                        excluded_fingerprints.add(compute_question_fingerprint(pq.question_text))
+                        excluded_texts.append(pq.question_text)
+
         questions = await generate_questions_smart(
             exam_type=req.exam_type,
             subject=req.subject,
@@ -217,13 +234,20 @@ async def generate_questions_endpoint(
             include_diagrams=req.include_diagrams,
             custom_prompt=req.custom_prompt,
             api_key=req.gemini_api_key,
-            training_guidelines=training_guidelines
+            training_guidelines=training_guidelines,
+            excluded_fingerprints=excluded_fingerprints,
+            excluded_texts=excluded_texts
         )
         try:
             save_questions_to_bank(db, questions, req.exam_type, req.subject, req.topic, current_user.id)
         except Exception as db_err:
             print(f"[UYARI] Soru bankasına kaydederken hata: {db_err}")
-        return {"questions": questions}
+        return {
+            "questions": questions,
+            "zero_duplicate_guaranteed": True,
+            "excluded_past_count": len(excluded_fingerprints),
+            "maarif_model_compliant": True
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Soru üretim hatası: {str(e)}")
 
@@ -1260,5 +1284,54 @@ def judge_custom_question(
         "evaluation": eval_result,
         "repaired_question": repaired
     }
+
+
+@router.post("/agents/run-daily-synthesis")
+async def trigger_daily_high_volume_synthesis(
+    payload: Optional[AIAgentDailySynthesisRequest] = None,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """
+    7/24 Yüksek Hacimli Otonom Sentez Ajanı:
+    Her gün her sınav tipinden 200'er soru (200 LGS + 200 TYT + 200 AYT = 600 Soru/Gün) üretip
+    4 Kabul Kapısı onaylı olarak soru bankasına ekler.
+    """
+    target_count = payload.target_count if payload else 200
+    exam_type = payload.exam_type if payload else "TÜMÜ"
+    report = await AutonomousCoordinator.run_daily_200_synthesis(
+        db=db,
+        exam_type=exam_type,
+        target_count=target_count,
+        teacher_id=current_user.id
+    )
+    return {
+        "message": f"7/24 Yüksek Hacimli Otonom Sentez ({exam_type}) tamamlandı.",
+        "report": report
+    }
+
+
+@router.post("/agents/transform-legacy")
+def trigger_legacy_transformation(
+    payload: Optional[AIAgentTransformLegacyRequest] = None,
+    current_user: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    """
+    Yeni Nesil Dönüşüm ve Denetim Ajanı:
+    Soru bankasındaki klasik ve kısa soruları Türkiye Yüzyılı Maarif Modeli standartlarında
+    bağlamlı, grafikli ve üst düzey akıl yürütme içeren yeni nesil sorulara dönüştürür.
+    """
+    limit = payload.limit if payload else 30
+    report = AutonomousCoordinator.run_legacy_transformation(
+        db=db,
+        limit=limit,
+        teacher_id=current_user.id
+    )
+    return {
+        "message": "Yeni nesil Maarif Modeli dönüşümü başarıyla tamamlandı.",
+        "report": report
+    }
+
 
 

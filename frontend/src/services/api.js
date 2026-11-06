@@ -284,6 +284,14 @@ export const examService = {
     const response = await api.post('/exams/agents/run-cycle', payload);
     return response.data;
   },
+  triggerDailySynthesis: async (payload = { exam_type: 'TÜMÜ', target_count: 200 }) => {
+    const response = await api.post('/exams/agents/run-daily-synthesis', payload);
+    return response.data;
+  },
+  triggerLegacyTransformation: async (payload = { limit: 30 }) => {
+    const response = await api.post('/exams/agents/transform-legacy', payload);
+    return response.data;
+  },
   judgeQuestion: async (questionPayload, subject = 'Genel') => {
     const response = await api.post('/exams/agents/judge-question', questionPayload, { params: { subject } });
     return response.data;

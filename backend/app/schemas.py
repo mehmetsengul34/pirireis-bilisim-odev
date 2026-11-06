@@ -169,7 +169,7 @@ class ExamQuestionStudentOut(BaseModel):
         from_attributes = True
 
 class GenerateQuestionsRequest(BaseModel):
-    exam_type: str = "TYT" # "TYT" or "AYT"
+    exam_type: str = "TYT" # "LGS", "TYT" or "AYT"
     subject: str # "Temel Matematik", "Türkçe", "Fizik", etc.
     topic: str = "Karma" # "Karma" or specific topic e.g. "Türev"
     difficulty: str = "ÖSYM / Yeni Nesil"
@@ -177,6 +177,8 @@ class GenerateQuestionsRequest(BaseModel):
     include_diagrams: bool = True
     custom_prompt: Optional[str] = None
     gemini_api_key: Optional[str] = None
+    classroom_id: Optional[int] = None # Sıfır tekrar garantisi için sınıfın geçmiş sorularını tarar
+    enforce_zero_duplicate: bool = True
 
 class ExamCreateRequest(BaseModel):
     classroom_id: Optional[int] = None
@@ -474,6 +476,13 @@ class AIAgentRunRequest(BaseModel):
     force_pool_enrichment: bool = True
     target_count_per_subject: int = 2
     audit_distractors: bool = True
+
+class AIAgentDailySynthesisRequest(BaseModel):
+    exam_type: Optional[str] = "TÜMÜ" # "LGS", "TYT", "AYT" veya "TÜMÜ"
+    target_count: int = Field(200, ge=1, le=600)
+
+class AIAgentTransformLegacyRequest(BaseModel):
+    limit: int = Field(30, ge=1, le=200)
 
 # ================= BİLİŞİM DERSİ, YILLIK PLAN VE MATERYAL ŞEMALARI =================
 

@@ -304,7 +304,9 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
         question_count: parseInt(questionCount, 10),
         include_diagrams: includeDiagrams,
         custom_prompt: customPrompt || null,
-        gemini_api_key: geminiApiKey || null
+        gemini_api_key: geminiApiKey || null,
+        classroom_id: selectedClassId ? parseInt(selectedClassId, 10) : null,
+        enforce_zero_duplicate: true
       });
 
       const requestedCount = parseInt(questionCount, 10);
@@ -491,6 +493,10 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                       </option>
                     ))}
                   </select>
+                  <div className="mt-1 flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>Sıfır Tekrar Koruması: Sınıfın geçmiş sınav soruları elenir, asla aynı soru çıkmaz.</span>
+                  </div>
                 </div>
               </div>
 

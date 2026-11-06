@@ -304,25 +304,33 @@ def sanitize_math_and_turkish(text: str, is_option: bool = False) -> str:
 
 # ================= BENZERSİZLİK VE METİN KARŞILAŞTIRMA =================
 
-def are_questions_too_similar(q1_text: str, q2_text: str) -> bool:
+def are_questions_too_similar(q1_text: str, q2_text: str, threshold: float = 0.55) -> bool:
     t1 = q1_text.strip()
     t2 = q2_text.strip()
     if t1 == t2:
         return True
     
-    n1 = re.sub(r'\s+', '', t1.lower())
-    n2 = re.sub(r'\s+', '', t2.lower())
-    if n1 == n2:
+    n1 = re.sub(r'[\$#_~*`\s\W\d]+', '', t1.lower())
+    n2 = re.sub(r'[\$#_~*`\s\W\d]+', '', t2.lower())
+    if n1 and n1 == n2:
         return True
 
-    w1 = set(re.findall(r'\w+', t1.lower()))
-    w2 = set(re.findall(r'\w+', t2.lower()))
+    w1 = set(re.findall(r'[a-zA-ZçğıöşüÇĞİÖŞÜ0-9]{3,}', t1.lower()))
+    w2 = set(re.findall(r'[a-zA-ZçğıöşüÇĞİÖŞÜ0-9]{3,}', t2.lower()))
     if not w1 or not w2:
         return False
     inter = len(w1.intersection(w2))
     union = len(w1.union(w2))
-    # Kelime çakışması %60 ve üzeri olan sorular birbirine çok yakın kabul edilip elenir
-    return (inter / union) >= 0.60
+    # Kelime çakışması eşik değeri aşan sorular birbirine çok yakın kabul edilip elenir
+    return (inter / union) >= threshold
+
+def compute_question_fingerprint(text: str) -> str:
+    """Soru metnini noktalama, sayı, boşluk ve KaTeX'ten arındırarak benzersiz parmak izi hash'i üretir."""
+    import hashlib
+    clean = re.sub(r'[\$#_~*`\s\W\d]+', '', str(text).lower())
+    if not clean:
+        clean = str(text).strip().lower()
+    return hashlib.md5(clean.encode('utf-8')).hexdigest()
 
 def make_distractors(correct_val: Any, diffs: List[int] = None) -> List[Any]:
     if isinstance(correct_val, (int, float)):
@@ -565,6 +573,240 @@ def generate_dynamic_climate_graph_svg(climate_name: str = "Akdeniz İklimi") ->
   <path d="M 62,145 Q 185,60 282,148" fill="none" stroke="#dc2626" stroke-width="3"/>
   <text x="110" y="20" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">{climate_name} Grafiği</text>
   <text x="80" y="200" fill="#334155" font-size="10" font-family="sans-serif" font-weight="bold">O  Ş  M  N  M  H  T  A  E  E  K  A (Aylar)</text>
+</svg>'''
+
+def generate_dynamic_folding_geometry_svg(width_val: int = 12, height_val: int = 8, angle_val: int = 36, label: str = "ÖSYM / MEB Kağıt Katlama ve Açı Modeli") -> str:
+    return f'''<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:440px; margin:auto; display:block;">
+  <!-- Orijinal Dikdörtgen ABCD Çizgileri -->
+  <rect x="50" y="45" width="310" height="140" fill="#f8fafc" stroke="#64748b" stroke-width="1.8" stroke-dasharray="4,4" rx="2"/>
+  
+  <!-- Katlama Çizgisi EF (Açıortay Ekseni) -->
+  <line x1="160" y1="45" x2="280" y2="185" stroke="#ef4444" stroke-width="2.5" stroke-dasharray="6,4"/>
+  <circle cx="160" cy="45" r="4" fill="#ef4444"/>
+  <circle cx="280" cy="185" r="4" fill="#ef4444"/>
+  <text x="155" y="38" fill="#b91c1c" font-size="12" font-family="sans-serif" font-weight="bold">E</text>
+  <text x="285" y="198" fill="#b91c1c" font-size="12" font-family="sans-serif" font-weight="bold">F</text>
+  <text x="210" y="105" fill="#ef4444" font-size="10" font-family="sans-serif" font-weight="bold">Kat İzi</text>
+
+  <!-- Katlanan Parça: E-F-D' Çokgeni -->
+  <polygon points="160,45 280,185 220,110" fill="#e0f2fe" fill-opacity="0.85" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="220" cy="110" r="4.5" fill="#0284c7"/>
+  <text x="228" y="112" fill="#0369a1" font-size="13" font-family="sans-serif" font-weight="bold">D'</text>
+
+  <!-- Kalan Parçalar ve Köşeler -->
+  <line x1="50" y1="45" x2="160" y2="45" stroke="#0f172a" stroke-width="2.2"/>
+  <line x1="50" y1="45" x2="50" y2="185" stroke="#0f172a" stroke-width="2.2"/>
+  <line x1="50" y1="185" x2="280" y2="185" stroke="#0f172a" stroke-width="2.2"/>
+  
+  <text x="35" y="45" fill="#0f172a" font-size="13" font-family="sans-serif" font-weight="bold">A</text>
+  <text x="35" y="195" fill="#0f172a" font-size="13" font-family="sans-serif" font-weight="bold">B</text>
+  <text x="365" y="195" fill="#64748b" font-size="13" font-family="sans-serif" font-weight="bold">C</text>
+  <text x="365" y="45" fill="#94a3b8" font-size="13" font-family="sans-serif" font-weight="bold">D</text>
+
+  <!-- Katlama Açısı / Bilgi -->
+  <path d="M 175,45 A 25 25 0 0 1 180,68" fill="none" stroke="#16a34a" stroke-width="2"/>
+  <text x="185" y="65" fill="#15803d" font-size="11" font-family="sans-serif" font-weight="bold">α={angle_val}°</text>
+  <text x="110" y="22" fill="#334155" font-size="12" font-family="sans-serif" font-weight="bold">{label}</text>
+  <text x="80" y="215" fill="#475569" font-size="10" font-family="sans-serif">ABCD dikdörtgeni [EF] boyunca katlandığında D noktası D' konumuna gelir.</text>
+</svg>'''
+
+def generate_dynamic_pulley_inclined_svg(pulley_name: str = "Basit Makineler: Makaralar ve Eğik Düzlem", f_val: int = 30, g_val: int = 60, angle_deg: int = 30) -> str:
+    return f'''<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:440px; margin:auto; display:block;">
+  <!-- Tavan / Zemin -->
+  <line x1="40" y1="190" x2="380" y2="190" stroke="#334155" stroke-width="3"/>
+  <line x1="50" y1="190" x2="40" y2="202" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="120" y1="190" x2="110" y2="202" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="190" y1="190" x2="180" y2="202" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="260" y1="190" x2="250" y2="202" stroke="#64748b" stroke-width="1.5"/>
+  <line x1="330" y1="190" x2="320" y2="202" stroke="#64748b" stroke-width="1.5"/>
+
+  <!-- Eğik Düzlem Üçgeni -->
+  <polygon points="50,190 320,190 320,80" fill="#f1f5f9" stroke="#0284c7" stroke-width="2.5" stroke-linejoin="round"/>
+  
+  <!-- Eğik Düzlem Tepe Makarası -->
+  <circle cx="320" cy="80" r="14" fill="#ffffff" stroke="#334155" stroke-width="2.5"/>
+  <circle cx="320" cy="80" r="3" fill="#0284c7"/>
+
+  <!-- Eğik Düzlem Üzerindeki Yük (m) -->
+  <g transform="translate(180, 125) rotate(-22)">
+    <rect x="-24" y="-18" width="48" height="36" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2" rx="3"/>
+    <text x="-16" y="6" fill="#3730a3" font-size="11" font-family="sans-serif" font-weight="bold">G={g_val}N</text>
+  </g>
+
+  <!-- İp Bağı ve Kuvvet Yönü -->
+  <line x1="195" y1="130" x2="320" y2="66" stroke="#475569" stroke-width="2"/>
+  <line x1="334" y1="80" x2="334" y2="150" stroke="#475569" stroke-width="2"/>
+  <line x1="334" y1="150" x2="334" y2="175" stroke="#16a34a" stroke-width="2.5"/>
+  <polygon points="334,175 330,165 338,165" fill="#16a34a"/>
+  <text x="345" y="170" fill="#15803d" font-size="12" font-family="sans-serif" font-weight="bold">F={f_val}N</text>
+
+  <!-- Eğim Açısı -->
+  <path d="M 90,190 A 40 40 0 0 0 85,175" fill="none" stroke="#ea580c" stroke-width="2"/>
+  <text x="96" y="185" fill="#c2410c" font-size="11" font-family="sans-serif" font-weight="bold">α={angle_deg}°</text>
+  
+  <text x="80" y="25" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">{pulley_name}</text>
+  <text x="60" y="220" fill="#475569" font-size="10" font-family="sans-serif">Sürtünmelerin ve makara ağırlığının ihmal edildiği dengede sistem.</text>
+</svg>'''
+
+def generate_dynamic_pressure_manometer_svg(h_diff: int = 15, p0_label: str = "P₀ (Açık Hava)", liquid1_label: str = "Su (d₁)", liquid2_label: str = "Cıva (d₂)") -> str:
+    return f'''<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:440px; margin:auto; display:block;">
+  <!-- U Borusu Dış Çerçevesi -->
+  <path d="M 120,40 L 120,170 A 50 50 0 0 0 220,170 L 220,40" fill="none" stroke="#334155" stroke-width="12" stroke-linecap="round"/>
+  <path d="M 120,40 L 120,170 A 50 50 0 0 0 220,170 L 220,40" fill="none" stroke="#ffffff" stroke-width="8"/>
+  
+  <!-- Sıvı 2 (Altta Cıva / Yoğun Sıvı) -->
+  <path d="M 120,120 L 120,170 A 50 50 0 0 0 220,170 L 220,85" fill="none" stroke="#f59e0b" stroke-width="8" stroke-linecap="butt"/>
+  <!-- Sıvı 1 (Sol Kolda Su / Üst Sıvı) -->
+  <line x1="120" y1="70" x2="120" y2="120" stroke="#38bdf8" stroke-width="8"/>
+
+  <!-- Referans Basınç Denge Çizgisi K-L -->
+  <line x1="90" y1="120" x2="250" y2="120" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="3,3"/>
+  <circle cx="120" cy="120" r="3.5" fill="#dc2626"/>
+  <circle cx="220" cy="120" r="3.5" fill="#dc2626"/>
+  <text x="100" y="115" fill="#b91c1c" font-size="11" font-family="sans-serif" font-weight="bold">K</text>
+  <text x="228" y="115" fill="#b91c1c" font-size="11" font-family="sans-serif" font-weight="bold">L</text>
+  
+  <!-- h Yükseklik Farkı Çizgisi -->
+  <line x1="240" y1="85" x2="240" y2="120" stroke="#047857" stroke-width="1.5"/>
+  <line x1="235" y1="85" x2="245" y2="85" stroke="#047857" stroke-width="1.5"/>
+  <line x1="235" y1="120" x2="245" y2="120" stroke="#047857" stroke-width="1.5"/>
+  <text x="250" y="106" fill="#047857" font-size="11" font-family="sans-serif" font-weight="bold">h={h_diff} cm</text>
+
+  <!-- Açık Hava ve Gaz Basınç Göstergeleri -->
+  <line x1="120" y1="20" x2="120" y2="35" stroke="#2563eb" stroke-width="2"/>
+  <polygon points="120,35 117,28 123,28" fill="#2563eb"/>
+  <text x="85" y="18" fill="#1d4ed8" font-size="10" font-family="sans-serif" font-weight="bold">{p0_label}</text>
+
+  <line x1="220" y1="20" x2="220" y2="35" stroke="#2563eb" stroke-width="2"/>
+  <polygon points="220,35 217,28 223,28" fill="#2563eb"/>
+  <text x="215" y="18" fill="#1d4ed8" font-size="10" font-family="sans-serif" font-weight="bold">{p0_label}</text>
+
+  <!-- Lejant Bilgisi -->
+  <rect x="290" y="65" width="12" height="12" fill="#38bdf8"/>
+  <text x="308" y="75" fill="#0369a1" font-size="10" font-family="sans-serif" font-weight="bold">{liquid1_label}</text>
+  <rect x="290" y="85" width="12" height="12" fill="#f59e0b"/>
+  <text x="308" y="95" fill="#b45309" font-size="10" font-family="sans-serif" font-weight="bold">{liquid2_label}</text>
+
+  <text x="95" y="215" fill="#334155" font-size="11" font-family="sans-serif" font-weight="bold">U Borusunda Sıvı Basınç Dengesi: P_K = P_L</text>
+</svg>'''
+
+def generate_dynamic_chart_analysis_svg(pie_a: int = 120, pie_b: int = 90, pie_c: int = 150, title: str = "Veri Analizi: Daire ve Sütun Grafiği Eşleştirmesi") -> str:
+    return f'''<svg viewBox="0 0 440 230" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:460px; margin:auto; display:block;">
+  <text x="70" y="24" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">{title}</text>
+  
+  <!-- SOL: Daire Grafiği (Pie Chart) -->
+  <circle cx="110" cy="125" r="65" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <!-- Dilim 1: 120 derece (#38bdf8) -->
+  <path d="M 110,125 L 110,60 A 65 65 0 0 1 166,157 Z" fill="#38bdf8" fill-opacity="0.85" stroke="#0284c7" stroke-width="1.5"/>
+  <!-- Dilim 2: 90 derece (#f59e0b) -->
+  <path d="M 110,125 L 166,157 A 65 65 0 0 1 74,179 Z" fill="#f59e0b" fill-opacity="0.85" stroke="#d97706" stroke-width="1.5"/>
+  <!-- Dilim 3: 150 derece (#10b981) -->
+  <path d="M 110,125 L 74,179 A 65 65 0 0 1 110,60 Z" fill="#10b981" fill-opacity="0.85" stroke="#059669" stroke-width="1.5"/>
+  
+  <text x="135" y="105" fill="#0369a1" font-size="11" font-family="sans-serif" font-weight="bold">{pie_a}°</text>
+  <text x="125" y="170" fill="#b45309" font-size="11" font-family="sans-serif" font-weight="bold">{pie_b}°</text>
+  <text x="65" y="115" fill="#047857" font-size="11" font-family="sans-serif" font-weight="bold">{pie_c}°</text>
+  <text x="75" y="205" fill="#475569" font-size="10" font-family="sans-serif" font-weight="bold">Grafik 1: Dağılım</text>
+
+  <!-- SAĞ: Sütun Grafiği (Bar Chart) -->
+  <line x1="225" y1="180" x2="410" y2="180" stroke="#475569" stroke-width="1.8"/>
+  <line x1="225" y1="55" x2="225" y2="180" stroke="#475569" stroke-width="1.8"/>
+  <text x="210" y="50" fill="#475569" font-size="10" font-family="sans-serif" font-weight="bold">Adet</text>
+
+  <!-- Sütun A -->
+  <rect x="250" y="85" width="30" height="95" fill="#38bdf8" stroke="#0284c7" stroke-width="1.5" rx="3"/>
+  <text x="256" y="78" fill="#0369a1" font-size="11" font-family="sans-serif" font-weight="bold">40</text>
+  <text x="258" y="195" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">A</text>
+
+  <!-- Sütun B -->
+  <rect x="305" y="110" width="30" height="70" fill="#f59e0b" stroke="#d97706" stroke-width="1.5" rx="3"/>
+  <text x="311" y="103" fill="#b45309" font-size="11" font-family="sans-serif" font-weight="bold">30</text>
+  <text x="313" y="195" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">B</text>
+
+  <!-- Sütun C -->
+  <rect x="360" y="60" width="30" height="120" fill="#10b981" stroke="#059669" stroke-width="1.5" rx="3"/>
+  <text x="366" y="53" fill="#047857" font-size="11" font-family="sans-serif" font-weight="bold">50</text>
+  <text x="368" y="195" fill="#0f172a" font-size="11" font-family="sans-serif" font-weight="bold">C</text>
+  <text x="285" y="215" fill="#475569" font-size="10" font-family="sans-serif" font-weight="bold">Grafik 2: Üretim Miktarı</text>
+</svg>'''
+
+def generate_dynamic_chemistry_lab_svg(title: str = "Kimya Laboratuvarı: Asit-Baz Titrasyon Düzeneği") -> str:
+    return f'''<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:440px; margin:auto; display:block;">
+  <!-- Masa ve Destek Standı -->
+  <rect x="60" y="200" width="300" height="12" fill="#334155" rx="2"/>
+  <rect x="110" y="30" width="8" height="170" fill="#64748b"/>
+  <rect x="110" y="70" width="70" height="6" fill="#475569"/>
+
+  <!-- Dereceli Büret -->
+  <rect x="175" y="35" width="16" height="100" fill="#f8fafc" stroke="#0284c7" stroke-width="1.8"/>
+  <rect x="177" y="50" width="12" height="83" fill="#bae6fd" fill-opacity="0.8"/>
+  <!-- Derece Çizgileri -->
+  <line x1="175" y1="55" x2="182" y2="55" stroke="#0369a1" stroke-width="1"/>
+  <line x1="175" y1="70" x2="184" y2="70" stroke="#0369a1" stroke-width="1.5"/>
+  <line x1="175" y1="85" x2="182" y2="85" stroke="#0369a1" stroke-width="1"/>
+  <line x1="175" y1="100" x2="184" y2="100" stroke="#0369a1" stroke-width="1.5"/>
+  <line x1="175" y1="115" x2="182" y2="115" stroke="#0369a1" stroke-width="1"/>
+
+  <!-- Büret Musluğu ve Damlalık Ucu -->
+  <circle cx="183" cy="138" r="4" fill="#dc2626"/>
+  <line x1="183" y1="142" x2="183" y2="152" stroke="#0284c7" stroke-width="2"/>
+  <circle cx="183" cy="158" r="2" fill="#0284c7"/>
+
+  <!-- Erlenmayer (Alt Kap) -->
+  <polygon points="175,160 191,160 215,200 151,200" fill="#f8fafc" stroke="#334155" stroke-width="1.8" stroke-linejoin="round"/>
+  <polygon points="173,178 193,178 212,198 154,198" fill="#fbcfe8" fill-opacity="0.8" stroke="#db2777" stroke-width="1"/>
+
+  <!-- Etiketler ve Açıklamalar -->
+  <text x="205" y="65" fill="#0369a1" font-size="11" font-family="sans-serif" font-weight="bold">Büret (Standart Çözelti: 0.1 M NaOH)</text>
+  <text x="205" y="140" fill="#dc2626" font-size="11" font-family="sans-serif" font-weight="bold">Hassas Musluk</text>
+  <text x="225" y="185" fill="#be185d" font-size="11" font-family="sans-serif" font-weight="bold">Erlenmayer (HCl + Fenolftalein)</text>
+  
+  <text x="65" y="22" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">{title}</text>
+</svg>'''
+
+def generate_dynamic_coordinate_transform_svg(title: str = "Dönüşüm Geometrisi: Koordinat Sisteminde Öteleme") -> str:
+    return f'''<svg viewBox="0 0 420 230" xmlns="http://www.w3.org/2000/svg" style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:12px; width:100%; max-width:440px; margin:auto; display:block;">
+  <!-- Izgara Çizgileri -->
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f1f5f9" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect x="30" y="30" width="360" height="170" fill="url(#grid)" stroke="#e2e8f0"/>
+
+  <!-- Eksenler -->
+  <line x1="40" y1="120" x2="380" y2="120" stroke="#475569" stroke-width="2"/>
+  <line x1="180" y1="35" x2="180" y2="195" stroke="#475569" stroke-width="2"/>
+  <polygon points="380,120 372,116 372,124" fill="#475569"/>
+  <polygon points="180,35 176,43 184,43" fill="#475569"/>
+  <text x="382" y="124" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">x</text>
+  <text x="184" y="32" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">y</text>
+  <text x="166" y="134" fill="#64748b" font-size="11" font-family="sans-serif">O(0,0)</text>
+
+  <!-- Orijinal Üçgen ABC -->
+  <polygon points="120,100 160,100 140,60" fill="#e0f2fe" fill-opacity="0.85" stroke="#0284c7" stroke-width="2"/>
+  <circle cx="120" cy="100" r="3" fill="#0284c7"/>
+  <circle cx="160" cy="100" r="3" fill="#0284c7"/>
+  <circle cx="140" cy="60" r="3" fill="#0284c7"/>
+  <text x="108" y="112" fill="#0369a1" font-size="11" font-family="sans-serif" font-weight="bold">A</text>
+  <text x="164" y="112" fill="#0369a1" font-size="11" font-family="sans-serif" font-weight="bold">B</text>
+  <text x="136" y="54" fill="#0369a1" font-size="11" font-family="sans-serif" font-weight="bold">C</text>
+
+  <!-- Öteleme Vektörü -->
+  <path d="M 160,80 Q 210,70 240,95" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="4,4"/>
+  <polygon points="240,95 230,92 235,100" fill="#dc2626"/>
+  <text x="195" y="70" fill="#b91c1c" font-size="10" font-family="sans-serif" font-weight="bold">Öteleme</text>
+
+  <!-- Ötelenmiş Üçgen A'B'C' -->
+  <polygon points="220,150 260,150 240,110" fill="#dcfce7" fill-opacity="0.85" stroke="#16a34a" stroke-width="2"/>
+  <circle cx="220" cy="150" r="3" fill="#16a34a"/>
+  <circle cx="260" cy="150" r="3" fill="#16a34a"/>
+  <circle cx="240" cy="110" r="3" fill="#16a34a"/>
+  <text x="208" y="162" fill="#15803d" font-size="11" font-family="sans-serif" font-weight="bold">A'</text>
+  <text x="264" y="162" fill="#15803d" font-size="11" font-family="sans-serif" font-weight="bold">B'</text>
+  <text x="236" y="104" fill="#15803d" font-size="11" font-family="sans-serif" font-weight="bold">C'</text>
+
+  <text x="65" y="22" fill="#0f172a" font-size="12" font-family="sans-serif" font-weight="bold">{title}</text>
 </svg>'''
 
 # ================= TEMEL MATEMATİK & AYT MATEMATİK ÜRETEÇLERİ =================
@@ -2556,7 +2798,7 @@ def ensure_underlined_word_formatting(questions: List[Dict[str, Any]]):
                                     q[opt_k] = f"<u>{val}</u>"
 
 def decorate_question_visuals(questions: List[Dict[str, Any]], subject: str):
-    """Görsel gerektiren sayısal ders ve konularda sorunun visual_svg alanı boşsa yalnızca ilgili branşa uygun vektörel SVG bağlar.
+    """Görsel gerektiren sayısal ve fen derslerinde sorunun visual_svg alanı boşsa ilgili konuya en uygun ÖSYM/MEB vektörel SVG'sini bağlar.
     Sözel branşlara (Türkçe, Edebiyat, Tarih, Coğrafya, Felsefe, Din Kültürü, İnkılap Tarihi vb.) KESİNLİKLE hiçbir geometri/fizik/sayısal görsel bağlanmaz.
     """
     for q in questions:
@@ -2575,21 +2817,48 @@ def decorate_question_visuals(questions: List[Dict[str, Any]], subject: str):
 
             # Geometri veya Matematik (yalnızca sayısal branşsa)
             if "geometri" in subj_norm or "matematik" in subj_norm:
-                if any(k in q_topic_low for k in ["ucgen", "pisagor", "trigonometri"]) or any(k in q_text_low for k in ["ucgen", "pisagor", "hipotenus"]):
+                # 1. Yeni Nesil Katlama ve Açınım Geometrisi (LGS / TYT)
+                if any(k in q_topic_low for k in ["katlama", "acinim", "origami"]) or any(k in q_text_low for k in ["katlandiginda", "kat izi", "katlanarak", "d noktasi", "c noktasi", "sekil 1", "sekil 2"]):
+                    q["visual_svg"] = generate_dynamic_folding_geometry_svg()
+                # 2. Veri Analizi: Daire ve Sütun Grafiği (LGS / TYT)
+                elif any(k in q_topic_low for k in ["veri analizi", "daire grafigi", "sutun grafigi", "grafik"]) or any(k in q_text_low for k in ["daire grafigi", "sutun grafigi", "pasta grafik", "merkez acisi"]):
+                    q["visual_svg"] = generate_dynamic_chart_analysis_svg()
+                # 3. Dönüşüm Geometrisi ve Koordinat Sistemi (LGS / TYT / AYT)
+                elif any(k in q_topic_low for k in ["donusum", "oteleme", "koordinat", "analitik"]) or any(k in q_text_low for k in ["koordinat duzleminde", "orijin", "birim saga", "birim yukari"]):
+                    q["visual_svg"] = generate_dynamic_coordinate_transform_svg()
+                # 4. Üçgenler ve Pisagor
+                elif any(k in q_topic_low for k in ["ucgen", "pisagor", "trigonometri"]) or any(k in q_text_low for k in ["ucgen", "pisagor", "hipotenus"]):
                     q["visual_svg"] = generate_dynamic_triangle_svg()
+                # 5. Çember ve Daire
                 elif any(k in q_topic_low for k in ["cember", "daire"]) or any(k in q_text_low for k in ["cemberde aci", "dairede alan", "yaricapi r =", "merkez aci"]):
                     q["visual_svg"] = generate_dynamic_geometry_circle_svg()
+                # 6. Parabol ve Fonksiyon Grafiği
                 elif any(k in q_topic_low for k in ["parabol", "ikinci dereceden fonksiyon"]):
                     q["visual_svg"] = generate_dynamic_parabola_svg()
 
-            # Fizik
-            elif "fizik" in subj_norm:
-                if any(k in q_topic_low for k in ["elektrik", "devre", "akim"]) or any(k in q_text_low for k in ["direnc", "ohm", "voltluk", "reosta"]):
+            # Fizik ve Fen Bilimleri
+            elif "fizik" in subj_norm or "fen" in subj_norm:
+                # 1. Basit Makineler: Makaralar ve Eğik Düzlem (LGS Fen / TYT Fizik)
+                if any(k in q_topic_low for k in ["basit makine", "makara", "palanga", "egik duzlem", "kaldirac"]) or any(k in q_text_low for k in ["sabit makara", "hareketli makara", "palanga", "egik duzlem", "kuvvet kazanci"]):
+                    q["visual_svg"] = generate_dynamic_pulley_inclined_svg()
+                # 2. Basınç ve U Borusu / Manometre (LGS Fen / TYT Fizik)
+                elif any(k in q_topic_low for k in ["basinc", "sivi basinci", "gaz basinci", "manometre"]) or any(k in q_text_low for k in ["u borusu", "manometre", "sivi seviyesi", "sivi basinci", "acik hava basinci", "p_0"]):
+                    q["visual_svg"] = generate_dynamic_pressure_manometer_svg()
+                # 3. Elektrik Devreleri
+                elif any(k in q_topic_low for k in ["elektrik", "devre", "akim"]) or any(k in q_text_low for k in ["direnc", "ohm", "voltluk", "reosta"]):
                     q["visual_svg"] = generate_dynamic_circuit_svg()
+                # 4. Newton ve Sürtünmeli Blok
                 elif any(k in q_topic_low for k in ["kuvvet", "newton", "dinamik", "hareket yasalari", "surtunme"]) or any(k in q_text_low for k in ["surtunme katsayisi", "newton'luk kuvvet", "yatay surtunmeli", "cisme f ="]):
                     q["visual_svg"] = generate_dynamic_force_block_svg()
+                # 5. Optik ve Prizma
                 elif any(k in q_topic_low for k in ["optik", "kirilma", "ayna", "mercek", "prizma"]) or any(k in q_text_low for k in ["isik isini", "kirilma indisi", "snell", "cam prizma"]):
                     q["visual_svg"] = generate_dynamic_optics_prism_svg()
+
+            # Kimya
+            elif "kimya" in subj_norm:
+                # Asit-Baz Titrasyon ve Laboratuvar Düzeneği (TYT / AYT Kimya)
+                if any(k in q_topic_low for k in ["titrasyon", "asit", "baz", "notrallesme", "deney", "cozelti"]) or any(k in q_text_low for k in ["buret", "erlenmayer", "titrasyon", "ph degeri", "donum noktasi", "asit-baz"]):
+                    q["visual_svg"] = generate_dynamic_chemistry_lab_svg()
 
             # Biyoloji
             elif "biyoloji" in subj_norm:
@@ -2603,23 +2872,35 @@ def enforce_strict_uniqueness(
     target_count: int,
     exam_type: str,
     subject: str,
-    topic: str
+    topic: str,
+    excluded_fingerprints: Optional[Set[str]] = None,
+    excluded_texts: Optional[List[str]] = None
 ) -> List[Dict[str, Any]]:
+    """Sıfır Tekrar Güvencesi: Hem parti içinde hem de sınıfa daha önce sorulmuş geçmiş sorulara karşı katı benzersizlik uygular."""
     unique_questions = []
+    seen_fps: Set[str] = set(excluded_fingerprints) if excluded_fingerprints else set()
+    hist_texts: List[str] = list(excluded_texts) if excluded_texts else []
+
+    def is_candidate_duplicate(candidate_text: str) -> bool:
+        c_text = candidate_text.strip()
+        if not c_text:
+            return True
+        fp = compute_question_fingerprint(c_text)
+        if fp in seen_fps:
+            return True
+        for existing in unique_questions:
+            if are_questions_too_similar(c_text, existing.get("question_text", "")):
+                return True
+        for ht in hist_texts:
+            if are_questions_too_similar(c_text, ht, threshold=0.52):
+                return True
+        return False
 
     for q in initial_questions:
         q_text = q.get("question_text", "").strip()
-        if not q_text:
-            continue
-
-        is_duplicate = False
-        for existing in unique_questions:
-            if are_questions_too_similar(q_text, existing.get("question_text", "")):
-                is_duplicate = True
-                break
-
-        if not is_duplicate:
+        if not is_candidate_duplicate(q_text):
             unique_questions.append(q)
+            seen_fps.add(compute_question_fingerprint(q_text))
             if len(unique_questions) >= target_count:
                 break
 
@@ -2634,7 +2915,7 @@ def enforce_strict_uniqueness(
     random.shuffle(combined_pool)
 
     func_index = 0
-    max_attempts = target_count * 30
+    max_attempts = target_count * 40
     attempts = 0
 
     while len(unique_questions) < target_count and attempts < max_attempts:
@@ -2646,14 +2927,9 @@ def enforce_strict_uniqueness(
             new_q = gen_func()
             q_text = new_q.get("question_text", "").strip()
 
-            is_duplicate = False
-            for existing in unique_questions:
-                if are_questions_too_similar(q_text, existing.get("question_text", "")):
-                    is_duplicate = True
-                    break
-
-            if not is_duplicate:
+            if not is_candidate_duplicate(q_text):
                 unique_questions.append(new_q)
+                seen_fps.add(compute_question_fingerprint(q_text))
         except Exception as e:
             print(f"[enforce_strict_uniqueness] Üreteç hatası: {e}")
 
@@ -2701,7 +2977,9 @@ async def generate_questions_smart(
     include_diagrams: bool = True,
     custom_prompt: Optional[str] = None,
     api_key: Optional[str] = None,
-    training_guidelines: Optional[str] = None
+    training_guidelines: Optional[str] = None,
+    excluded_fingerprints: Optional[Set[str]] = None,
+    excluded_texts: Optional[List[str]] = None
 ) -> List[Dict[str, Any]]:
     effective_key = api_key or os.getenv("GEMINI_API_KEY")
     candidates = []
@@ -2727,7 +3005,9 @@ async def generate_questions_smart(
         target_count=question_count,
         exam_type=exam_type,
         subject=subject,
-        topic=topic
+        topic=topic,
+        excluded_fingerprints=excluded_fingerprints,
+        excluded_texts=excluded_texts
     )
 
     return guaranteed_unique_questions
