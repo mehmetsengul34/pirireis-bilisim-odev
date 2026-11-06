@@ -4,18 +4,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Neşeli Piyano Adası - Çocuklar İçin VR Müzik ve Enstrüman Atölyesi (Meta Quest 3)</title>
-  <script type="module" crossorigin src="/vr3/assets/index-4vmIY2Jn.js"></script>
-  <link rel="stylesheet" crossorigin href="/vr3/assets/index-wtOJwM-I.css">
+  <title>Özel Neşeli Minikler Anaokulu - VR Müzik ve Piyano Atölyesi (Meta Quest 3 Demo)</title>
+  <script type="module" crossorigin src="/vr3/assets/index-CYdScBxw.js"></script>
+  <link rel="stylesheet" crossorigin href="/vr3/assets/index-CtOeC59V.css">
 </head>
 
 <body>
   <!-- 2D HUD Visor Overlay -->
   <div id="hud-visor">
     <div class="hud-top">
-      <div class="island-title-badge">
-        <span>🎹</span>
-        <span class="island-title">Neşeli Piyano Adası</span>
+      <div class="island-title-badge" id="hud-school-badge" title="Anaokulu Demo Bilgilerini Düzenlemek İçin Tıklayın">
+        <span>🏫</span>
+        <span class="island-title" id="hud-school-title">Özel Neşeli Minikler Anaokulu</span>
+      </div>
+
+      <div class="hud-reg-capsule" id="hud-reg-capsule">
+        <span>🌟 <strong>2026-2027 Erken Kayıt:</strong> <span id="hud-school-phone">0 (212) 555 01 23</span></span>
       </div>
 
       <div class="hud-stars-capsule">
@@ -27,12 +31,17 @@
       </div>
 
       <div class="hud-controls">
+        <button class="hud-btn" id="btn-edit-school" title="Anaokulu Demo & Reklam Bilgilerini Düzenle">✏️</button>
         <button class="hud-btn" id="btn-sound" title="Ses Aç/Kapat">🔊</button>
         <button class="hud-btn" id="btn-freeplay" title="Serbest Çalma Modu">🎵</button>
       </div>
     </div>
 
     <div class="hud-bottom">
+      <div class="hud-school-contact-pill" id="hud-contact-pill">
+        <span>📞 Kayıt Hattı: <strong id="hud-bottom-phone">0 (212) 555 01 23</strong> • <span id="hud-bottom-web">www.neseliminikler.k12.tr</span></span>
+      </div>
+
       <!-- 2D Quick Instrument Bar for PC/Tablet -->
       <div class="inst-quick-bar" id="inst-quick-bar">
         <!-- Rendered dynamically -->
@@ -44,11 +53,52 @@
     </div>
   </div>
 
+  <!-- Kindergarten Demo Customization Modal -->
+  <div id="school-modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span>🏫</span> Anaokulu Demo & Reklam Bilgileri
+      </div>
+      <button class="modal-close" id="btn-close-school">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-desc">
+        Demo sunumu yapacağınız anaokulunun bilgilerini aşağıdan güncelleyebilirsiniz. 3D sahne panoları, taç tabelası, HUD başlığı ve sesli karşılama otomatik olarak güncellenir.
+      </p>
+      <div class="form-group">
+        <label for="cfg-school-name">Anaokulu Adı:</label>
+        <input type="text" id="cfg-school-name" placeholder="Örn: Özel Neşeli Minikler Anaokulu" />
+      </div>
+      <div class="form-group">
+        <label for="cfg-school-slogan">Slogan / Motto:</label>
+        <input type="text" id="cfg-school-slogan" placeholder="Örn: Sevgi, Sanat ve Teknolojiyle Yetişen Mutlu Çocuklar" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cfg-school-phone">Telefon Numarası:</label>
+          <input type="text" id="cfg-school-phone" placeholder="Örn: 0 (212) 555 01 23" />
+        </div>
+        <div class="form-group">
+          <label for="cfg-school-web">Web Sitesi:</label>
+          <input type="text" id="cfg-school-web" placeholder="Örn: www.neseliminikler.k12.tr" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="cfg-school-discount">Erken Kayıt Kampanya Metni:</label>
+        <input type="text" id="cfg-school-discount" placeholder="Örn: %25 Erken Kayıt Avantajı & Ücretsiz VR Atölye Deneyimi" />
+      </div>
+    </div>
+    <div class="modal-footer modal-actions">
+      <button type="button" class="btn-modal-secondary" id="btn-reset-school">Varsayılana Sıfırla</button>
+      <button type="button" class="btn-modal-primary" id="btn-save-school">Kaydet ve Sahneye Uygula ✨</button>
+    </div>
+  </div>
+
   <!-- Meta Quest 3 & Controls Modal -->
   <div id="quest-modal">
     <div class="modal-header">
       <div class="modal-title">
-        <span>🎹</span> Neşeli Piyano & Enstrüman Atölyesi Rehberi
+        <span>🎹</span> VR Müzik & Enstrüman Atölyesi Rehberi
       </div>
       <button class="modal-close" id="btn-close-guide">&times;</button>
     </div>
@@ -56,8 +106,9 @@
       <ol>
         <li>Meta Quest 3 başlığınızdan <strong>Meta Quest Browser</strong> tarayıcısını açın ve <code>https://ogretmenlerodasi.info/vr3</code> adresine girin.</li>
         <li>Ekranın altındaki parlayan <strong>ENTER VR</strong> butonuna dokunarak Büyülü Müzik Sahnesine ışınlanın!</li>
-        <li><strong>Gerçek Zamanlı Mickey Mouse Eldivenleriyle Çalma:</strong> Başlık kontrolcüsüz el takibi (Hand Tracking) modundayken ellerinizi uzatın. Parmak uçlarınızla doğrudan renkli piyano tuşlarına dokunarak notaları çalın!</li>
-        <li><strong>Yeni Enstrüman Seçme:</strong> Piyanonun hemen üzerinde yer alan kavisli Enstrüman Konsolundaki butonlara (Ksilofon, Sihirli Flüt, Müzik Kutusu, Marimba, Arp, Trompet, Uzay Orgu, Miyav) elinizle dokunarak sesi anında değiştirin!</li>
+        <li><strong>Gerçek Zamanlı Dokunmatik El Takibi (Hand Tracking):</strong> Başlık kontrolcüsüz el takibi modundayken ellerinizi uzatın. Parmak uçlarınızla doğrudan renkli piyano tuşlarına dokunarak notaları çalın!</li>
+        <li><strong>Yeni Enstrüman Seçme:</strong> Piyanonun hemen üzerinde yer alan kavisli Enstrüman Konsolundaki butonlara (Ksilofon, Sihirli Flüt, Müzik Kutusu, Marimba, Arp, Trompet, Uzay Orgu, Miyav) dokunarak sesi anında değiştirin!</li>
+        <li><strong>Anaokulu Sahne Reklamı:</strong> Sahnede anaokulunuza özel hazırlanan dev ışıklı reklam panosu, taç tabelası ve atölye tanıtım köşesi yer alır.</li>
         <li><strong>Şarkı Öğrenme Modu:</strong> Yukarıdaki 4 neşeli çocuk şarkısından birine dokunun; sıradaki tuş parlayan altın yıldızla size yol gösterir!</li>
       </ol>
     </div>
@@ -70,4 +121,3 @@
 </body>
 
 </html>
-

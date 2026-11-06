@@ -64,7 +64,7 @@ export default function Navbar({ user }) {
               href="/vr3"
               target="_blank"
               rel="noopener noreferrer"
-              title="Neşeli Piyano Adası - Çocuklar İçin VR Müzik ve Enstrüman Atölyesi (Meta Quest 3)"
+              title="Özel Neşeli Minikler Anaokulu - Çocuklar İçin VR Müzik ve Enstrüman Atölyesi (Meta Quest 3)"
               className="px-2.5 py-1.5 text-xs font-medium text-pink-600 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/60 hover:bg-pink-100 dark:hover:bg-pink-900/60 border border-pink-200/80 dark:border-pink-800 rounded-lg transition flex items-center gap-1.5 shadow-sm"
             >
               <span className="text-sm">🎹</span>
