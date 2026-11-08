@@ -93,6 +93,18 @@ export default function Navbar({ user }) {
               <span className="hidden sm:inline">AI Sunum</span>
             </a>
 
+            <a
+              href="/vr7"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Neşeli Gitar Kulübü - Çocuklar İçin El Takipli (Hand Tracking) Akustik Gitar Atölyesi (Meta Quest 3)"
+              className="px-2.5 py-1.5 text-xs font-medium text-orange-600 dark:text-orange-300 bg-orange-50 dark:bg-orange-950/60 hover:bg-orange-100 dark:hover:bg-orange-900/60 border border-orange-200/80 dark:border-orange-800 rounded-lg transition flex items-center gap-1.5 shadow-sm"
+            >
+              <span className="text-sm">🎸</span>
+              <span className="hidden sm:inline">Gitar VR</span>
+            </a>
+
+
             {user && (
               <div className="flex items-center gap-1.5 sm:gap-2.5">
                 {/* Notification Center */}

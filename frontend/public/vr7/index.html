@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Özel Neşeli Minikler - VR Akustik Gitar Atölyesi (Meta Quest 3 Hand Tracking)</title>
+  <script type="module" crossorigin src="/vr7/assets/index-jRuu36RY.js"></script>
+  <link rel="stylesheet" crossorigin href="/vr7/assets/index-TpvOSPO4.css">
+</head>
+
+<body>
+  <!-- 2D HUD Visor Overlay -->
+  <div id="hud-visor">
+    <div class="hud-top">
+      <div class="island-title-badge">
+        <span>🏫</span>
+        <span>Özel Neşeli Minikler • VR Gitar Kulübü</span>
+      </div>
+
+      <div class="hud-stars-capsule">
+        <span id="hud-song-label">🌈 Serbest Çalma & Akor Pratiği</span>
+      </div>
+
+      <div class="hud-inst-badge">
+        <span>🎸 Model: <strong id="hud-current-type">Akustik Gitar</strong> • Akor: <strong id="hud-current-chord">C (Do Majör)</strong></span>
+      </div>
+
+      <div class="hud-controls">
+        <button class="hud-btn" id="btn-sound" title="Ses Aç/Kapat">🔊</button>
+        <button class="hud-btn" id="btn-freeplay" title="Serbest Mod">🎵</button>
+      </div>
+    </div>
+
+    <div class="hud-bottom">
+      <!-- 2D Quick Chord Bar for PC/Tablet -->
+      <div class="chord-quick-bar" id="chord-quick-bar">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="hud-action-row">
+        <button class="strum-btn" id="btn-strum-down">🎸 Telleri Tara (Akor Vur)</button>
+        <button class="guide-trigger" id="btn-open-guide">
+          <span>🥽 Meta Quest 3 El Takibi Rehberi</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Meta Quest 3 Hand Tracking Guide Modal -->
+  <div id="quest-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>🥽</span> Meta Quest 3 El Takibi (Hand Tracking) Rehberi
+        </div>
+        <button class="modal-close" id="btn-close-quest">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="guide-item">
+          <div class="guide-icon">✋</div>
+          <div class="guide-text">
+            <h4>Kontrolcüsüz Gerçek El Takibi</h4>
+            <p>Meta Quest kontrolcülerini masaya bırakın. Başlık ellerinizi otomatik algılar ve 3D sevimli müzik eldivenlerine dönüştürür.</p>
+          </div>
+        </div>
+
+        <div class="guide-item">
+          <div class="guide-icon">🎸</div>
+          <div class="guide-text">
+            <h4>Sağ El: Telleri Tarama ve Çalma</h4>
+            <p>Sağ elinizi ses deliğinin üzerinden yukarıdan aşağıya (Down-strum) veya aşağıdan yukarıya (Up-strum) süpürerek akoru çalın. Parmağınızla tek bir tele dokunarak solo melodi çalabilirsiniz.</p>
+          </div>
+        </div>
+
+        <div class="guide-item">
+          <div class="guide-icon">👆</div>
+          <div class="guide-text">
+            <h4>Sol El: Sap Üzerinden Akor Basma</h4>
+            <p>Sol elinizin parmaklarıyla gitar sapı boyunca yer alan renkli akor butonlarına (C, G, Am, F, Em, D, Dm, A) dokunun. Klavye üzerinde gerçek parmak noktaları parıldar!</p>
+          </div>
+        </div>
+
+        <div class="guide-item">
+          <div class="guide-icon">💻</div>
+          <div class="guide-text">
+            <h4>Bilgisayar & Dokunmatik Kontroller</h4>
+            <p>Fareyle telleri sürükleyerek veya <strong>Boşluk (Space)</strong> tuşuna basarak çalabilirsiniz. <strong>1 - 8</strong> tuşlarıyla akorları değiştirin, <strong>Q, W, E, R, T, Y</strong> tuşlarıyla telleri tek tek tınlatın.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>
