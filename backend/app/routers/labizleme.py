@@ -166,60 +166,88 @@ def sync_local_arp(payload: ArpSyncPayload):
     return {"ok": True, "count": len(arp_devices_cache)}
 
 
+BAT_CONTENT = r"""@echo off
+chcp 65001 >nul
+title Torbali Piri Reis Ticaret MTAL - Ogrenci Ekran Paylasim Servisi
+
+set "INSTALL_DIR=%LOCALAPPDATA%\PiriReisLabService"
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+
+:: Eger bu bat dosyasi baska bir yerden calistirildiysa kendi kopyasini servis klasorune kaydet
+if /i not "%~f0"=="%INSTALL_DIR%\istemci-servis.bat" (
+    copy /y "%~f0" "%INSTALL_DIR%\istemci-servis.bat" >nul 2>&1
+)
+
+:: 1. Gorunmez (Penceresiz) VBS Baslatici Olustur
+set "VBS_LAUNCHER=%INSTALL_DIR%\baslat_gizli.vbs"
+(
+echo Set WshShell = CreateObject^("WScript.Shell"^)
+echo WshShell.Run """%INSTALL_DIR%\istemci-servis.bat"" --daemon", 0, False
+) > "%VBS_LAUNCHER%"
+
+:: 2. Bilgisayar Yeniden Basladiginda Otomatik Calismasi Icin Kaydet (Startup + Registry + Scheduled Task)
+set "STARTUP_VBS=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PiriReisLabAgent.vbs"
+copy /y "%VBS_LAUNCHER%" "%STARTUP_VBS%" >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabService" /t REG_SZ /d "wscript.exe //B //Nologo \"%VBS_LAUNCHER%\"" /f >nul 2>&1
+schtasks /create /tn "PiriReisLabAgent" /tr "wscript.exe //B //Nologo \"%VBS_LAUNCHER%\"" /sc onlogon /f >nul 2>&1
+
+:: Eger kullanici cift tiklayarak actiysa (--daemon parametresi yoksa), hemen gizli arka plan moduna gec ve bu siyah pencereyi kapat
+if not "%~1"=="--daemon" (
+    start "" wscript.exe //B //Nologo "%VBS_LAUNCHER%"
+    exit /b 0
+)
+
+:: ============================================================================
+:: ARKA PLAN KORUMALI WATCHDOG DONGUSU (Ogrenci kapatsa bile aninda yeniden acar)
+:: ============================================================================
+set "LIVE_URL=https://ogretmenlerodasi.info/labizleme"
+set "TEACHER_URL=http://192.168.23.244:4000"
+set "PROFILE_DIR=%LOCALAPPDATA%\PiriReisLabClient"
+
+for /f "delims=" %%A in ('powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.*' } | Select-Object -First 1).IPAddress"') do set "LOCAL_IP=%%A"
+for /f "delims=" %%M in ('powershell -NoProfile -Command "(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1).MacAddress"') do set "LOCAL_MAC=%%M"
+
+set "CHROME_EXE=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
+set "CHROME_X86=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
+set "CHROME_LOCAL=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
+set "EDGE_EXE=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
+set "EDGE_X64=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
+
+set "BROWSER_EXE="
+if exist "%CHROME_EXE%" set "BROWSER_EXE=%CHROME_EXE%"
+if not defined BROWSER_EXE if exist "%CHROME_X86%" set "BROWSER_EXE=%CHROME_X86%"
+if not defined BROWSER_EXE if exist "%CHROME_LOCAL%" set "BROWSER_EXE=%CHROME_LOCAL%"
+if not defined BROWSER_EXE if exist "%EDGE_EXE%" set "BROWSER_EXE=%EDGE_EXE%"
+if not defined BROWSER_EXE if exist "%EDGE_X64%" set "BROWSER_EXE=%EDGE_X64%"
+
+:WATCHDOG_LOOP
+set "APP_URL=%LIVE_URL%/ogrenci.html?pc=%COMPUTERNAME%&user=%USERNAME%&ip=%LOCAL_IP%&mac=%LOCAL_MAC%&autostart=1&bg=1"
+
+powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%LIVE_URL%/ogrenci.html' -TimeoutSec 4 -UseBasicParsing; exit 0 } catch { exit 1 }" >nul 2>&1
+if errorlevel 1 (
+    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%TEACHER_URL%/api/state' -TimeoutSec 2 -UseBasicParsing; exit 0 } catch { exit 1 }" >nul 2>&1
+    if errorlevel 1 (
+        for /f "delims=" %%I in ('powershell -NoProfile -Command "$ips = 200..254 | ForEach-Object { '192.168.23.' + $_ }; $tasks = foreach ($ip in $ips) { $t = New-Object System.Net.Sockets.TcpClient; [PSCustomObject]@{ IP=$ip; Client=$t; Task=$t.ConnectAsync($ip, 4000) } }; Start-Sleep -Milliseconds 600; $found = $tasks | Where-Object { $_.Task.Status -eq 'RanToCompletion' -and $_.Client.Connected } | Select-Object -First 1; $tasks | ForEach-Object { $_.Client.Close() }; if ($found) { Write-Output ('http://' + $found.IP + ':4000') }"') do (
+            set "TEACHER_URL=%%I"
+        )
+    )
+    set "APP_URL=%TEACHER_URL%/ogrenci?pc=%COMPUTERNAME%&user=%USERNAME%&ip=%LOCAL_IP%&mac=%LOCAL_MAC%&autostart=1&bg=1"
+)
+
+if defined BROWSER_EXE (
+    "%BROWSER_EXE%" --user-data-dir="%PROFILE_DIR%" --no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-infobars --window-position=-32000,-32000 --window-size=160,100 --unsafely-treat-insecure-origin-as-secure="%TEACHER_URL%" --auto-select-desktop-capture-source="Entire screen" --auto-select-desktop-capture-source="Tüm ekran" --enable-usermedia-screen-capturing --disable-features=WebRtcHideLocalIpsWithMdns --app="%APP_URL%"
+) else (
+    start /wait "" "%APP_URL%"
+)
+
+timeout /t 2 /nobreak >nul
+goto WATCHDOG_LOOP
+"""
+
+
 @router.get("/ogrenci-istemci.bat")
 def download_student_bat():
-    bat_lines = [
-        "@echo off",
-        "chcp 65001 >nul",
-        "title Torbali Piri Reis Ticaret MTAL - Ogrenci Ekran Paylasim Istemcisi",
-        "",
-        'set "LIVE_URL=https://ogretmenlerodasi.info/labizleme"',
-        'set "LOCAL_TEACHER=http://192.168.23.244:4000"',
-        "",
-        ":: Yerel IP ve MAC adresini tespit et (ogretmen panelinde dogru gorunmesi icin)",
-        "for /f \"delims=\" %%A in ('powershell -NoProfile -Command \"(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.*' } | Select-Object -First 1).IPAddress\"') do set \"LOCAL_IP=%%A\"",
-        "for /f \"delims=\" %%M in ('powershell -NoProfile -Command \"(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1).MacAddress\"') do set \"LOCAL_MAC=%%M\"",
-        "",
-        'set "APP_URL=%LIVE_URL%/ogrenci.html?pc=%COMPUTERNAME%&user=%USERNAME%&ip=%LOCAL_IP%&mac=%LOCAL_MAC%&autostart=1"',
-        'set "PROFILE_DIR=%LOCALAPPDATA%\\PiriReisLabClient"',
-        "",
-        "echo ============================================================",
-        "echo   TORBALI PIRI REIS TICARET MTAL - BILISIM LABORATUVARI",
-        "echo   Canli Sunucuya Baglaniliyor (%LIVE_URL%)...",
-        "echo   Bilgisayar Adi : %COMPUTERNAME%",
-        "echo   Kullanici Adi  : %USERNAME%",
-        "echo   Yerel IP       : %LOCAL_IP%",
-        "echo ============================================================",
-        "",
-        ":: Masaustune kisayol olustur (ilk calistirmada)",
-        'set "SHORTCUT_PATH=%USERPROFILE%\\Desktop\\Lab Ekran Paylasimi.lnk"',
-        'if not exist "%SHORTCUT_PATH%" (',
-        '    powershell -NoProfile -Command "$wsh = New-Object -ComObject WScript.Shell; $sc = $wsh.CreateShortcut(\'%SHORTCUT_PATH%\'); $sc.TargetPath = \'%~f0\'; $sc.WorkingDirectory = \'%~dp0\'; $sc.Description = \'Ogretmen Ekran Paylasim Istemcisi\'; $sc.Save()" >nul 2>&1',
-        ")",
-        "",
-        ":: Chrome veya Edge yollarini kontrol et",
-        'set "CHROME_EXE=%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe"',
-        'set "CHROME_X86=%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe"',
-        'set "CHROME_LOCAL=%LOCALAPPDATA%\\Google\\Chrome\\Application\\chrome.exe"',
-        'set "EDGE_EXE=%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe"',
-        'set "EDGE_X64=%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe"',
-        "",
-        'set "BROWSER_EXE="',
-        'if exist "%CHROME_EXE%" set "BROWSER_EXE=%CHROME_EXE%"',
-        'if not defined BROWSER_EXE if exist "%CHROME_X86%" set "BROWSER_EXE=%CHROME_X86%"',
-        'if not defined BROWSER_EXE if exist "%CHROME_LOCAL%" set "BROWSER_EXE=%CHROME_LOCAL%"',
-        'if not defined BROWSER_EXE if exist "%EDGE_EXE%" set "BROWSER_EXE=%EDGE_EXE%"',
-        'if not defined BROWSER_EXE if exist "%EDGE_X64%" set "BROWSER_EXE=%EDGE_X64%"',
-        "",
-        'if defined BROWSER_EXE (',
-        '    start "" "%BROWSER_EXE%" --user-data-dir="%PROFILE_DIR%" --no-first-run --no-default-browser-check --auto-select-desktop-capture-source="Entire screen" --enable-usermedia-screen-capturing --app="%APP_URL%"',
-        "    exit /b 0",
-        ")",
-        "",
-        'start "" "%APP_URL%"',
-        "",
-    ]
-    content = "\r\n".join(bat_lines)
+    content = BAT_CONTENT.replace("\r\n", "\n").replace("\n", "\r\n")
     return Response(
         content=content.encode("utf-8"),
         media_type="application/octet-stream",

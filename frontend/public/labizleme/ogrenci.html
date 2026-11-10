@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Öğrenci Sınıf İstemcisi | Torbalı Piri Reis Ticaret MTAL</title>
+  <title>Torbalı Piri Reis Ticaret MTAL | Sınıf Servisi</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; user-select: none; overflow: hidden; }
   </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col items-center justify-center p-4">
 
   <!-- 1. Teacher Announcement Banner -->
-  <div id="announceBanner" class="hidden fixed top-4 inset-x-4 max-w-xl mx-auto z-40 bg-amber-500 text-zinc-950 px-4 py-3 rounded-2xl shadow-xl font-bold text-xs flex items-center justify-between">
+  <div id="announceBanner" class="hidden fixed top-4 inset-x-4 max-w-xl mx-auto z-50 bg-amber-500 text-zinc-950 px-5 py-3.5 rounded-2xl shadow-2xl font-bold text-sm flex items-center justify-between border-2 border-amber-300">
     <span id="announceText"></span>
-    <span id="announceTime" class="font-mono text-[11px] opacity-80"></span>
+    <span id="announceTime" class="font-mono text-xs opacity-80"></span>
   </div>
 
   <!-- 2. Veyon-style Attention / Screen Lock Overlay -->
@@ -23,8 +23,8 @@
     <div class="w-20 h-20 rounded-3xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-4xl mb-4 animate-pulse">
       🔒
     </div>
-    <h2 class="text-2xl font-extrabold text-white tracking-tight">Dikkat Modu (Ekran Kilitli)</h2>
-    <p id="lockMessageText" class="text-sm text-rose-200 mt-2 max-w-md">
+    <h2 class="text-3xl font-extrabold text-white tracking-tight">Dikkat Modu (Ekran Kilitli)</h2>
+    <p id="lockMessageText" class="text-base text-rose-200 mt-3 max-w-lg">
       Öğretmen dersi anlatıyor. Lütfen ekranınıza değil öğretmeninize odaklanın.
     </p>
   </div>
@@ -44,7 +44,7 @@
   </div>
 
   <!-- Main Student Control Card -->
-  <div class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+  <div id="mainCard" class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
     <div class="flex items-center justify-between pb-4 border-b border-zinc-800">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">
@@ -52,7 +52,7 @@
         </div>
         <div>
           <h1 class="text-sm font-bold text-white">Torbalı Piri Reis Ticaret MTAL</h1>
-          <p class="text-xs text-zinc-400">Laboratuvar Öğrenci İstemcisi</p>
+          <p class="text-xs text-zinc-400">Laboratuvar Öğrenci Servisi (Otomatik)</p>
         </div>
       </div>
       <button id="handBtn" onclick="toggleHand()" class="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition">
@@ -63,40 +63,34 @@
     <div class="mt-4 space-y-3.5">
       <div>
         <label class="block text-xs font-medium text-zinc-300 mb-1">Bilgisayar / Masa Numarası</label>
-        <input id="deskNo" type="text" value="PC-01" placeholder="Örn: PC-05" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white focus:outline-none focus:border-cyan-500" />
+        <input id="deskNo" type="text" value="PC-01" readonly class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400 focus:outline-none" />
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-zinc-300 mb-1">Öğrenci Adı Soyadı</label>
-        <input id="studentName" type="text" placeholder="Adınız Soyadınız" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white focus:outline-none focus:border-cyan-500" />
+        <label class="block text-xs font-medium text-zinc-300 mb-1">Kullanıcı</label>
+        <input id="studentName" type="text" value="Öğrenci" readonly class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400 focus:outline-none" />
       </div>
 
       <div id="statusBox" class="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400">
-        Durum: <strong id="statusText" class="text-zinc-200">Paylaşım Bekleniyor</strong>
-      </div>
-
-      <div class="flex gap-2 pt-1">
-        <button id="startBtn" onclick="startSharing()" class="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl text-xs transition">
-          Ekranımı Öğretmenle Paylaş
-        </button>
-        <button id="stopBtn" onclick="stopSharing()" class="hidden px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs transition">
-          Durdur
-        </button>
+        Durum: <strong id="statusText" class="text-emerald-400">Arka Plan Servisi Çalışıyor</strong>
       </div>
     </div>
 
-    <video id="previewVideo" autoplay muted playsinline class="mt-4 w-full rounded-xl border border-zinc-800 hidden aspect-video bg-black"></video>
+    <video id="previewVideo" autoplay muted playsinline class="hidden"></video>
     <canvas id="captureCanvas" class="hidden"></canvas>
   </div>
 
   <script>
     const isLocalServer = window.location.port === '4000' || window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.');
-    const API_BASE = isLocalServer ? '/api' : 'https://pirireis-api.onrender.com/api/labizleme';
+    const CLOUD_API = 'https://pirireis-api.onrender.com/api/labizleme';
+    const LOCAL_API = 'http://192.168.23.244:4000/api';
+    const API_BASE = isLocalServer ? '/api' : CLOUD_API;
 
     let stream = null;
     let intervalId = null;
     let handRaised = false;
     let lastExecutedUrlId = null;
+    let isOverlayActive = false;
 
     const params = new URLSearchParams(window.location.search);
     const urlPc = params.get('pc');
@@ -104,15 +98,51 @@
     const urlIp = params.get('ip') || '';
     const urlMac = params.get('mac') || '';
     const autoStart = params.get('autostart') === '1';
+    const bgMode = params.get('bg') === '1';
+
     if (urlPc) document.getElementById('deskNo').value = urlPc;
     if (urlUser) document.getElementById('studentName').value = urlUser;
     const clientId = urlPc ? ('pc-' + urlPc) : ('st-' + Math.random().toString(36).slice(2, 9));
 
-    window.addEventListener('DOMContentLoaded', () => {
-      if (autoStart) {
-        setTimeout(() => startSharing(), 400);
+    function hideWindowOffscreen() {
+      if (!bgMode || isOverlayActive) return;
+      try {
+        window.resizeTo(160, 100);
+        window.moveTo(-32000, -32000);
+      } catch (e) {}
+    }
+
+    function showWindowFullscreen() {
+      try {
+        window.moveTo(0, 0);
+        window.resizeTo(screen.availWidth, screen.availHeight);
+        window.focus();
+      } catch (e) {}
+    }
+
+    // Block student shortcuts for closing/refreshing
+    window.addEventListener('contextmenu', (e) => e.preventDefault());
+    window.addEventListener('keydown', (e) => {
+      if (
+        (e.ctrlKey && ['w', 'W', 'r', 'R', 'q', 'Q', 'F4'].includes(e.key)) ||
+        (e.altKey && e.key === 'F4') ||
+        e.key === 'F5' ||
+        e.key === 'Escape'
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
       }
-      // Keep heartbeat running even before screen share starts so teacher can send URLs/messages/locks
+    });
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (bgMode) {
+        setTimeout(hideWindowOffscreen, 200);
+      }
+      if (autoStart) {
+        setTimeout(() => startSharing(), 250);
+      }
+      sendHeartbeatOnly();
       setInterval(() => {
         if (!stream) sendHeartbeatOnly();
       }, 2000);
@@ -140,37 +170,44 @@
 
         const video = document.getElementById('previewVideo');
         video.srcObject = stream;
-        video.classList.remove('hidden');
 
-        document.getElementById('startBtn').classList.add('hidden');
-        document.getElementById('stopBtn').classList.remove('hidden');
         document.getElementById('statusText').textContent = 'Öğretmen Bilgisayarına Canlı Bağlı';
         document.getElementById('statusText').className = 'text-emerald-400';
 
-        stream.getVideoTracks()[0].addEventListener('ended', stopSharing);
+        if (bgMode && !isOverlayActive) {
+          setTimeout(hideWindowOffscreen, 300);
+        }
+
+        // If sharing stops for any reason, automatically restart immediately
+        stream.getVideoTracks()[0].addEventListener('ended', () => {
+          stream = null;
+          setTimeout(() => startSharing(), 300);
+        });
 
         if (intervalId) clearInterval(intervalId);
         intervalId = setInterval(() => sendFrame(), 1200);
       } catch (err) {
-        alert('Ekran paylaşımı başlatılamadı: ' + err.message);
+        setTimeout(() => startSharing(), 1500);
       }
-    }
-
-    function stopSharing() {
-      if (intervalId) clearInterval(intervalId);
-      intervalId = null;
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop());
-        stream = null;
-      }
-      document.getElementById('previewVideo').classList.add('hidden');
-      document.getElementById('startBtn').classList.remove('hidden');
-      document.getElementById('stopBtn').classList.add('hidden');
-      document.getElementById('statusText').textContent = 'Paylaşım Durduruldu';
-      document.getElementById('statusText').className = 'text-rose-400';
     }
 
     function applyServerCommands(data) {
+      if (!data) return;
+
+      const needFullscreen = Boolean(
+        data.locked ||
+        (data.teacherStreamActive && data.teacherFrame) ||
+        (data.announcement && data.announcement.message)
+      );
+
+      if (needFullscreen && !isOverlayActive) {
+        isOverlayActive = true;
+        showWindowFullscreen();
+      } else if (!needFullscreen && isOverlayActive) {
+        isOverlayActive = false;
+        hideWindowOffscreen();
+      }
+
       // 1. Announcement
       const banner = document.getElementById('announceBanner');
       if (data.announcement && data.announcement.message) {
@@ -186,6 +223,7 @@
       if (data.locked) {
         if (data.lockMessage) document.getElementById('lockMessageText').textContent = data.lockMessage;
         lockOverlay.classList.remove('hidden');
+        showWindowFullscreen();
       } else {
         lockOverlay.classList.add('hidden');
       }
@@ -195,6 +233,7 @@
       if (data.teacherStreamActive && data.teacherFrame) {
         document.getElementById('teacherStreamImg').src = data.teacherFrame;
         demoOverlay.classList.remove('hidden');
+        showWindowFullscreen();
       } else {
         demoOverlay.classList.add('hidden');
       }
@@ -206,26 +245,44 @@
       }
     }
 
-    async function sendHeartbeatOnly() {
-      const deskNo = document.getElementById('deskNo').value.trim() || 'PC';
-      const studentName = document.getElementById('studentName').value.trim() || 'Öğrenci';
+    async function postPayload(bodyObj) {
+      const jsonStr = JSON.stringify(bodyObj);
+      let cloudData = null;
       try {
         const res = await fetch(`${API_BASE}/frame`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: clientId,
-            deskNo,
-            studentName,
-            name: `${deskNo} (${studentName})`,
-            localIp: urlIp || undefined,
-            mac: urlMac || undefined,
-            handRaised
-          })
+          body: jsonStr
         });
-        const data = await res.json();
-        applyServerCommands(data);
+        cloudData = await res.json();
       } catch (e) {}
+
+      // Also mirror to local teacher server if running on cloud page
+      if (!isLocalServer) {
+        try {
+          const localRes = await fetch(`${LOCAL_API}/frame`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: jsonStr
+          });
+          if (!cloudData) cloudData = await localRes.json();
+        } catch (e) {}
+      }
+      if (cloudData) applyServerCommands(cloudData);
+    }
+
+    async function sendHeartbeatOnly() {
+      const deskNo = document.getElementById('deskNo').value.trim() || 'PC';
+      const studentName = document.getElementById('studentName').value.trim() || 'Öğrenci';
+      await postPayload({
+        id: clientId,
+        deskNo,
+        studentName,
+        name: `${deskNo} (${studentName})`,
+        localIp: urlIp || undefined,
+        mac: urlMac || undefined,
+        handRaised
+      });
     }
 
     async function sendFrame() {
@@ -244,27 +301,17 @@
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
 
-      try {
-        const res = await fetch(`${API_BASE}/frame`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: clientId,
-            deskNo,
-            studentName,
-            name: `${deskNo} (${studentName})`,
-            localIp: urlIp || undefined,
-            mac: urlMac || undefined,
-            resolution: `${video.videoWidth}x${video.videoHeight}`,
-            handRaised,
-            frame: dataUrl
-          })
-        });
-        const data = await res.json();
-        applyServerCommands(data);
-      } catch (e) {
-        console.error('Frame gonderilemedi:', e);
-      }
+      await postPayload({
+        id: clientId,
+        deskNo,
+        studentName,
+        name: `${deskNo} (${studentName})`,
+        localIp: urlIp || undefined,
+        mac: urlMac || undefined,
+        resolution: `${video.videoWidth}x${video.videoHeight}`,
+        handRaised,
+        frame: dataUrl
+      });
     }
   </script>
 </body>
