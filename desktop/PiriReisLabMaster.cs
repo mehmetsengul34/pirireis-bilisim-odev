@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.Threading;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 
 namespace PiriReisLabMaster
 {
@@ -25,7 +26,10 @@ namespace PiriReisLabMaster
         private string currentServerUrl;
         private const string CLOUD_URL = "https://ogretmenlerodasi.info/labizleme";
         private const string LOCAL_URL = "http://localhost:4000/labizleme";
+        private const string DESKTOP_MASTER_KEY = "pirireis-lab-master-secret-2026-auth-token";
         private string configPath;
+        private string tokenCachePath;
+        private string cachedAuthToken = null;
 
         public MasterApp()
         {
@@ -35,6 +39,7 @@ namespace PiriReisLabMaster
             string appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PiriReisLabMaster");
             if (!Directory.Exists(appData)) Directory.CreateDirectory(appData);
             configPath = Path.Combine(appData, "config.txt");
+            tokenCachePath = Path.Combine(appData, "token.txt");
 
             currentServerUrl = CLOUD_URL;
             if (File.Exists(configPath))
@@ -46,6 +51,19 @@ namespace PiriReisLabMaster
                 }
                 catch { }
             }
+
+            if (File.Exists(tokenCachePath))
+            {
+                try
+                {
+                    string savedToken = File.ReadAllText(tokenCachePath).Trim();
+                    if (!string.IsNullOrEmpty(savedToken)) cachedAuthToken = savedToken;
+                }
+                catch { }
+            }
+
+            // Authenticate in background to cache fresh token
+            ThreadPool.QueueUserWorkItem(delegate { EnsureAuthToken(false); });
 
             CreateDesktopShortcut();
             InitTray();
@@ -106,15 +124,45 @@ namespace PiriReisLabMaster
             trayMenu.Items.Add("🖥️ Yonetim Panelini Ac", null, delegate { LaunchAppWindow(); });
             trayMenu.Items.Add(new ToolStripSeparator());
 
-            trayMenu.Items.Add("🔒 Tum Ekranlari Kilitle (Dikkat Modu)", null, delegate { SendQuickAction("toggleLockAll", "{\"action\":\"toggleLockAll\",\"lock\":true,\"message\":\"Ogretmen dersi anlatiyor. Lutfen ogretmeninize odaklanin.\"}"); });
-            trayMenu.Items.Add("🔓 Tum Kilitleri Ac", null, delegate { SendQuickAction("toggleLockAll", "{\"action\":\"toggleLockAll\",\"lock\":false}"); });
-            trayMenu.Items.Add("🧹 Ogrenci Masaustlerini Temizle", null, delegate { SendQuickAction("batchCommand", "{\"action\":\"batchCommand\",\"installType\":\"powershell\",\"packageName\":\"Masaustu Temizligi\",\"installCommand\":\"$d=[Environment]::GetFolderPath('Desktop'); Get-ChildItem -Path $d -Exclude '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue\"}"); });
-            trayMenu.Items.Add("🛑 Acik Tarayici ve Oyunlari Kapat", null, delegate { SendQuickAction("batchCommand", "{\"action\":\"batchCommand\",\"installType\":\"powershell\",\"packageName\":\"Tarayicilari Kapat\",\"installCommand\":\"Get-Process -Name chrome, msedge, firefox, opera, brave, steam, roblox, discord -ErrorAction SilentlyContinue | Stop-Process -Force\"}"); });
+            trayMenu.Items.Add("🔒 Tum Ekranlari Kilitle (Dikkat Modu)", null, delegate
+            {
+                SendQuickAction("Tumunu Kilitle", "{\"action\":\"toggleLockAll\",\"lock\":true,\"message\":\"Ogretmen dersi anlatiyor. Lutfen ogretmeninize odaklanin.\"}");
+            });
+
+            trayMenu.Items.Add("🔓 Tum Kilitleri Ac", null, delegate
+            {
+                SendQuickAction("Kilitleri Ac", "{\"action\":\"toggleLockAll\",\"lock\":false}");
+            });
+
+            trayMenu.Items.Add(new ToolStripSeparator());
+
+            trayMenu.Items.Add("🧹 Ogrenci Masaustlerini Temizle", null, delegate
+            {
+                SendQuickAction("Masaustu Temizligi", "{\"action\":\"remoteInstall\",\"installType\":\"powershell\",\"packageName\":\"Masaustu Temizligi\",\"installCommand\":\"$d=[Environment]::GetFolderPath('Desktop'); Get-ChildItem -Path $d -Exclude '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue\"}");
+            });
+
+            trayMenu.Items.Add("🔄 Masaustunu Yenile (Explorer Restart)", null, delegate
+            {
+                SendQuickAction("Masaustu Yenile", "{\"action\":\"remoteInstall\",\"installType\":\"powershell\",\"packageName\":\"Masaustu Yenile\",\"installCommand\":\"Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 600; Start-Process explorer.exe\"}");
+            });
+
+            trayMenu.Items.Add("🛑 Acik Tarayici ve Oyunlari Kapat", null, delegate
+            {
+                SendQuickAction("Tarayicilari Kapat", "{\"action\":\"remoteInstall\",\"installType\":\"powershell\",\"packageName\":\"Tarayicilari Kapat\",\"installCommand\":\"Get-Process -Name chrome, msedge, firefox, opera, brave, steam, roblox, discord -ErrorAction SilentlyContinue | Stop-Process -Force\"}");
+            });
+
+            trayMenu.Items.Add("🗑️ Cop ve Indirilenleri Temizle", null, delegate
+            {
+                SendQuickAction("Cop Temizligi", "{\"action\":\"remoteInstall\",\"installType\":\"powershell\",\"packageName\":\"Cop Temizligi\",\"installCommand\":\"$dl=Join-Path $env:USERPROFILE 'Downloads'; if(Test-Path $dl){Get-ChildItem -Path $dl -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue}; Clear-RecycleBin -Force -ErrorAction SilentlyContinue\"}");
+            });
+
+            trayMenu.Items.Add(new ToolStripSeparator());
+
             trayMenu.Items.Add("🔌 Tum Bilgisayarlari Kapat (Shutdown)", null, delegate
             {
                 if (MessageBox.Show("Laboratuvardaki tum ogrenci bilgisayarlari kapatilacak. Onayliyor musunuz?", "Piri Reis Lab Yonetimi", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                 {
-                    SendQuickAction("batchCommand", "{\"action\":\"batchCommand\",\"installType\":\"powershell\",\"packageName\":\"Bilgisayarlari Kapat\",\"installCommand\":\"shutdown.exe /s /f /t 10 /c 'Ogretmen laboratuvar bilgisayarlarini kapatti.'\"}");
+                    SendQuickAction("Bilgisayarlari Kapat", "{\"action\":\"remoteInstall\",\"installType\":\"powershell\",\"packageName\":\"Bilgisayarlari Kapat\",\"installCommand\":\"shutdown.exe /s /f /t 10 /c 'Ogretmen laboratuvar bilgisayarlarini kapatti.'\"}");
                 }
             });
 
@@ -246,34 +294,105 @@ namespace PiriReisLabMaster
             }
         }
 
+        private void EnsureAuthToken(bool forceRefresh)
+        {
+            if (!forceRefresh && !string.IsNullOrEmpty(cachedAuthToken)) return;
+            try
+            {
+                string loginUrl = (currentServerUrl.Contains("localhost") || currentServerUrl.Contains(":4000"))
+                    ? "http://localhost:4000/api/labizleme/login"
+                    : "https://pirireis-api.onrender.com/api/labizleme/login";
+
+                HttpWebRequest lReq = (HttpWebRequest)WebRequest.Create(loginUrl);
+                lReq.Method = "POST";
+                lReq.ContentType = "application/json; charset=utf-8";
+                lReq.Timeout = 5000;
+                lReq.Headers.Add("X-Master-App-Key", DESKTOP_MASTER_KEY);
+                byte[] payload = Encoding.UTF8.GetBytes("{\"username\":\"pirireis\",\"password\":\"20262027\"}");
+                lReq.ContentLength = payload.Length;
+                using (Stream s = lReq.GetRequestStream()) s.Write(payload, 0, payload.Length);
+                using (HttpWebResponse resp = (HttpWebResponse)lReq.GetResponse())
+                {
+                    using (StreamReader sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
+                    {
+                        string json = sr.ReadToEnd();
+                        Match m = Regex.Match(json, "\"token\"\\s*:\\s*\"([^\"]+)\"");
+                        if (m.Success)
+                        {
+                            cachedAuthToken = m.Groups[1].Value;
+                            try { File.WriteAllText(tokenCachePath, cachedAuthToken); } catch { }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
         private void SendQuickAction(string actionName, string jsonPayload)
         {
             ThreadPool.QueueUserWorkItem(delegate
             {
-                try
+                for (int attempt = 0; attempt < 2; attempt++)
                 {
-                    string apiUrl = currentServerUrl.Contains("localhost") || currentServerUrl.Contains(":4000")
-                        ? "http://localhost:4000/api/action"
-                        : "https://pirireis-api.onrender.com/api/labizleme/action";
+                    try
+                    {
+                        EnsureAuthToken(attempt > 0);
 
-                    HttpWebRequest req = (HttpWebRequest)WebRequest.Create(apiUrl);
-                    req.Method = "POST";
-                    req.ContentType = "application/json; charset=utf-8";
-                    req.Timeout = 5000;
-                    byte[] data = Encoding.UTF8.GetBytes(jsonPayload);
-                    req.ContentLength = data.Length;
-                    using (Stream s = req.GetRequestStream())
-                    {
-                        s.Write(data, 0, data.Length);
+                        string apiUrl = (currentServerUrl.Contains("localhost") || currentServerUrl.Contains(":4000"))
+                            ? "http://localhost:4000/api/labizleme/action"
+                            : "https://pirireis-api.onrender.com/api/labizleme/action";
+
+                        HttpWebRequest req = (HttpWebRequest)WebRequest.Create(apiUrl);
+                        req.Method = "POST";
+                        req.ContentType = "application/json; charset=utf-8";
+                        req.Timeout = 7000;
+                        req.Headers.Add("X-Master-App-Key", DESKTOP_MASTER_KEY);
+
+                        string tokenToSend = !string.IsNullOrEmpty(cachedAuthToken) ? cachedAuthToken : DESKTOP_MASTER_KEY;
+                        req.Headers.Add("Authorization", "Bearer " + tokenToSend);
+
+                        byte[] data = Encoding.UTF8.GetBytes(jsonPayload);
+                        req.ContentLength = data.Length;
+                        using (Stream s = req.GetRequestStream())
+                        {
+                            s.Write(data, 0, data.Length);
+                        }
+                        using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+                        {
+                            trayIcon.ShowBalloonTip(2500, "Piri Reis Lab Yonetimi", "Komut basariyla iletildi: " + actionName, ToolTipIcon.Info);
+                            return;
+                        }
                     }
-                    using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+                    catch (WebException wex)
                     {
-                        trayIcon.ShowBalloonTip(2000, "Piri Reis Lab Yonetimi", "Komut laboratuvara iletildi (" + actionName + ")", ToolTipIcon.Info);
+                        HttpWebResponse httpResp = wex.Response as HttpWebResponse;
+                        if (attempt == 0 && httpResp != null && httpResp.StatusCode == HttpStatusCode.Unauthorized)
+                        {
+                            cachedAuthToken = null;
+                            continue;
+                        }
+
+                        string msg = wex.Message;
+                        try
+                        {
+                            if (wex.Response != null)
+                            {
+                                using (StreamReader sr = new StreamReader(wex.Response.GetResponseStream()))
+                                {
+                                    string body = sr.ReadToEnd();
+                                    if (!string.IsNullOrEmpty(body)) msg = body;
+                                }
+                            }
+                        }
+                        catch { }
+                        trayIcon.ShowBalloonTip(3500, "Komut Hatasi (" + actionName + ")", msg, ToolTipIcon.Warning);
+                        break;
                     }
-                }
-                catch (Exception ex)
-                {
-                    trayIcon.ShowBalloonTip(3000, "Komut Hatasi", ex.Message, ToolTipIcon.Warning);
+                    catch (Exception ex)
+                    {
+                        trayIcon.ShowBalloonTip(3500, "Komut Hatasi", ex.Message, ToolTipIcon.Warning);
+                        break;
+                    }
                 }
             });
         }
@@ -320,7 +439,6 @@ namespace PiriReisLabMaster
             {
                 if (!isNew)
                 {
-                    // If already running, tell the running instance to open
                     return;
                 }
                 Application.EnableVisualStyles();
