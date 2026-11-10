@@ -12,7 +12,7 @@ from app.models import (
     BilisimCourse, BilisimPlan, BilisimModuleDoc, BilisimWeeklyMaterial
 )
 from app.auth import hash_password
-from app.routers import auth, classrooms, assignments, submissions, system, exams, notifications, bilisim
+from app.routers import auth, classrooms, assignments, submissions, system, exams, notifications, bilisim, labizleme
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -139,6 +139,7 @@ app.include_router(exams.router)
 app.include_router(notifications.router)
 app.include_router(system.router)
 app.include_router(bilisim.router)
+app.include_router(labizleme.router)
 
 @app.on_event("startup")
 def startup_seed_data():

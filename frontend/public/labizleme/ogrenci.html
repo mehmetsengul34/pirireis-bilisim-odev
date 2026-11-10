@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Öğrenci Sınıf İstemcisi | Torbalı Piri Reis Ticaret MTAL</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col items-center justify-center p-4">
+
+  <!-- 1. Teacher Announcement Banner -->
+  <div id="announceBanner" class="hidden fixed top-4 inset-x-4 max-w-xl mx-auto z-40 bg-amber-500 text-zinc-950 px-4 py-3 rounded-2xl shadow-xl font-bold text-xs flex items-center justify-between">
+    <span id="announceText"></span>
+    <span id="announceTime" class="font-mono text-[11px] opacity-80"></span>
+  </div>
+
+  <!-- 2. Veyon-style Attention / Screen Lock Overlay -->
+  <div id="lockOverlay" class="hidden fixed inset-0 z-50 bg-rose-950/95 backdrop-blur-lg flex flex-col items-center justify-center p-6 text-center">
+    <div class="w-20 h-20 rounded-3xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-4xl mb-4 animate-pulse">
+      🔒
+    </div>
+    <h2 class="text-2xl font-extrabold text-white tracking-tight">Dikkat Modu (Ekran Kilitli)</h2>
+    <p id="lockMessageText" class="text-sm text-rose-200 mt-2 max-w-md">
+      Öğretmen dersi anlatıyor. Lütfen ekranınıza değil öğretmeninize odaklanın.
+    </p>
+  </div>
+
+  <!-- 3. Veyon-style Teacher Screen Demo Broadcast Overlay -->
+  <div id="teacherDemoOverlay" class="hidden fixed inset-0 z-40 bg-black flex flex-col">
+    <div class="px-5 py-2.5 bg-indigo-950 border-b border-indigo-800 flex items-center justify-between text-xs">
+      <div class="flex items-center gap-2 font-bold text-indigo-200">
+        <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+        <span>📺 Öğretmen Ekran Sunumu (Canlı Yayın)</span>
+      </div>
+      <span class="text-indigo-300 font-mono">Torbalı Piri Reis Ticaret MTAL</span>
+    </div>
+    <div class="flex-1 flex items-center justify-center overflow-hidden p-2">
+      <img id="teacherStreamImg" src="" alt="Öğretmen Ekranı" class="max-w-full max-h-full object-contain rounded-lg" />
+    </div>
+  </div>
+
+  <!-- Main Student Control Card -->
+  <div class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
+    <div class="flex items-center justify-between pb-4 border-b border-zinc-800">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold">
+          🖥️
+        </div>
+        <div>
+          <h1 class="text-sm font-bold text-white">Torbalı Piri Reis Ticaret MTAL</h1>
+          <p class="text-xs text-zinc-400">Laboratuvar Öğrenci İstemcisi</p>
+        </div>
+      </div>
+      <button id="handBtn" onclick="toggleHand()" class="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition">
+        ✋ Söz İste
+      </button>
+    </div>
+
+    <div class="mt-4 space-y-3.5">
+      <div>
+        <label class="block text-xs font-medium text-zinc-300 mb-1">Bilgisayar / Masa Numarası</label>
+        <input id="deskNo" type="text" value="PC-01" placeholder="Örn: PC-05" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white focus:outline-none focus:border-cyan-500" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-zinc-300 mb-1">Öğrenci Adı Soyadı</label>
+        <input id="studentName" type="text" placeholder="Adınız Soyadınız" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-white focus:outline-none focus:border-cyan-500" />
+      </div>
+
+      <div id="statusBox" class="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400">
+        Durum: <strong id="statusText" class="text-zinc-200">Paylaşım Bekleniyor</strong>
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button id="startBtn" onclick="startSharing()" class="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl text-xs transition">
+          Ekranımı Öğretmenle Paylaş
+        </button>
+        <button id="stopBtn" onclick="stopSharing()" class="hidden px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-xl text-xs transition">
+          Durdur
+        </button>
+      </div>
+    </div>
+
+    <video id="previewVideo" autoplay muted playsinline class="mt-4 w-full rounded-xl border border-zinc-800 hidden aspect-video bg-black"></video>
+    <canvas id="captureCanvas" class="hidden"></canvas>
+  </div>
+
+  <script>
+    const isLocalServer = window.location.port === '4000' || window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.');
+    const API_BASE = isLocalServer ? '/api' : 'https://pirireis-api.onrender.com/api/labizleme';
+
+    let stream = null;
+    let intervalId = null;
+    let handRaised = false;
+    let lastExecutedUrlId = null;
+
+    const params = new URLSearchParams(window.location.search);
+    const urlPc = params.get('pc');
+    const urlUser = params.get('user');
+    const urlIp = params.get('ip') || '';
+    const urlMac = params.get('mac') || '';
+    const autoStart = params.get('autostart') === '1';
+    if (urlPc) document.getElementById('deskNo').value = urlPc;
+    if (urlUser) document.getElementById('studentName').value = urlUser;
+    const clientId = urlPc ? ('pc-' + urlPc) : ('st-' + Math.random().toString(36).slice(2, 9));
+
+    window.addEventListener('DOMContentLoaded', () => {
+      if (autoStart) {
+        setTimeout(() => startSharing(), 400);
+      }
+      // Keep heartbeat running even before screen share starts so teacher can send URLs/messages/locks
+      setInterval(() => {
+        if (!stream) sendHeartbeatOnly();
+      }, 2000);
+    });
+
+    function toggleHand() {
+      handRaised = !handRaised;
+      const btn = document.getElementById('handBtn');
+      if (handRaised) {
+        btn.textContent = '✋ Söz İsteği Gönderildi';
+        btn.className = 'px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 text-xs font-bold transition';
+      } else {
+        btn.textContent = '✋ Söz İste';
+        btn.className = 'px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition';
+      }
+      if (!stream) sendHeartbeatOnly();
+    }
+
+    async function startSharing() {
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: 2 },
+          audio: false
+        });
+
+        const video = document.getElementById('previewVideo');
+        video.srcObject = stream;
+        video.classList.remove('hidden');
+
+        document.getElementById('startBtn').classList.add('hidden');
+        document.getElementById('stopBtn').classList.remove('hidden');
+        document.getElementById('statusText').textContent = 'Öğretmen Bilgisayarına Canlı Bağlı';
+        document.getElementById('statusText').className = 'text-emerald-400';
+
+        stream.getVideoTracks()[0].addEventListener('ended', stopSharing);
+
+        if (intervalId) clearInterval(intervalId);
+        intervalId = setInterval(() => sendFrame(), 1200);
+      } catch (err) {
+        alert('Ekran paylaşımı başlatılamadı: ' + err.message);
+      }
+    }
+
+    function stopSharing() {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = null;
+      if (stream) {
+        stream.getTracks().forEach((t) => t.stop());
+        stream = null;
+      }
+      document.getElementById('previewVideo').classList.add('hidden');
+      document.getElementById('startBtn').classList.remove('hidden');
+      document.getElementById('stopBtn').classList.add('hidden');
+      document.getElementById('statusText').textContent = 'Paylaşım Durduruldu';
+      document.getElementById('statusText').className = 'text-rose-400';
+    }
+
+    function applyServerCommands(data) {
+      // 1. Announcement
+      const banner = document.getElementById('announceBanner');
+      if (data.announcement && data.announcement.message) {
+        document.getElementById('announceText').textContent = '📢 ' + data.announcement.message;
+        document.getElementById('announceTime').textContent = data.announcement.timestamp;
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+
+      // 2. Lock / Attention Overlay
+      const lockOverlay = document.getElementById('lockOverlay');
+      if (data.locked) {
+        if (data.lockMessage) document.getElementById('lockMessageText').textContent = data.lockMessage;
+        lockOverlay.classList.remove('hidden');
+      } else {
+        lockOverlay.classList.add('hidden');
+      }
+
+      // 3. Teacher Screen Demo Broadcast
+      const demoOverlay = document.getElementById('teacherDemoOverlay');
+      if (data.teacherStreamActive && data.teacherFrame) {
+        document.getElementById('teacherStreamImg').src = data.teacherFrame;
+        demoOverlay.classList.remove('hidden');
+      } else {
+        demoOverlay.classList.add('hidden');
+      }
+
+      // 4. Open URL Command
+      if (data.openUrlCommand && data.openUrlCommand.id && data.openUrlCommand.id !== lastExecutedUrlId) {
+        lastExecutedUrlId = data.openUrlCommand.id;
+        window.open(data.openUrlCommand.url, '_blank');
+      }
+    }
+
+    async function sendHeartbeatOnly() {
+      const deskNo = document.getElementById('deskNo').value.trim() || 'PC';
+      const studentName = document.getElementById('studentName').value.trim() || 'Öğrenci';
+      try {
+        const res = await fetch(`${API_BASE}/frame`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: clientId,
+            deskNo,
+            studentName,
+            name: `${deskNo} (${studentName})`,
+            localIp: urlIp || undefined,
+            mac: urlMac || undefined,
+            handRaised
+          })
+        });
+        const data = await res.json();
+        applyServerCommands(data);
+      } catch (e) {}
+    }
+
+    async function sendFrame() {
+      const deskNo = document.getElementById('deskNo').value.trim() || 'PC';
+      const studentName = document.getElementById('studentName').value.trim() || 'Öğrenci';
+      const video = document.getElementById('previewVideo');
+      if (!video.videoWidth) return;
+
+      const canvas = document.getElementById('captureCanvas');
+      const targetWidth = 800;
+      const scale = targetWidth / video.videoWidth;
+      canvas.width = targetWidth;
+      canvas.height = Math.round(video.videoHeight * scale);
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+
+      try {
+        const res = await fetch(`${API_BASE}/frame`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: clientId,
+            deskNo,
+            studentName,
+            name: `${deskNo} (${studentName})`,
+            localIp: urlIp || undefined,
+            mac: urlMac || undefined,
+            resolution: `${video.videoWidth}x${video.videoHeight}`,
+            handRaised,
+            frame: dataUrl
+          })
+        });
+        const data = await res.json();
+        applyServerCommands(data);
+      } catch (e) {
+        console.error('Frame gonderilemedi:', e);
+      }
+    }
+  </script>
+</body>
+</html>

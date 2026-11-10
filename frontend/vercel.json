@@ -1,6 +1,26 @@
 {
   "rewrites": [
     {
+      "source": "/api/labizleme/:path*",
+      "destination": "https://pirireis-api.onrender.com/api/labizleme/:path*"
+    },
+    {
+      "source": "/labizleme",
+      "destination": "/labizleme/index.html"
+    },
+    {
+      "source": "/labizleme/ogrenci",
+      "destination": "/labizleme/ogrenci.html"
+    },
+    {
+      "source": "/labizleme/ogrenci-istemci.bat",
+      "destination": "https://pirireis-api.onrender.com/api/labizleme/ogrenci-istemci.bat"
+    },
+    {
+      "source": "/labizleme/:path*",
+      "destination": "/labizleme/:path*"
+    },
+    {
       "source": "/vr",
       "destination": "/vr/index.html"
     },

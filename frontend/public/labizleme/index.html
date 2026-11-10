@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Torbalı Piri Reis Ticaret MTAL | Laboratuvar Yönetim & Ekran İzleme Merkezi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .screen-card:hover .screen-overlay { opacity: 1; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+
+  <!-- Top Branding & Connection Bar -->
+  <header class="bg-zinc-900 border-b border-zinc-800 px-6 py-3">
+    <div class="max-w-[1650px] mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg">
+          ⚓
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold tracking-tight text-white">Torbalı Piri Reis Ticaret MTAL — Lab Master (Bulut)</h1>
+            <span id="serverStatusBadge" class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Canlı Sunucu Aktif
+            </span>
+          </div>
+          <p class="text-xs text-zinc-400">Bilişim Teknolojileri Laboratuvarı • Veyon Tarzı Sınıf Yönetim ve Ekran İzleme Stüdyosu</p>
+        </div>
+      </div>
+
+      <!-- Right: Student URL + BAT Download + Grid Size -->
+      <div class="flex flex-wrap items-center gap-2.5">
+        <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs">
+          <span class="text-zinc-400">Öğrenci Adresi:</span>
+          <code id="studentUrlText" class="text-cyan-400 font-mono font-semibold">https://ogretmenlerodasi.info/labizleme/ogrenci</code>
+          <button onclick="copyStudentUrl()" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[11px] transition">
+            Kopyala
+          </button>
+          <a id="batDownloadLink" href="https://pirireis-api.onrender.com/api/labizleme/ogrenci-istemci.bat" download="ogrenci-istemci.bat" class="px-2.5 py-0.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded text-[11px] transition">
+            .BAT İndir
+          </a>
+        </div>
+
+        <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl p-1 text-xs">
+          <button onclick="setGridCols(2)" id="gridBtn2" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">2x2</button>
+          <button onclick="setGridCols(3)" id="gridBtn3" class="px-2.5 py-1 rounded-lg bg-cyan-600 text-white font-semibold transition">3x3</button>
+          <button onclick="setGridCols(4)" id="gridBtn4" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">4x4</button>
+        </div>
+
+        <button onclick="toggleDemoMode()" id="demoBtn" class="px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold transition">
+          Simülasyon: Açık
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- VEYON STYLE ACTION RIBBON (Sınıf Kontrol Araç Çubuğu) -->
+  <div class="sticky top-0 z-30 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-6 py-3 shadow-md">
+    <div class="max-w-[1650px] mx-auto flex flex-wrap items-center justify-between gap-3">
+      <!-- Primary Veyon Buttons -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- 1. Teacher Demo Broadcast -->
+        <button id="teacherDemoBtn" onclick="toggleTeacherBroadcast()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm">
+          <span>📺</span>
+          <span id="teacherDemoText">Ekranımı Sınıfa Yansıt (Sunum)</span>
+        </button>
+
+        <!-- 2. Lock All Screens (Attention Mode) -->
+        <button id="lockAllBtn" onclick="toggleLockAll()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
+          <span id="lockAllIcon">🔒</span>
+          <span id="lockAllText">Tüm Ekranları Kilitle (Dikkat Modu)</span>
+        </button>
+
+        <!-- 3. Open Website on All Students -->
+        <button onclick="promptOpenUrl()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition">
+          <span>🌐</span>
+          <span>Sınıfta Web Sitesi / Ödev Aç</span>
+        </button>
+
+        <!-- 4. Export Attendance CSV -->
+        <button onclick="exportAttendanceCsv()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-semibold transition">
+          <span>📋</span>
+          <span>Yoklama Listesi İndir (CSV)</span>
+        </button>
+      </div>
+
+      <!-- Broadcast Message & Search -->
+      <div class="flex flex-wrap items-center gap-2 flex-1 justify-end">
+        <form onsubmit="sendAnnouncement(event)" class="flex items-center gap-1.5 flex-1 max-w-md">
+          <input
+            id="announceInput"
+            type="text"
+            placeholder="Tüm sınıfa anlık mesaj gönder..."
+            class="flex-1 px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500"
+          />
+          <button type="submit" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold transition shrink-0">
+            Mesaj Gönder
+          </button>
+          <button type="button" onclick="clearAnnouncement()" title="Duyuruyu Kaldır" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs transition">
+            Temizle
+          </button>
+        </form>
+
+        <input
+          id="searchInput"
+          type="text"
+          oninput="renderGrid()"
+          placeholder="Masa, öğrenci veya IP filtrele..."
+          class="px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500 w-48"
+        />
+      </div>
+    </div>
+
+    <!-- Status Pills Bar -->
+    <div class="max-w-[1650px] mx-auto pt-2.5 mt-2.5 border-t border-zinc-800/70 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
+      <div class="flex flex-wrap items-center gap-4">
+        <span>Bağlı Öğrenci Ekranı: <strong id="sharingCount" class="text-cyan-400">0</strong></span>
+        <span>Ağda Açık Bilgisayar (ARP): <strong id="arpCount" class="text-emerald-400">0</strong></span>
+        <span>Söz / Yardım İsteyen: <strong id="handCount" class="text-amber-400">0</strong></span>
+      </div>
+      <div id="activeModeStatus" class="text-xs font-semibold text-zinc-400">
+        Mod: Normal Sınıf İzleme
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Video/Canvas for Teacher Screen Broadcast -->
+  <video id="teacherVideo" autoplay muted playsinline class="hidden"></video>
+  <canvas id="teacherCanvas" class="hidden"></canvas>
+
+  <!-- Main Grid -->
+  <main class="flex-1 max-w-[1650px] w-full mx-auto p-6">
+    <div id="screensGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+  </main>
+
+  <!-- Fullscreen Student Inspection Modal -->
+  <div id="focusModal" class="fixed inset-0 z-50 hidden bg-black/90 backdrop-blur-md flex flex-col p-4 sm:p-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-zinc-800 mb-4">
+      <div class="flex items-center gap-3">
+        <span class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-mono text-xs font-bold" id="modalDesk">PC</span>
+        <div>
+          <h3 class="text-base font-bold text-white" id="modalTitle">Öğrenci Ekranı</h3>
+          <p class="text-xs text-zinc-400 font-mono" id="modalMeta">IP: -</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="snapshotFocused()" class="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold">
+          📸 Ekran Görüntüsü İndir
+        </button>
+        <button onclick="closeFocusModal()" class="px-4 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold">
+          Kapat (ESC)
+        </button>
+      </div>
+    </div>
+    <div class="flex-1 flex items-center justify-center overflow-hidden rounded-2xl bg-zinc-950 border border-zinc-800">
+      <img id="modalImage" src="" alt="Canlı Ekran" class="max-w-full max-h-full object-contain" />
+    </div>
+  </div>
+
+  <script>
+    const isLocalServer = window.location.port === '4000' || window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.');
+    const API_BASE = isLocalServer ? '/api' : 'https://pirireis-api.onrender.com/api/labizleme';
+
+    let gridCols = 3;
+    let demoMode = true;
+    let serverState = {
+      teacherIp: 'ogretmenlerodasi.info/labizleme',
+      port: 443,
+      arpDevices: [],
+      classroomState: { lockAll: false, teacherStreamActive: false },
+      students: []
+    };
+    let focusedStudentId = null;
+    let teacherStream = null;
+    let teacherBroadcastTimer = null;
+
+    if (isLocalServer) {
+      document.getElementById('batDownloadLink').href = '/ogrenci-istemci.bat';
+    }
+
+    function makeMockScreenSvg(desk, studentName, appTitle, codeLine1, codeLine2, accentColor) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+        <rect width="800" height="450" fill="#09090b"/>
+        <rect width="800" height="34" fill="#18181b"/>
+        <circle cx="20" cy="17" r="6" fill="#ef4444"/>
+        <circle cx="40" cy="17" r="6" fill="#f59e0b"/>
+        <circle cx="60" cy="17" r="6" fill="#10b981"/>
+        <text x="400" y="22" fill="#a1a1aa" font-family="monospace" font-size="13" text-anchor="middle">${appTitle} — Visual Studio Code</text>
+        <rect x="0" y="34" width="160" height="388" fill="#121215"/>
+        <text x="16" y="65" fill="#71717a" font-family="sans-serif" font-size="11" font-weight="bold">PROJE DOSYALARI</text>
+        <text x="20" y="92" fill="${accentColor}" font-family="monospace" font-size="12">▸ index.html</text>
+        <text x="20" y="116" fill="#d4d4d8" font-family="monospace" font-size="12">▸ style.css</text>
+        <text x="20" y="140" fill="#d4d4d8" font-family="monospace" font-size="12">▸ app.js</text>
+        <text x="185" y="75" fill="#52525b" font-family="monospace" font-size="13">1</text>
+        <text x="210" y="75" fill="#38bdf8" font-family="monospace" font-size="13">&lt;!DOCTYPE html&gt;</text>
+        <text x="185" y="102" fill="#52525b" font-family="monospace" font-size="13">2</text>
+        <text x="210" y="102" fill="#f472b6" font-family="monospace" font-size="13">${codeLine1}</text>
+        <text x="185" y="129" fill="#52525b" font-family="monospace" font-size="13">3</text>
+        <text x="210" y="129" fill="#a7f3d0" font-family="monospace" font-size="13">${codeLine2}</text>
+        <rect x="185" y="165" width="585" height="230" rx="10" fill="#18181b" stroke="#27272a"/>
+        <text x="205" y="195" fill="${accentColor}" font-family="sans-serif" font-size="14" font-weight="bold">Canlı Çıktı • ${desk} (${studentName})</text>
+        <rect x="205" y="212" width="250" height="14" rx="4" fill="#27272a"/>
+        <rect x="205" y="236" width="380" height="10" rx="4" fill="#27272a"/>
+        <rect x="205" y="268" width="120" height="32" rx="6" fill="${accentColor}"/>
+        <rect x="0" y="422" width="800" height="28" fill="#18181b"/>
+        <text x="16" y="440" fill="#a1a1aa" font-family="sans-serif" font-size="11">Torbalı Piri Reis Ticaret MTAL • ${desk}</text>
+        <text x="784" y="440" fill="#a1a1aa" font-family="monospace" font-size="11" text-anchor="end">${new Date().toLocaleTimeString('tr-TR')}</text>
+      </svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    function getDemoStudents() {
+      return [
+        {
+          id: 'demo-216',
+          deskNo: 'PC-01',
+          studentName: 'Ahmet Yılmaz',
+          name: 'PC-01 (Ahmet Yılmaz)',
+          ip: '192.168.23.216',
+          mac: '74-D4-35-C1-E2-D6',
+          online: true,
+          isDemo: true,
+          locked: false,
+          handRaised: true,
+          firstSeen: '16:30:00',
+          resolution: '1920x1080',
+          frame: makeMockScreenSvg('PC-01', 'Ahmet Yılmaz', 'portfolyo-odev', '<div class="container">', '  <h1>Torbalı Piri Reis Ticaret MTAL</h1>', '#06b6d4')
+        },
+        {
+          id: 'demo-222',
+          deskNo: 'PC-02',
+          studentName: 'Zeynep Kaya',
+          name: 'PC-02 (Zeynep Kaya)',
+          ip: '192.168.23.222',
+          mac: '90-2B-34-B3-81-E8',
+          online: true,
+          isDemo: true,
+          locked: false,
+          handRaised: false,
+          firstSeen: '16:31:10',
+          resolution: '1920x1080',
+          frame: makeMockScreenSvg('PC-02', 'Zeynep Kaya', 'web-tasarim', 'function hesaplaNot(vize, final) {', '  return vize * 0.4 + final * 0.6;', '#10b981')
+        },
+        {
+          id: 'demo-226',
+          deskNo: 'PC-03',
+          studentName: 'Caner Demir',
+          name: 'PC-03 (Caner Demir)',
+          ip: '192.168.23.226',
+          mac: '74-D4-35-6A-FE-77',
+          online: true,
+          isDemo: true,
+          locked: false,
+          handRaised: false,
+          firstSeen: '16:31:45',
+          resolution: '1920x1080',
+          frame: makeMockScreenSvg('PC-03', 'Caner Demir', 'python-algoritma', 'for ogrenci in sinif_listesi:', '    print(ogrenci.ad, ogrenci.numara)', '#8b5cf6')
+        },
+        {
+          id: 'demo-250',
+          deskNo: 'PC-04',
+          studentName: 'Elif Şahin',
+          name: 'PC-04 (Elif Şahin)',
+          ip: '192.168.23.250',
+          mac: '00-E0-1C-1B-64-44',
+          online: true,
+          isDemo: true,
+          locked: false,
+          handRaised: false,
+          firstSeen: '16:32:12',
+          resolution: '1920x1080',
+          frame: makeMockScreenSvg('PC-04', 'Elif Şahin', 'mobil-uygulama', '<ConstraintLayout xmlns:android="...">', '  <Button android:text="Giriş Yap" />', '#f59e0b')
+        }
+      ];
+    }
+
+    async function sendTeacherAction(payload) {
+      await fetch(`${API_BASE}/action`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      await pollState();
+    }
+
+    // 1. Lock / Unlock All Screens
+    async function toggleLockAll() {
+      const nextLock = !(serverState.classroomState && serverState.classroomState.lockAll);
+      await sendTeacherAction({
+        action: 'toggleLockAll',
+        lock: nextLock,
+        message: '🔒 Öğretmen dersi anlatıyor. Lütfen ekranınıza değil öğretmeninize odaklanın.'
+      });
+    }
+
+    // 2. Lock / Unlock Single Student
+    async function toggleStudentLock(studentId, currentLocked) {
+      await sendTeacherAction({
+        action: 'toggleLockStudent',
+        studentId,
+        lock: !currentLocked
+      });
+    }
+
+    // 3. Private Message to Single Student
+    async function promptStudentMessage(studentId, studentName) {
+      const msg = prompt(`${studentName} ekranına gönderilecek özel mesajı yazın (Silmek için boş bırakın):`);
+      if (msg === null) return;
+      await sendTeacherAction({
+        action: 'privateMessage',
+        studentId,
+        message: msg.trim()
+      });
+    }
+
+    // 4. Clear Raised Hand
+    async function clearStudentHand(studentId) {
+      await sendTeacherAction({
+        action: 'clearHand',
+        studentId
+      });
+    }
+
+    // 5. Open Website on All Connected Student Portals
+    async function promptOpenUrl() {
+      const url = prompt('Tüm öğrenci bilgisayarlarında yeni sekmede açılacak web adresini girin:', 'https://ogretmenlerodasi.info');
+      if (!url) return;
+      await sendTeacherAction({
+        action: 'openUrl',
+        url: url.trim()
+      });
+      alert('Bağlantı komutu tüm aktif öğrenci ekranlarına gönderildi!');
+    }
+
+    // 6. Broadcast Teacher's Screen to Students (Veyon Demo Mode)
+    async function toggleTeacherBroadcast() {
+      if (teacherStream) {
+        stopTeacherBroadcast();
+        return;
+      }
+      try {
+        teacherStream = await navigator.mediaDevices.getDisplayMedia({
+          video: { frameRate: 2 },
+          audio: false
+        });
+        const video = document.getElementById('teacherVideo');
+        video.srcObject = teacherStream;
+        teacherStream.getVideoTracks()[0].addEventListener('ended', stopTeacherBroadcast);
+
+        teacherBroadcastTimer = setInterval(async () => {
+          if (!video.videoWidth) return;
+          const canvas = document.getElementById('teacherCanvas');
+          const w = 960;
+          const scale = w / video.videoWidth;
+          canvas.width = w;
+          canvas.height = Math.round(video.videoHeight * scale);
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const frame = canvas.toDataURL('image/jpeg', 0.65);
+          await fetch(`${API_BASE}/action`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'teacherScreen', active: true, frame })
+          });
+        }, 1200);
+        await pollState();
+      } catch (e) {
+        alert('Öğretmen ekran paylaşımı başlatılamadı: ' + e.message);
+      }
+    }
+
+    async function stopTeacherBroadcast() {
+      if (teacherBroadcastTimer) clearInterval(teacherBroadcastTimer);
+      teacherBroadcastTimer = null;
+      if (teacherStream) {
+        teacherStream.getTracks().forEach((t) => t.stop());
+        teacherStream = null;
+      }
+      await sendTeacherAction({ action: 'teacherScreen', active: false, frame: null });
+    }
+
+    // 7. Download Snapshot PNG of a Student Screen
+    function downloadSnapshot(studentId) {
+      const item = getCombinedItems().find((x) => x.id === studentId);
+      if (!item || !item.frame) return;
+      const a = document.createElement('a');
+      a.href = item.frame;
+      a.download = `${(item.deskNo || 'PC').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    function snapshotFocused() {
+      if (focusedStudentId) downloadSnapshot(focusedStudentId);
+    }
+
+    // 8. Export Attendance List CSV
+    function exportAttendanceCsv() {
+      const items = getCombinedItems().filter((x) => !x.arpOnly);
+      const rows = [['Masa No', 'Ogrenci Adi', 'IP Adresi', 'Baglanti Saati', 'Durum']];
+      for (const st of items) {
+        rows.push([
+          st.deskNo || 'PC',
+          st.studentName || st.name || '-',
+          st.ip || '-',
+          st.firstSeen || '-',
+          st.online ? 'Aktif' : 'Cevrimdisi'
+        ]);
+      }
+      const csvContent = '\uFEFF' + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `lab_yoklama_${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+
+    function setGridCols(cols) {
+      gridCols = cols;
+      const grid = document.getElementById('screensGrid');
+      grid.className = `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${cols} gap-5`;
+      [2, 3, 4].forEach((c) => {
+        const btn = document.getElementById('gridBtn' + c);
+        btn.className =
+          c === cols
+            ? 'px-2.5 py-1 rounded-lg bg-cyan-600 text-white font-semibold transition'
+            : 'px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition';
+      });
+    }
+
+    function toggleDemoMode() {
+      demoMode = !demoMode;
+      const btn = document.getElementById('demoBtn');
+      btn.textContent = demoMode ? 'Simülasyon: Açık' : 'Simülasyon: Kapalı';
+      btn.className = demoMode
+        ? 'px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold transition'
+        : 'px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-semibold transition';
+      renderGrid();
+    }
+
+    function copyStudentUrl() {
+      const text = document.getElementById('studentUrlText').textContent;
+      navigator.clipboard.writeText(text);
+      alert('Öğrenci ekran paylaşım bağlantısı kopyalandı:\n' + text);
+    }
+
+    async function sendAnnouncement(e) {
+      e.preventDefault();
+      const input = document.getElementById('announceInput');
+      const msg = input.value.trim();
+      await sendTeacherAction({ action: 'announce', message: msg });
+      input.value = '';
+    }
+
+    async function clearAnnouncement() {
+      await sendTeacherAction({ action: 'announce', message: '' });
+    }
+
+    function openFocusModal(id) {
+      focusedStudentId = id;
+      updateFocusModal();
+      document.getElementById('focusModal').classList.remove('hidden');
+    }
+
+    function closeFocusModal() {
+      focusedStudentId = null;
+      document.getElementById('focusModal').classList.add('hidden');
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeFocusModal();
+    });
+
+    function getCombinedItems() {
+      const realStudents = serverState.students || [];
+      const items = [...realStudents];
+
+      if (demoMode && realStudents.length === 0) {
+        items.push(...getDemoStudents());
+      }
+
+      const seenIps = new Set(items.map((i) => i.ip));
+      for (const arp of serverState.arpDevices || []) {
+        if (!seenIps.has(arp.ip)) {
+          seenIps.add(arp.ip);
+          let roleLabel = 'AĞ CİHAZI';
+          let titleLabel = `Laboratuvar PC (${arp.ip})`;
+          if (arp.ip === '192.168.16.1') {
+            roleLabel = 'GATEWAY';
+            titleLabel = 'Ana Ağ Geçidi (Gateway)';
+          } else if (arp.ip === '192.168.23.212') {
+            roleLabel = 'LCD PANO / KIOSK';
+            titleLabel = `LCD Pano Bilgisayarı (${arp.ip})`;
+          }
+          items.push({
+            id: 'arp-' + arp.ip,
+            deskNo: roleLabel,
+            name: titleLabel,
+            ip: arp.ip,
+            mac: arp.mac,
+            online: true,
+            arpOnly: true,
+            frame: null
+          });
+        }
+      }
+      return items;
+    }
+
+    function updateFocusModal() {
+      if (!focusedStudentId) return;
+      const item = getCombinedItems().find((x) => x.id === focusedStudentId);
+      if (!item || !item.frame) return;
+      document.getElementById('modalDesk').textContent = item.deskNo || 'PC';
+      document.getElementById('modalTitle').textContent = item.name;
+      document.getElementById('modalMeta').textContent = `IP: ${item.ip} ${item.resolution ? '• Çözünürlük: ' + item.resolution : ''}`;
+      document.getElementById('modalImage').src = item.frame;
+    }
+
+    function updateToolbarUi() {
+      const cs = serverState.classroomState || {};
+      const lockBtn = document.getElementById('lockAllBtn');
+      const lockIcon = document.getElementById('lockAllIcon');
+      const lockText = document.getElementById('lockAllText');
+
+      if (cs.lockAll) {
+        lockBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold transition shadow-lg';
+        lockIcon.textContent = '🔓';
+        lockText.textContent = 'Ekran Kilidini Kaldır (Dikkat Modu Aktif)';
+      } else {
+        lockBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition';
+        lockIcon.textContent = '🔒';
+        lockText.textContent = 'Tüm Ekranları Kilitle (Dikkat Modu)';
+      }
+
+      const demoBtn = document.getElementById('teacherDemoBtn');
+      const demoText = document.getElementById('teacherDemoText');
+      if (teacherStream || cs.teacherStreamActive) {
+        demoBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 text-zinc-950 text-xs font-bold transition shadow-lg animate-pulse';
+        demoText.textContent = 'Sunumu Durdur (Öğretmen Ekranı Yansıtılıyor)';
+      } else {
+        demoBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm';
+        demoText.textContent = 'Ekranımı Sınıfa Yansıt (Sunum)';
+      }
+
+      const modeEl = document.getElementById('activeModeStatus');
+      if (cs.lockAll) {
+        modeEl.textContent = '🔒 Mod: Dikkat Modu (Tüm Öğrenci Ekranları Kilitli)';
+        modeEl.className = 'text-xs font-bold text-rose-400';
+      } else if (cs.teacherStreamActive) {
+        modeEl.textContent = '📺 Mod: Öğretmen Ekranı Tüm Sınıfa Yansıtılıyor';
+        modeEl.className = 'text-xs font-bold text-amber-400';
+      } else if (cs.announcement && cs.announcement.message) {
+        modeEl.textContent = '📢 Aktif Duyuru: ' + cs.announcement.message;
+        modeEl.className = 'text-xs font-bold text-cyan-400';
+      } else {
+        modeEl.textContent = 'Mod: Normal Sınıf İzleme';
+        modeEl.className = 'text-xs font-semibold text-zinc-400';
+      }
+    }
+
+    function renderGrid() {
+      const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+      const allItems = getCombinedItems();
+      const filtered = allItems.filter((item) => {
+        if (!query) return true;
+        return (
+          (item.name || '').toLowerCase().includes(query) ||
+          (item.ip || '').toLowerCase().includes(query) ||
+          (item.deskNo || '').toLowerCase().includes(query) ||
+          (item.mac || '').toLowerCase().includes(query)
+        );
+      });
+
+      const hands = allItems.filter((x) => x.handRaised).length;
+      document.getElementById('handCount').textContent = hands;
+
+      const grid = document.getElementById('screensGrid');
+      grid.innerHTML = filtered
+        .map((item) => {
+          const hasScreen = Boolean(item.frame);
+          const isLocked = Boolean((serverState.classroomState && serverState.classroomState.lockAll) || item.locked);
+          const badgeClass = hasScreen
+            ? item.isDemo
+              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+            : 'bg-zinc-800 text-zinc-400 border-zinc-700';
+          const badgeText = hasScreen ? (item.isDemo ? 'Simülasyon' : 'Canlı Ekran') : 'Ağda Açık';
+
+          return `
+            <div class="screen-card bg-zinc-900 border ${item.handRaised ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-zinc-800'} rounded-2xl overflow-hidden shadow-lg flex flex-col transition hover:border-cyan-500/50">
+              <!-- Card Header -->
+              <div class="px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-300 font-mono text-[11px] font-bold shrink-0">
+                    ${item.deskNo || 'PC'}
+                  </span>
+                  <span class="text-xs font-bold text-zinc-100 truncate">${item.name}</span>
+                  ${
+                    item.handRaised
+                      ? `<button onclick="clearStudentHand('${item.id}')" title="Söz İsteğini Onayla/Kapat" class="px-2 py-0.5 rounded-full bg-amber-500 text-zinc-950 text-[10px] font-extrabold animate-bounce shrink-0">✋ Söz İstiyor</button>`
+                      : ''
+                  }
+                </div>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${badgeClass}">
+                  ${badgeText}
+                </span>
+              </div>
+
+              <!-- Screen Body -->
+              <div class="relative aspect-video bg-zinc-950 flex items-center justify-center overflow-hidden">
+                ${
+                  hasScreen
+                    ? `
+                      <img src="${item.frame}" alt="${item.name}" class="w-full h-full object-cover" />
+                      ${
+                        isLocked
+                          ? `<div class="absolute inset-0 bg-rose-950/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white p-4 text-center">
+                               <span class="text-2xl mb-1">🔒</span>
+                               <span class="text-xs font-bold">Ekran Kilitli (Dikkat Modu)</span>
+                             </div>`
+                          : ''
+                      }
+                      <div onclick="openFocusModal('${item.id}')" class="screen-overlay opacity-0 transition-opacity duration-150 cursor-pointer absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <span class="px-3.5 py-2 rounded-xl bg-white text-zinc-900 font-bold text-xs shadow-lg">
+                          🔍 Tam Ekran İncele
+                        </span>
+                      </div>
+                    `
+                    : `
+                      <div class="text-center p-6">
+                        <div class="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 mx-auto mb-2 flex items-center justify-center text-zinc-500">
+                          🖥️
+                        </div>
+                        <p class="text-xs font-medium text-zinc-400">Cihaz Ağda Aktif (${item.ip})</p>
+                        <p class="text-[11px] text-zinc-500 mt-1">Öğrenci istemcisi bağlandığında canlı ekran görüntüsü burada belirecektir.</p>
+                      </div>
+                    `
+                }
+              </div>
+
+              <!-- Veyon Per-Computer Control Footer -->
+              <div class="px-3 py-2 bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between gap-2 text-[11px]">
+                <span class="text-zinc-400 font-mono truncate">IP: ${item.ip || '-'}</span>
+                ${
+                  !item.arpOnly
+                    ? `
+                      <div class="flex items-center gap-1">
+                        <button onclick="openFocusModal('${item.id}')" title="Tam Ekran İzle" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">🔍</button>
+                        <button onclick="toggleStudentLock('${item.id}', ${Boolean(item.locked)})" title="Bu Bilgisayarı Kilitle / Aç" class="px-2 py-1 rounded-lg ${item.locked ? 'bg-rose-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'} transition">🔒</button>
+                        <button onclick="promptStudentMessage('${item.id}', '${(item.name || '').replace(/'/g, '')}')" title="Özel Mesaj Gönder" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">💬</button>
+                        <button onclick="downloadSnapshot('${item.id}')" title="Ekran Görüntüsü Kaydet (PNG)" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">📸</button>
+                      </div>
+                    `
+                    : `<span class="text-zinc-500 font-mono">${item.mac || ''}</span>`
+                }
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+
+      updateFocusModal();
+      updateToolbarUi();
+    }
+
+    async function pollState() {
+      try {
+        const res = await fetch(`${API_BASE}/state`);
+        const data = await res.json();
+        serverState = data;
+        if (isLocalServer && data.teacherIp && data.port) {
+          document.getElementById('studentUrlText').textContent = `http://${data.teacherIp}:${data.port}/ogrenci`;
+        } else {
+          document.getElementById('studentUrlText').textContent = 'https://ogretmenlerodasi.info/labizleme/ogrenci';
+        }
+        document.getElementById('sharingCount').textContent = (data.students || []).filter((s) => s.online).length;
+        document.getElementById('arpCount').textContent = (data.arpDevices || []).length;
+        renderGrid();
+      } catch (e) {
+        console.error('State fetch error:', e);
+      }
+    }
+
+    pollState();
+    setInterval(pollState, 1500);
+  </script>
+</body>
+</html>
