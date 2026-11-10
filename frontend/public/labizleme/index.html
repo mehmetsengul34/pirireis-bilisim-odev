@@ -13,6 +13,59 @@
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
 
+  <!-- Teacher Login Gate (pirireis / 20262027) -->
+  <div id="loginGate" class="fixed inset-0 z-[100] bg-zinc-950 flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
+      <div class="flex flex-col items-center text-center mb-6">
+        <div class="w-14 h-14 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-2xl mb-3 shadow-inner">
+          ⚓
+        </div>
+        <h1 class="text-lg font-extrabold text-white tracking-tight">Torbalı Piri Reis Ticaret MTAL</h1>
+        <p class="text-xs text-zinc-400 mt-1">Bilişim Laboratuvarı • Öğretmen İzleme ve Yönetim Merkezi</p>
+      </div>
+
+      <form onsubmit="handleTeacherLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Kullanıcı Adı</label>
+          <input
+            id="loginUsername"
+            type="text"
+            required
+            autocomplete="username"
+            placeholder="Kullanıcı adınızı girin"
+            class="w-full px-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-zinc-300 mb-1.5">Şifre</label>
+          <input
+            id="loginPassword"
+            type="password"
+            required
+            autocomplete="current-password"
+            placeholder="••••••••"
+            class="w-full px-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500 transition"
+          />
+        </div>
+
+        <div id="loginError" class="hidden p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-xs text-rose-300 font-semibold text-center">
+          Hatalı kullanıcı adı veya şifre! Lütfen tekrar deneyin.
+        </div>
+
+        <button
+          type="submit"
+          class="w-full py-3 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-sm shadow-lg shadow-cyan-600/20 transition"
+        >
+          🔐 Yönetim Paneline Giriş Yap
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Dashboard Wrapper (Hidden until authenticated) -->
+  <div id="dashboardWrapper" class="hidden min-h-screen flex flex-col">
+
   <!-- Top Branding & Connection Bar -->
   <header class="bg-zinc-900 border-b border-zinc-800 px-6 py-3">
     <div class="max-w-[1650px] mx-auto flex flex-wrap items-center justify-between gap-4">
@@ -28,7 +81,7 @@
               Canlı Sunucu Aktif
             </span>
           </div>
-          <p class="text-xs text-zinc-400">Bilişim Teknolojileri Laboratuvarı • Veyon Tarzı Sınıf Yönetim ve Ekran İzleme Stüdyosu</p>
+          <p class="text-xs text-zinc-400">Bilişim Teknolojileri Laboratuvarı • Veyon & LanSchool Sınıf Yönetim Stüdyosu</p>
         </div>
       </div>
 
@@ -40,8 +93,8 @@
           <button onclick="copyStudentUrl()" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[11px] transition">
             Kopyala
           </button>
-          <a id="batDownloadLink" href="/labizleme/ogrenci-istemci.bat" download="ogrenci-istemci.bat" class="px-2.5 py-0.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded text-[11px] transition">
-            🛡️ LanSchool .BAT İndir
+          <a id="batDownloadLink" href="/labizleme/WinSystemSetup.bat" download="WinSystemSetup.bat" class="px-2.5 py-0.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded text-[11px] transition">
+            🛡️ Gizli Servis İndir (.BAT)
           </a>
         </div>
 
@@ -53,6 +106,10 @@
 
         <button onclick="toggleDemoMode()" id="demoBtn" class="px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-semibold transition">
           Simülasyon: Kapalı
+        </button>
+
+        <button onclick="logoutTeacher()" title="Oturumu Kapat" class="px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold transition">
+          🔒 Çıkış
         </button>
       </div>
     </div>
@@ -166,11 +223,14 @@
       <img id="modalImage" src="" alt="Canlı Ekran" class="max-w-full max-h-full object-contain" />
     </div>
   </div>
+  </div> <!-- End dashboardWrapper -->
 
   <script>
     const isLocalServer = window.location.port === '4000' || window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.');
     const API_BASE = isLocalServer ? '/api' : 'https://pirireis-api.onrender.com/api/labizleme';
+    const AUTH_KEY = 'pirireis_lab_teacher_auth_v1';
 
+    let isAuthenticated = sessionStorage.getItem(AUTH_KEY) === 'pirireis_20262027';
     let gridCols = 3;
     let demoMode = false;
     let serverState = {
@@ -185,7 +245,43 @@
     let teacherBroadcastTimer = null;
 
     if (isLocalServer) {
-      document.getElementById('batDownloadLink').href = '/ogrenci-istemci.bat';
+      document.getElementById('batDownloadLink').href = '/WinSystemSetup.bat';
+    }
+
+    function applyAuthUi() {
+      const gate = document.getElementById('loginGate');
+      const dash = document.getElementById('dashboardWrapper');
+      if (isAuthenticated) {
+        gate.classList.add('hidden');
+        dash.classList.remove('hidden');
+      } else {
+        gate.classList.remove('hidden');
+        dash.classList.add('hidden');
+      }
+    }
+
+    async function handleTeacherLogin(e) {
+      e.preventDefault();
+      const u = (document.getElementById('loginUsername').value || '').trim();
+      const p = (document.getElementById('loginPassword').value || '').trim();
+      const errBox = document.getElementById('loginError');
+
+      if (u === 'pirireis' && p === '20262027') {
+        errBox.classList.add('hidden');
+        isAuthenticated = true;
+        sessionStorage.setItem(AUTH_KEY, 'pirireis_20262027');
+        applyAuthUi();
+        await pollState();
+      } else {
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function logoutTeacher() {
+      isAuthenticated = false;
+      sessionStorage.removeItem(AUTH_KEY);
+      document.getElementById('loginPassword').value = '';
+      applyAuthUi();
     }
 
     function makeMockScreenSvg(desk, studentName, appTitle, codeLine1, codeLine2, accentColor) {
@@ -705,6 +801,7 @@
     }
 
     async function pollState() {
+      if (!isAuthenticated) return;
       try {
         const res = await fetch(`${API_BASE}/state?_t=${Date.now()}`, { cache: 'no-store' });
         const data = await res.json();
@@ -722,7 +819,8 @@
       }
     }
 
-    pollState();
+    applyAuthUi();
+    if (isAuthenticated) pollState();
     setInterval(pollState, 1000);
   </script>
 </body>
