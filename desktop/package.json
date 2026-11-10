@@ -1,0 +1,16 @@
+{
+  "name": "pirireis-lab-master-desktop",
+  "version": "1.0.0",
+  "description": "Piri Reis Bilişim Laboratuvarı Yönetim ve Ekran İzleme Windows Masaüstü Uygulaması",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "author": "Piri Reis MTAL Bilişim Teknolojileri",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}

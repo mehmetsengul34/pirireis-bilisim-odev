@@ -1554,3 +1554,18 @@ def download_student_bat():
         media_type="application/octet-stream",
         headers={"Content-Disposition": 'attachment; filename="WinSystemSetup.bat"'},
     )
+
+
+@router.get("/PiriReisLabMaster.exe")
+def download_master_app():
+    exe_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "PiriReisLabMaster.exe")
+    if not os.path.isfile(exe_path):
+        exe_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "desktop", "PiriReisLabMaster.exe")
+    if not os.path.isfile(exe_path):
+        raise HTTPException(status_code=404, detail="Masaüstü uygulaması bulunamadı.")
+    return FileResponse(
+        exe_path,
+        filename="PiriReisLabMaster.exe",
+        media_type="application/vnd.microsoft.portable-executable"
+    )
+

@@ -1,0 +1,332 @@
+using System;
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Drawing;
+using System.Windows.Forms;
+using System.Diagnostics;
+using System.Threading;
+using System.Runtime.InteropServices;
+
+namespace PiriReisLabMaster
+{
+    public class MasterApp : ApplicationContext
+    {
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll")]
+        private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        private NotifyIcon trayIcon;
+        private ContextMenuStrip trayMenu;
+        private Process browserProcess;
+        private System.Windows.Forms.Timer processWatchTimer;
+        private string currentServerUrl;
+        private const string CLOUD_URL = "https://ogretmenlerodasi.info/labizleme";
+        private const string LOCAL_URL = "http://localhost:4000/labizleme";
+        private string configPath;
+
+        public MasterApp()
+        {
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Tls;
+            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+
+            string appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PiriReisLabMaster");
+            if (!Directory.Exists(appData)) Directory.CreateDirectory(appData);
+            configPath = Path.Combine(appData, "config.txt");
+
+            currentServerUrl = CLOUD_URL;
+            if (File.Exists(configPath))
+            {
+                try
+                {
+                    string saved = File.ReadAllText(configPath).Trim();
+                    if (!string.IsNullOrEmpty(saved)) currentServerUrl = saved;
+                }
+                catch { }
+            }
+
+            CreateDesktopShortcut();
+            InitTray();
+            LaunchAppWindow();
+
+            processWatchTimer = new System.Windows.Forms.Timer();
+            processWatchTimer.Interval = 2000;
+            processWatchTimer.Tick += delegate
+            {
+                if (browserProcess != null && browserProcess.HasExited)
+                {
+                    browserProcess = null;
+                }
+            };
+            processWatchTimer.Start();
+        }
+
+        private Icon GenerateAppIcon()
+        {
+            try
+            {
+                using (Bitmap bmp = new Bitmap(32, 32))
+                {
+                    using (Graphics g = Graphics.FromImage(bmp))
+                    {
+                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        g.Clear(Color.Transparent);
+                        using (Brush b = new SolidBrush(Color.FromArgb(14, 165, 233)))
+                        {
+                            g.FillEllipse(b, 1, 1, 30, 30);
+                        }
+                        using (Font f = new Font("Segoe UI", 13, FontStyle.Bold))
+                        {
+                            g.DrawString("P", f, Brushes.White, new PointF(7, 3));
+                        }
+                    }
+                    IntPtr hIcon = bmp.GetHicon();
+                    return Icon.FromHandle(hIcon);
+                }
+            }
+            catch
+            {
+                return SystemIcons.Application;
+            }
+        }
+
+        private void InitTray()
+        {
+            trayMenu = new ContextMenuStrip();
+            trayMenu.Font = new Font("Segoe UI", 9, FontStyle.Regular);
+
+            ToolStripMenuItem titleItem = new ToolStripMenuItem("Piri Reis Laboratuvar Yonetimi");
+            titleItem.Font = new Font("Segoe UI", 9, FontStyle.Bold);
+            titleItem.Enabled = false;
+            trayMenu.Items.Add(titleItem);
+            trayMenu.Items.Add(new ToolStripSeparator());
+
+            trayMenu.Items.Add("🖥️ Yonetim Panelini Ac", null, delegate { LaunchAppWindow(); });
+            trayMenu.Items.Add(new ToolStripSeparator());
+
+            trayMenu.Items.Add("🔒 Tum Ekranlari Kilitle (Dikkat Modu)", null, delegate { SendQuickAction("toggleLockAll", "{\"action\":\"toggleLockAll\",\"lock\":true,\"message\":\"Ogretmen dersi anlatiyor. Lutfen ogretmeninize odaklanin.\"}"); });
+            trayMenu.Items.Add("🔓 Tum Kilitleri Ac", null, delegate { SendQuickAction("toggleLockAll", "{\"action\":\"toggleLockAll\",\"lock\":false}"); });
+            trayMenu.Items.Add("🧹 Ogrenci Masaustlerini Temizle", null, delegate { SendQuickAction("batchCommand", "{\"action\":\"batchCommand\",\"installType\":\"powershell\",\"packageName\":\"Masaustu Temizligi\",\"installCommand\":\"$d=[Environment]::GetFolderPath('Desktop'); Get-ChildItem -Path $d -Exclude '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue\"}"); });
+            trayMenu.Items.Add("🛑 Acik Tarayici ve Oyunlari Kapat", null, delegate { SendQuickAction("batchCommand", "{\"action\":\"batchCommand\",\"installType\":\"powershell\",\"packageName\":\"Tarayicilari Kapat\",\"installCommand\":\"Get-Process -Name chrome, msedge, firefox, opera, brave, steam, roblox, discord -ErrorAction SilentlyContinue | Stop-Process -Force\"}"); });
+            trayMenu.Items.Add("🔌 Tum Bilgisayarlari Kapat (Shutdown)", null, delegate
+            {
+                if (MessageBox.Show("Laboratuvardaki tum ogrenci bilgisayarlari kapatilacak. Onayliyor musunuz?", "Piri Reis Lab Yonetimi", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
+                {
+                    SendQuickAction("batchCommand", "{\"action\":\"batchCommand\",\"installType\":\"powershell\",\"packageName\":\"Bilgisayarlari Kapat\",\"installCommand\":\"shutdown.exe /s /f /t 10 /c 'Ogretmen laboratuvar bilgisayarlarini kapatti.'\"}");
+                }
+            });
+
+            trayMenu.Items.Add(new ToolStripSeparator());
+
+            ToolStripMenuItem serverMenu = new ToolStripMenuItem("🌐 Baglanti Sunucusu");
+            ToolStripMenuItem cloudItem = new ToolStripMenuItem("Bulut: ogretmenlerodasi.info", null, delegate
+            {
+                currentServerUrl = CLOUD_URL;
+                SaveConfig(currentServerUrl);
+                LaunchAppWindow(true);
+            });
+            ToolStripMenuItem localItem = new ToolStripMenuItem("Yerel Ag: Localhost (4000)", null, delegate
+            {
+                currentServerUrl = LOCAL_URL;
+                SaveConfig(currentServerUrl);
+                LaunchAppWindow(true);
+            });
+            ToolStripMenuItem customItem = new ToolStripMenuItem("Ozel IP Gir...", null, delegate
+            {
+                string ip = PromptInput("Laboratuvar Sunucu IP Adresini Girin (Orn: 192.168.23.244):", "192.168.23.244");
+                if (!string.IsNullOrEmpty(ip))
+                {
+                    currentServerUrl = "http://" + ip.Trim() + ":4000/labizleme";
+                    SaveConfig(currentServerUrl);
+                    LaunchAppWindow(true);
+                }
+            });
+            serverMenu.DropDownItems.Add(cloudItem);
+            serverMenu.DropDownItems.Add(localItem);
+            serverMenu.DropDownItems.Add(customItem);
+            trayMenu.Items.Add(serverMenu);
+
+            trayMenu.Items.Add("📌 Masaustune Kisayol Olustur", null, delegate
+            {
+                CreateDesktopShortcut(true);
+                MessageBox.Show("Masaustune 'Piri Reis Laboratuvar Yonetimi' kisayolu olusturuldu!", "Basarili", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            });
+
+            trayMenu.Items.Add(new ToolStripSeparator());
+            trayMenu.Items.Add("❌ Cikis", null, delegate { ExitApp(); });
+
+            trayIcon = new NotifyIcon();
+            trayIcon.Icon = GenerateAppIcon();
+            trayIcon.Text = "Piri Reis Laboratuvar Yonetimi";
+            trayIcon.ContextMenuStrip = trayMenu;
+            trayIcon.Visible = true;
+            trayIcon.DoubleClick += delegate { LaunchAppWindow(); };
+        }
+
+        private void SaveConfig(string url)
+        {
+            try { File.WriteAllText(configPath, url); } catch { }
+        }
+
+        private string PromptInput(string text, string defaultVal)
+        {
+            Form prompt = new Form()
+            {
+                Width = 420,
+                Height = 160,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Text = "Sunucu Adresi",
+                StartPosition = FormStartPosition.CenterScreen,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                BackColor = Color.FromArgb(24, 24, 27)
+            };
+            Label textLabel = new Label() { Left = 20, Top = 15, Width = 360, ForeColor = Color.White, Text = text, Font = new Font("Segoe UI", 9) };
+            TextBox textBox = new TextBox() { Left = 20, Top = 45, Width = 360, Text = defaultVal, Font = new Font("Segoe UI", 10) };
+            Button confirmation = new Button() { Text = "Tamam", Left = 280, Width = 100, Top = 80, DialogResult = DialogResult.OK, BackColor = Color.FromArgb(14, 165, 233), ForeColor = Color.White, FlatStyle = FlatStyle.Flat };
+            prompt.Controls.Add(textLabel);
+            prompt.Controls.Add(textBox);
+            prompt.Controls.Add(confirmation);
+            prompt.AcceptButton = confirmation;
+            return prompt.ShowDialog() == DialogResult.OK ? textBox.Text : "";
+        }
+
+        private string FindBrowserExecutable()
+        {
+            string[] paths = new string[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft\\Edge\\Application\\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft\\Edge\\Application\\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft\\Edge\\Application\\msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Google\\Chrome\\Application\\chrome.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Google\\Chrome\\Application\\chrome.exe")
+            };
+            foreach (string p in paths)
+            {
+                if (File.Exists(p)) return p;
+            }
+            return null;
+        }
+
+        private void LaunchAppWindow(bool forceNew = false)
+        {
+            try
+            {
+                if (!forceNew && browserProcess != null && !browserProcess.HasExited)
+                {
+                    try
+                    {
+                        ShowWindow(browserProcess.MainWindowHandle, 9); // SW_RESTORE
+                        SetForegroundWindow(browserProcess.MainWindowHandle);
+                        return;
+                    }
+                    catch { }
+                }
+
+                string browserExe = FindBrowserExecutable();
+                string userDataDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PiriReisLabMaster\\BrowserProfile");
+
+                if (!string.IsNullOrEmpty(browserExe))
+                {
+                    string args = "--app=\"" + currentServerUrl + "\" --user-data-dir=\"" + userDataDir + "\" --window-size=1600,950 --enable-features=OverlayScrollbar";
+                    ProcessStartInfo psi = new ProcessStartInfo(browserExe, args);
+                    psi.UseShellExecute = false;
+                    browserProcess = Process.Start(psi);
+                }
+                else
+                {
+                    Process.Start(currentServerUrl);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Uygulama penceresi acilamadi: " + ex.Message, "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void SendQuickAction(string actionName, string jsonPayload)
+        {
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                try
+                {
+                    string apiUrl = currentServerUrl.Contains("localhost") || currentServerUrl.Contains(":4000")
+                        ? "http://localhost:4000/api/action"
+                        : "https://pirireis-api.onrender.com/api/labizleme/action";
+
+                    HttpWebRequest req = (HttpWebRequest)WebRequest.Create(apiUrl);
+                    req.Method = "POST";
+                    req.ContentType = "application/json; charset=utf-8";
+                    req.Timeout = 5000;
+                    byte[] data = Encoding.UTF8.GetBytes(jsonPayload);
+                    req.ContentLength = data.Length;
+                    using (Stream s = req.GetRequestStream())
+                    {
+                        s.Write(data, 0, data.Length);
+                    }
+                    using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+                    {
+                        trayIcon.ShowBalloonTip(2000, "Piri Reis Lab Yonetimi", "Komut laboratuvara iletildi (" + actionName + ")", ToolTipIcon.Info);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    trayIcon.ShowBalloonTip(3000, "Komut Hatasi", ex.Message, ToolTipIcon.Warning);
+                }
+            });
+        }
+
+        private void CreateDesktopShortcut(bool overwrite = false)
+        {
+            try
+            {
+                string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                string lnkPath = Path.Combine(desktop, "Piri Reis Laboratuvar Yonetimi.lnk");
+                if (File.Exists(lnkPath) && !overwrite) return;
+
+                string exePath = Application.ExecutablePath;
+                Type shellType = Type.GetTypeFromProgID("WScript.Shell");
+                if (shellType != null)
+                {
+                    dynamic shell = Activator.CreateInstance(shellType);
+                    dynamic shortcut = shell.CreateShortcut(lnkPath);
+                    shortcut.TargetPath = exePath;
+                    shortcut.WorkingDirectory = Path.GetDirectoryName(exePath);
+                    shortcut.Description = "Piri Reis Bilisim Laboratuvari Yonetim ve Izleme Masasi";
+                    shortcut.Save();
+                }
+            }
+            catch { }
+        }
+
+        private void ExitApp()
+        {
+            if (trayIcon != null)
+            {
+                trayIcon.Visible = false;
+                trayIcon.Dispose();
+            }
+            if (processWatchTimer != null) processWatchTimer.Stop();
+            Application.Exit();
+        }
+
+        [STAThread]
+        public static void Main(string[] args)
+        {
+            bool isNew;
+            using (Mutex mutex = new Mutex(true, "Global\\PiriReisLabMasterAppMutex", out isNew))
+            {
+                if (!isNew)
+                {
+                    // If already running, tell the running instance to open
+                    return;
+                }
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new MasterApp());
+            }
+        }
+    }
+}

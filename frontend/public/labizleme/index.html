@@ -99,7 +99,10 @@
             Kopyala
           </button>
           <a id="batDownloadLink" href="/labizleme/WinSystemSetup.bat" download="WinSystemSetup.bat" class="px-2.5 py-0.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded text-[11px] transition">
-            🛡️ Gizli Servis İndir (.BAT)
+            🛡️ İstemci Servisi (.BAT)
+          </a>
+          <a id="masterExeDownloadLink" href="/labizleme/PiriReisLabMaster.exe" download="PiriReisLabMaster.exe" class="px-2.5 py-0.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold rounded text-[11px] transition flex items-center gap-1 shadow-sm" title="Öğretmen İçin Windows Masaüstü Uygulaması (.EXE)">
+            💻 Masaüstü Uygulaması (.EXE)
           </a>
         </div>
 
@@ -1525,6 +1528,8 @@
 
     if (isLocalServer) {
       document.getElementById('batDownloadLink').href = '/WinSystemSetup.bat';
+      const mLink = document.getElementById('masterExeDownloadLink');
+      if (mLink) mLink.href = '/PiriReisLabMaster.exe';
     }
 
     function applyAuthUi() {
