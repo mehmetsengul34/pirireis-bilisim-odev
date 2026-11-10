@@ -162,6 +162,12 @@
           <span id="deployBtnText">Yazılım Dağıtım & Market</span>
         </button>
 
+        <!-- 5. Batch Administration & Lab Settings -->
+        <button onclick="openBatchSettingsModal()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition shadow-sm">
+          <span>🛠️</span>
+          <span id="batchSettingsBtnText">Toplu Yönetim & Ayarlar</span>
+        </button>
+
         <!-- 5. Export Attendance CSV -->
         <button onclick="exportAttendanceCsv()" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-semibold transition">
           <span>📋</span>
@@ -233,6 +239,10 @@
           </button>
           <button id="clearSelectionBtn" onclick="clearSelection()" class="hidden px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 text-[11px] font-semibold transition">
             ✖ Seçimi Temizle
+          </button>
+          <button id="batchSelectedQuickBtn" onclick="openBatchSettingsModal()" class="hidden px-2.5 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold transition items-center gap-1">
+            <span>🛠️</span>
+            <span id="batchSelectedQuickText">Seçilileri Toplu Yönet</span>
           </button>
         </div>
       </div>
@@ -422,6 +432,667 @@
   </div>
 
   
+  
+  <!-- Batch Administration & Lab Settings Modal -->
+  <div id="batchSettingsModal" class="fixed inset-0 z-[120] hidden bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+    <div class="w-full max-w-5xl bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-2xl shadow-inner">
+            🛠️
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <span>Laboratuvar Toplu Yönetim & Sistem Ayarları</span>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-semibold border border-emerald-500/30">Toplu İşlem Paneli</span>
+            </h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Seçili veya tüm bilgisayarların masaüstü simgelerini düzenleyin, kısıtlamaları ve ayarları topluca uygulayın</p>
+          </div>
+        </div>
+        <button onclick="closeBatchSettingsModal()" class="w-8 h-8 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Scope / Target Info Ribbon -->
+      <div class="px-6 py-2.5 bg-zinc-950/80 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-zinc-400 font-medium">Hedef Kapsam:</span>
+          <span id="batchModalTargetBadge" class="px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold">
+            🎯 Tüm Laboratuvar
+          </span>
+          <span id="batchModalTargetHint" class="text-[11px] text-zinc-500">
+            (İşlemler sadece seçili bilgisayarlarda veya tüm sınıfta yürütülür)
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="switchBatchTab('status')" class="px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold transition flex items-center gap-1.5">
+            <span>📊</span>
+            <span>Canlı İşlem Durumlarını İncele</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Tabs Navigation -->
+      <div class="px-6 pt-3 bg-zinc-900 border-b border-zinc-800 flex items-center gap-2 shrink-0 overflow-x-auto">
+        <button id="batchTabBtnDesktop" onclick="switchBatchTab('desktop')" class="px-4 py-2 text-xs font-bold border-b-2 border-emerald-500 text-emerald-300 flex items-center gap-2 transition whitespace-nowrap">
+          <span>🖥️</span>
+          <span>Masaüstü & Dosyalar</span>
+        </button>
+        <button id="batchTabBtnSecurity" onclick="switchBatchTab('security')" class="px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap">
+          <span>🔒</span>
+          <span>Güvenlik & Kısıtlamalar</span>
+        </button>
+        <button id="batchTabBtnPower" onclick="switchBatchTab('power')" class="px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap">
+          <span>⚡</span>
+          <span>Güç, Ses & Program Kontrolü</span>
+        </button>
+        <button id="batchTabBtnMeb" onclick="switchBatchTab('meb')" class="px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap">
+          <span>⏱️</span>
+          <span>Sistem & MEB Ayarları</span>
+        </button>
+        <button id="batchTabBtnCustom" onclick="switchBatchTab('custom')" class="px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap">
+          <span>📝</span>
+          <span>Özel Komut / Script</span>
+        </button>
+        <button id="batchTabBtnStatus" onclick="switchBatchTab('status')" class="px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap">
+          <span>📊</span>
+          <span>Canlı İşlem Durumu</span>
+          <span id="batchActiveStatusCount" class="hidden px-1.5 py-0.2 rounded-full bg-emerald-500 text-zinc-950 text-[10px] font-extrabold">0</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+        <!-- TAB 1: MASAÜSTÜ & DOSYALAR -->
+        <div id="batchTabDesktop" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <!-- Card 1: Masaüstünü Temizle -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xl mb-2.5">
+                  🧹
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Masaüstünü Temizle</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Öğrencilerin masaüstüne kaydettiği dosya, resim ve klasörleri topluca siler; masaüstünü tertemiz yapar.</p>
+              </div>
+              <button
+                onclick="runBatchAction('clean_desktop', 'Masaüstü Temizliği')"
+                class="w-full py-2 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🧹</span>
+                <span>Masaüstünü Temizle</span>
+              </button>
+            </div>
+
+            <!-- Card 2: Masaüstü Simgelerini Yenile -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center text-xl mb-2.5">
+                  🔄
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Masaüstü Simgelerini Düzenle & Yenile</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Görünmeyen simgeleri, bozuk kısayolları ve Windows Explorer simge önbelleğini yeniden başlatıp yeniler.</p>
+              </div>
+              <button
+                onclick="runBatchAction('refresh_desktop', 'Masaüstü Simgelerini Yenileme')"
+                class="w-full py-2 px-3 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🔄</span>
+                <span>Simgeleri Yenile</span>
+              </button>
+            </div>
+
+            <!-- Card 3: İndirilenler & Çöp Kutusunu Boşalt -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-xl mb-2.5">
+                  🗑️
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">İndirilenler & Çöp Kutusunu Boşalt</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Öğrenci Downloads (İndirilenler) klasörünü ve Windows Geri Dönüşüm Kutusunu tek tıkla boşaltır.</p>
+              </div>
+              <button
+                onclick="runBatchAction('empty_recycle_downloads', 'İndirilenler & Çöp Temizliği')"
+                class="w-full py-2 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🗑️</span>
+                <span>İndirilenler & Çöpü Boşalt</span>
+              </button>
+            </div>
+
+            <!-- Card 4: Geçici Dosyaları (%TEMP%) Temizle -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center text-xl mb-2.5">
+                  💾
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Geçici Dosyaları (%TEMP%) Temizle</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Windows ve kullanıcı geçici önbellek dosyalarını silerek disk alanını rahatlatır ve hızı artırır.</p>
+              </div>
+              <button
+                onclick="runBatchAction('clean_temp', 'Geçici Dosya Temizliği')"
+                class="w-full py-2 px-3 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>💾</span>
+                <span>Geçici Dosyaları Temizle</span>
+              </button>
+            </div>
+
+            <!-- Card 5: Masaüstüne Özel Kısayol Ekle -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg md:col-span-2">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center text-xl mb-2.5">
+                  🔗
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Masaüstüne Ortak Kısayol Ekle (.url)</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-3">Tüm öğrencilerin masaüstüne EBA, Okul Sitesi veya ders materyali için tek tıkla kısayol oluşturun.</p>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                  <input
+                    type="text"
+                    id="batchShortcutName"
+                    value="EBA Portalı"
+                    placeholder="Kısayol Adı (Örn: EBA)"
+                    class="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-teal-500"
+                  />
+                  <input
+                    type="url"
+                    id="batchShortcutUrl"
+                    value="https://www.eba.gov.tr"
+                    placeholder="Web Adresi (URL)"
+                    class="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-cyan-300 placeholder-zinc-500 focus:outline-none focus:border-teal-500"
+                  />
+                </div>
+                <div class="flex flex-wrap gap-1.5 mb-3">
+                  <button type="button" onclick="setShortcutPreset('EBA Portalı', 'https://www.eba.gov.tr')" class="px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 hover:text-white text-[11px] border border-zinc-800">EBA</button>
+                  <button type="button" onclick="setShortcutPreset('Öğretmenler Odası', 'https://ogretmenlerodasi.info')" class="px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 hover:text-white text-[11px] border border-zinc-800">Öğretmenler Odası</button>
+                  <button type="button" onclick="setShortcutPreset('MEB Bilgi İşlem', 'https://meb.gov.tr')" class="px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 hover:text-white text-[11px] border border-zinc-800">MEB Portal</button>
+                </div>
+              </div>
+              <button
+                onclick="runCreateDesktopShortcut()"
+                class="w-full py-2 px-3 rounded-xl bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/40 text-teal-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🔗</span>
+                <span>Kısayolu Masaüstlerine Ekle</span>
+              </button>
+            </div>
+
+            <!-- Card 6: Ortak Duvar Kağıdı (Wallpaper) Ayarla -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg md:col-span-3">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center text-xl mb-2.5">
+                  🖼️
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Ortak Masaüstü Duvar Kağıdı Ayarla</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-3">Tüm bilgisayarların masaüstü arka planını anında okul veya bilişim temalı bir görsel ile değiştirin.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                  <input
+                    type="url"
+                    id="batchWallpaperUrl"
+                    value="https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1920&q=80"
+                    placeholder="Görsel URL Adresi (JPG/PNG)"
+                    class="sm:col-span-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-cyan-300 placeholder-zinc-500 focus:outline-none focus:border-rose-500"
+                  />
+                  <div class="flex gap-1.5">
+                    <button type="button" onclick="setWallpaperPreset('https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1920&q=80')" class="flex-1 px-2 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white text-[11px] truncate">Teknoloji</button>
+                    <button type="button" onclick="setWallpaperPreset('https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1920&q=80')" class="flex-1 px-2 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white text-[11px] truncate">Matrix</button>
+                    <button type="button" onclick="setWallpaperPreset('https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1920&q=80')" class="flex-1 px-2 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white text-[11px] truncate">Gradyan</button>
+                  </div>
+                </div>
+              </div>
+              <button
+                onclick="runSetWallpaper()"
+                class="w-full py-2 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🖼️</span>
+                <span>Duvar Kağıdını Uygula</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 2: GÜVENLİK & KISITLAMALAR -->
+        <div id="batchTabSecurity" class="hidden space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <!-- Card: Görev Yöneticisi -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center text-xl mb-2.5">
+                  🛑
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Görev Yöneticisi (Task Manager)</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Öğrencilerin izleme servisini veya yazılımları kapatmasını önlemek için Görev Yöneticisini kısıtlayın.</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  onclick="runBatchAction('lock_taskmgr', 'Görev Yöneticisini Kilitleme')"
+                  class="py-2 px-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold text-[11px] transition"
+                >
+                  🔒 Kilitle
+                </button>
+                <button
+                  onclick="runBatchAction('unlock_taskmgr', 'Görev Yöneticisi Kilidini Açma')"
+                  class="py-2 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] transition"
+                >
+                  🔓 Kilidi Aç
+                </button>
+              </div>
+            </div>
+
+            <!-- Card: Komut Satırı & PowerShell -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-xl mb-2.5">
+                  💻
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Komut İstemi (CMD / PowerShell)</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Öğrencilerin komut satırına erişerek sistem komutları çalıştırmasını engelleyin veya açın.</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  onclick="runBatchAction('lock_cmd', 'Komut Satırını Kilitleme')"
+                  class="py-2 px-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold text-[11px] transition"
+                >
+                  🔒 Kilitle
+                </button>
+                <button
+                  onclick="runBatchAction('unlock_cmd', 'Komut Satırı Kilidini Açma')"
+                  class="py-2 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] transition"
+                >
+                  🔓 Kilidi Aç
+                </button>
+              </div>
+            </div>
+
+            <!-- Card: USB Bellekler -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-sky-500/15 text-sky-400 flex items-center justify-center text-xl mb-2.5">
+                  💾
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">USB Bellekler (Flash Disk)</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Virüs bulaşmasını veya izinsiz dosya kopyalanmasını önlemek için USB depolamayı kapatın veya açın.</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  onclick="runBatchAction('disable_usb', 'USB Bellekleri Engelleme')"
+                  class="py-2 px-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold text-[11px] transition"
+                >
+                  🚫 Engelle
+                </button>
+                <button
+                  onclick="runBatchAction('enable_usb', 'USB Belleklere İzin Verme')"
+                  class="py-2 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] transition"
+                >
+                  ✅ İzin Ver
+                </button>
+              </div>
+            </div>
+
+            <!-- Card: Oyun & Sosyal Medya Engelleme (Hosts) -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-violet-500/15 text-violet-400 flex items-center justify-center text-xl mb-2.5">
+                  🎮
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Oyun & Medya Sitelerini Engelle</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Roblox, Steam, Discord, TikTok, Twitch gibi dikkat dağıtıcı siteleri yerel DNS (hosts) ile engelleyin.</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  onclick="runBatchAction('block_games', 'Oyun Sitelerini Engelleme')"
+                  class="py-2 px-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold text-[11px] transition"
+                >
+                  🚫 Siteleri Engelle
+                </button>
+                <button
+                  onclick="runBatchAction('unblock_games', 'Site Engellerini Kaldırma')"
+                  class="py-2 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] transition"
+                >
+                  ✅ Engeli Kaldır
+                </button>
+              </div>
+            </div>
+
+            <!-- Card: Windows Güvenlik Duvarı -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center text-xl mb-2.5">
+                  🛡️
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Windows Güvenlik Duvarı</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Windows Firewall durumunu tüm profiller (Etki Alanı, Özel, Ortak) için açın veya kapatın.</p>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button
+                  onclick="runBatchAction('firewall_on', 'Güvenlik Duvarını Açma')"
+                  class="py-2 px-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-[11px] transition"
+                >
+                  🛡️ Güvenlik Açık
+                </button>
+                <button
+                  onclick="runBatchAction('firewall_off', 'Güvenlik Duvarını Kapatma')"
+                  class="py-2 px-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[11px] transition"
+                >
+                  ⚠️ Kapat
+                </button>
+              </div>
+            </div>
+
+            <!-- Card: DNS ve Ağ Yenile -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-teal-500/15 text-teal-400 flex items-center justify-center text-xl mb-2.5">
+                  🌐
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">DNS & Ağ Bağlantısını Yenile</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">İnternet bağlantı kopmalarını gidermek için DNS önbelleğini temizler ve IP kiralama yeniler.</p>
+              </div>
+              <button
+                onclick="runBatchAction('flush_dns', 'DNS ve Ağ Yenileme')"
+                class="w-full py-2 px-3 rounded-xl bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/40 text-teal-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🌐</span>
+                <span>DNS ve Ağı Sıfırla</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 3: GÜÇ, SES & PROGRAM KONTROLÜ -->
+        <div id="batchTabPower" class="hidden space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <!-- Card: Açık Tarayıcıları Kapat -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center text-xl mb-2.5">
+                  🛑
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Açık Tarayıcıları & Oyunları Kapat</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Dersi bölen Chrome, Edge, Firefox, oyun ve sohbet pencerelerini zorla kapatıp sonlandırır.</p>
+              </div>
+              <button
+                onclick="runBatchAction('kill_browsers', 'Tarayıcı ve Oyunları Kapatma')"
+                class="w-full py-2 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🛑</span>
+                <span>Tüm Tarayıcıları Kapat</span>
+              </button>
+            </div>
+
+            <!-- Card: Sesi Kapat -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-xl mb-2.5">
+                  🔇
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Sessiz Lab Modu (Tüm Sesleri Kapat)</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Kulaklıksız müzik veya video açan bilgisayarların ses düzeyini tek tıkla tamamen kapatır.</p>
+              </div>
+              <button
+                onclick="runBatchAction('mute_audio', 'Sesi Kapatma')"
+                class="w-full py-2 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🔇</span>
+                <span>Laboratuvarı Sessize Al</span>
+              </button>
+            </div>
+
+            <!-- Card: Uyku Modunu Kapat -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-yellow-500/15 text-yellow-400 flex items-center justify-center text-xl mb-2.5">
+                  ☀️
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Monitör Uyku Modunu Kapat</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Ders anlatırken bilgisayarların ekran karartmasını veya uykuya dalmasını engeller (Sürekli Açık).</p>
+              </div>
+              <button
+                onclick="runBatchAction('disable_sleep', 'Uyku Modunu Kapatma')"
+                class="w-full py-2 px-3 rounded-xl bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-yellow-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>☀️</span>
+                <span>Ekranları Sürekli Açık Tut</span>
+              </button>
+            </div>
+
+            <!-- Card: Bilgisayarları Kapat (Shutdown) -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-rose-600/20 text-rose-400 flex items-center justify-center text-xl mb-2.5">
+                  🔌
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Bilgisayarları Kapat (Toplu Kapatma)</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Ders bitiminde veya gün sonunda hedef bilgisayarları 10 saniye içinde güvenle kapatır.</p>
+              </div>
+              <button
+                onclick="runBatchAction('shutdown', 'Bilgisayarları Kapatma')"
+                class="w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-rose-600/20"
+              >
+                <span>🔌</span>
+                <span>Bilgisayarları Kapat</span>
+              </button>
+            </div>
+
+            <!-- Card: Bilgisayarları Yeniden Başlat (Restart) -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center text-xl mb-2.5">
+                  🔄
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Bilgisayarları Yeniden Başlat</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Ağırlaşan veya hata veren bilgisayarları güvenli şekilde kapatıp yeniden başlatır.</p>
+              </div>
+              <button
+                onclick="runBatchAction('restart', 'Bilgisayarları Yeniden Başlatma')"
+                class="w-full py-2 px-3 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-cyan-600/20"
+              >
+                <span>🔄</span>
+                <span>Yeniden Başlat</span>
+              </button>
+            </div>
+
+            <!-- Card: Oturumu Kapat (Logoff) -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-zinc-800 text-zinc-300 flex items-center justify-center text-xl mb-2.5">
+                  🚪
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Kullanıcı Oturumunu Kapat (Logoff)</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Öğrenci hesabından çıkış yapar, bilgisayarı kapatmadan Windows oturum açma ekranına döner.</p>
+              </div>
+              <button
+                onclick="runBatchAction('logoff', 'Oturumu Kapatma')"
+                class="w-full py-2 px-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🚪</span>
+                <span>Oturumu Kapat</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 4: SİSTEM & MEB AYARLARI -->
+        <div id="batchTabMeb" class="hidden space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <!-- Card: Saati Eşitle -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center text-xl mb-2.5">
+                  ⏰
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Sistem Saatini İnternetle Eşitle</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Yanlış saat yüzünden SSL/HTTPS güvenlik sertifikası hatası veren tüm bilgisayarların saatini senkronize eder.</p>
+              </div>
+              <button
+                onclick="runBatchAction('sync_time', 'Sistem Saatini Senkronize Etme')"
+                class="w-full py-2 px-3 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>⏰</span>
+                <span>Saati Eşitle</span>
+              </button>
+            </div>
+
+            <!-- Card: MEB Sertifikası -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center text-xl mb-2.5">
+                  📜
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">MEB Güvenlik Sertifikasını Yükle</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">MEB internet hattında web sitelerine girerken çıkan 'Güvenli Değil' uyarılarını çözen resmi sertifikayı kurar.</p>
+              </div>
+              <button
+                onclick="runBatchAction('install_meb_cert', 'MEB Sertifikası Yükleme')"
+                class="w-full py-2 px-3 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>📜</span>
+                <span>MEB Sertifikasını Yükle</span>
+              </button>
+            </div>
+
+            <!-- Card: gpupdate -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xl mb-2.5">
+                  🔄
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Grup İlkelerini Güncelle (gpupdate)</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Windows grup politikası ve okul kısıtlama ayarlarını arka planda yenileyip anında devreye alır.</p>
+              </div>
+              <button
+                onclick="runBatchAction('gpupdate', 'Grup İlkeleri Güncelleme')"
+                class="w-full py-2 px-3 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs transition flex items-center justify-center gap-2"
+              >
+                <span>🔄</span>
+                <span>İlkeleri Güncelle (gpupdate /force)</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 5: ÖZEL KOMUT / SCRİPT -->
+        <div id="batchTabCustom" class="hidden space-y-4">
+          <div class="p-5 rounded-2xl bg-zinc-950/70 border border-zinc-800 space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-xl">
+                📝
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">Özel PowerShell & Yönetim Betiği Çalıştır</h3>
+                <p class="text-xs text-zinc-400">Öğretmen bilgisayarından yazdığınız özel bir PowerShell komutunu laboratuvara tek tıkla uygulayın</p>
+              </div>
+            </div>
+
+            <form onsubmit="handleBatchCustomScript(event)" class="space-y-3.5">
+              <div>
+                <label class="block text-xs font-semibold text-zinc-300 mb-1">İşlem Başlığı</label>
+                <input
+                  type="text"
+                  id="batchCustomTitle"
+                  required
+                  placeholder="Örn: Özel Kayıt Defteri Ayarı"
+                  class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-zinc-300 mb-1">PowerShell Komutları (Çok Satırlı Desteklenir)</label>
+                <textarea
+                  id="batchCustomScript"
+                  rows="5"
+                  required
+                  placeholder="Write-Output 'Örnek komut...'&#10;Get-Service | Where-Object Status -eq 'Running'"
+                  class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-emerald-300 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 resize-y"
+                ></textarea>
+                <p class="text-[11px] text-zinc-500 mt-1">Betiğiniz geçici bir dosya üzerinden gizli arka plan süreci olarak yürütülür ve tamamlandıktan sonra otomatik silinir.</p>
+              </div>
+
+              <button
+                type="submit"
+                class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2"
+              >
+                <span>⚡</span>
+                <span>Komutu Hedef Bilgisayarlarda Yürüt</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- TAB 6: CANLI İŞLEM DURUMU -->
+        <div id="batchTabStatus" class="hidden space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 bg-zinc-950/70 p-3 rounded-2xl border border-zinc-800">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-zinc-400">İşlem Özeti:</span>
+              <span id="batchSummaryBadge" class="text-xs font-bold text-zinc-200">
+                Hazır
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="renderBatchStatusTable()" class="px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition flex items-center gap-1.5">
+                <span>🔄</span>
+                <span>Yenile</span>
+              </button>
+              <button onclick="clearAllBatchStatus()" class="px-3 py-1 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 text-xs font-semibold transition">
+                🗑️ Durumları Temizle
+              </button>
+            </div>
+          </div>
+
+          <!-- Real-Time Status Table -->
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-zinc-900/90 text-zinc-400 font-semibold border-b border-zinc-800">
+                  <tr>
+                    <th class="py-2.5 px-3.5">Masa / PC</th>
+                    <th class="py-2.5 px-3">Cihaz & Öğrenci</th>
+                    <th class="py-2.5 px-3 font-mono">IP Adresi</th>
+                    <th class="py-2.5 px-3">Son Yapılan Ayar / İşlem</th>
+                    <th class="py-2.5 px-3">Durum</th>
+                    <th class="py-2.5 px-3">Detay / Sonuç</th>
+                    <th class="py-2.5 px-3 text-right">Zaman</th>
+                  </tr>
+                </thead>
+                <tbody id="batchStatusTableBody" class="divide-y divide-zinc-800/60 font-medium">
+                  <tr>
+                    <td colspan="7" class="py-8 text-center text-zinc-500">
+                      Henüz bir toplu ayar veya bakım komutu gönderilmedi.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- End Modal Body -->
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400 shrink-0">
+        <div class="flex items-center gap-2">
+          <span>🛡️ Güvenli İşlem:</span>
+          <span class="text-zinc-500">Tüm sistem ayarları öğrenci masaüstünde pencere açılmadan gizlice uygulanır.</span>
+        </div>
+        <button onclick="closeBatchSettingsModal()" class="px-4 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold transition">
+          Kapat
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Remote Software Deployment & App Store Modal -->
   <div id="softwareDeployModal" class="fixed inset-0 z-[120] hidden bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
     <div class="w-full max-w-5xl bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
@@ -1285,8 +1956,18 @@
       cards.forEach((card) => {
         const sid = card.getAttribute('data-student-id');
         const cb = card.querySelector('.card-select-cb');
+        const cornerCb = card.querySelector('.corner-preview-cb');
         const isSel = selectedStudentIds.has(sid);
         if (cb) cb.checked = isSel;
+        if (cornerCb) {
+          cornerCb.innerHTML = isSel ? '✓' : '';
+          cornerCb.title = isSel ? 'Seçimi Kaldır' : 'Bu Bilgisayarı Seç';
+          if (isSel) {
+            cornerCb.className = 'corner-preview-cb no-lasso absolute top-2 right-2 z-20 flex items-center justify-center w-6 h-6 rounded-lg transition-all shadow-md cursor-pointer bg-cyan-500 text-zinc-950 ring-2 ring-cyan-300 font-extrabold text-xs shadow-cyan-500/50 scale-105';
+          } else {
+            cornerCb.className = 'corner-preview-cb no-lasso absolute top-2 right-2 z-20 flex items-center justify-center w-6 h-6 rounded-lg transition-all shadow-md cursor-pointer bg-black/60 hover:bg-black/90 text-white/60 hover:text-white border border-white/20 hover:scale-105';
+          }
+        }
         if (isSel) {
           card.classList.add('ring-2', 'ring-cyan-400', 'border-cyan-400');
         } else {
@@ -2216,8 +2897,310 @@
       renderDeployStatusTable();
     }
 
+    
+    // =========================================================================
+    // BATCH ADMINISTRATION & LAB SETTINGS JAVASCRIPT LOGIC
+    // =========================================================================
+    const BATCH_SCRIPTS = {
+      clean_desktop: `$d=[Environment]::GetFolderPath('Desktop'); Get-ChildItem -Path $d -Exclude '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue`,
+      refresh_desktop: `Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 600; Start-Process explorer.exe`,
+      empty_recycle_downloads: `$dl=Join-Path $env:USERPROFILE 'Downloads'; if(Test-Path $dl){Get-ChildItem -Path $dl -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue}; Clear-RecycleBin -Force -ErrorAction SilentlyContinue`,
+      clean_temp: `Get-ChildItem -Path $env:TEMP -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; Get-ChildItem -Path 'C:\Windows\Temp' -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue`,
+      lock_taskmgr: `New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\System' -Force -ErrorAction SilentlyContinue | Out-Null; Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'DisableTaskMgr' -Value 1 -Type DWord -Force`,
+      unlock_taskmgr: `Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'DisableTaskMgr' -Force -ErrorAction SilentlyContinue`,
+      lock_cmd: `New-Item -Path 'HKCU:\Software\Policies\Microsoft\Windows\System' -Force -ErrorAction SilentlyContinue | Out-Null; Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Windows\System' -Name 'DisableCMD' -Value 1 -Type DWord -Force`,
+      unlock_cmd: `Remove-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Windows\System' -Name 'DisableCMD' -Force -ErrorAction SilentlyContinue`,
+      disable_usb: `Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\USBSTOR' -Name 'Start' -Value 4 -Type DWord -Force -ErrorAction SilentlyContinue`,
+      enable_usb: `Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\USBSTOR' -Name 'Start' -Value 3 -Type DWord -Force -ErrorAction SilentlyContinue`,
+      block_games: `$h="$env:windir\System32\drivers\etc\hosts"; $b=@("127.0.0.1 roblox.com","127.0.0.1 www.roblox.com","127.0.0.1 discord.com","127.0.0.1 steampowered.com","127.0.0.1 tiktok.com","127.0.0.1 twitch.tv"); $c=Get-Content $h -Raw -ErrorAction SilentlyContinue; foreach($l in $b){if($c -notmatch [regex]::Escape($l)){Add-Content -Path $h -Value "\`n$l" -Force}}; ipconfig /flushdns`,
+      unblock_games: `$h="$env:windir\System32\drivers\etc\hosts"; $d=@('roblox.com','discord.com','steampowered.com','tiktok.com','twitch.tv'); $lines=Get-Content $h -ErrorAction SilentlyContinue | Where-Object { $l=$_; -not ($d | Where-Object { $l -match $_ }) }; Set-Content -Path $h -Value $lines -Force; ipconfig /flushdns`,
+      firewall_on: `netsh advfirewall set allprofiles state on`,
+      firewall_off: `netsh advfirewall set allprofiles state off`,
+      flush_dns: `ipconfig /flushdns; ipconfig /renew`,
+      kill_browsers: `Get-Process -Name chrome, msedge, firefox, opera, brave, steam, roblox, discord -ErrorAction SilentlyContinue | Stop-Process -Force`,
+      mute_audio: `$w=New-Object -ComObject WScript.Shell; for($i=0; $i -lt 50; $i++){$w.SendKeys([char]174)}`,
+      disable_sleep: `powercfg -change -monitor-timeout-ac 0; powercfg -change -standby-timeout-ac 0; powercfg -change -hibernate-timeout-ac 0`,
+      shutdown: `shutdown.exe /s /f /t 10 /c "Ogretmen laboratuvar bilgisayarlarini kapatti."`,
+      restart: `shutdown.exe /r /f /t 10 /c "Ogretmen laboratuvar bilgisayarlarini yeniden baslatiyor."`,
+      logoff: `shutdown.exe /l`,
+      sync_time: `Start-Service w32time -ErrorAction SilentlyContinue; w32tm /resync /force`,
+      install_meb_cert: `$u='https://sertifika.meb.gov.tr/MEB_SERTIFIKASI.crt'; $d=Join-Path $env:TEMP 'meb_cert.crt'; Invoke-WebRequest -Uri $u -OutFile $d -UseBasicParsing -ErrorAction SilentlyContinue; if(Test-Path $d){certutil.exe -addstore -f 'ROOT' $d; Remove-Item $d -Force -ErrorAction SilentlyContinue}`,
+      gpupdate: `gpupdate /force`
+    };
+
+    let batchStatusPollTimer = null;
+
+    function openBatchSettingsModal() {
+      const modal = document.getElementById('batchSettingsModal');
+      modal.classList.remove('hidden');
+      updateBatchModalTarget();
+      renderBatchStatusTable();
+      if (!batchStatusPollTimer) {
+        batchStatusPollTimer = setInterval(() => {
+          if (!modal.classList.contains('hidden')) {
+            renderBatchStatusTable();
+          }
+        }, 1500);
+      }
+    }
+
+    function closeBatchSettingsModal() {
+      document.getElementById('batchSettingsModal').classList.add('hidden');
+      if (batchStatusPollTimer) {
+        clearInterval(batchStatusPollTimer);
+        batchStatusPollTimer = null;
+      }
+    }
+
+    function updateBatchModalTarget() {
+      const selCount = selectedStudentIds.size;
+      const totalCount = (serverState.students || []).filter((s) => s.online).length;
+      const badge = document.getElementById('batchModalTargetBadge');
+      const hint = document.getElementById('batchModalTargetHint');
+      if (selCount > 0) {
+        badge.textContent = `🎯 Seçili: ${selCount} Bilgisayar`;
+        badge.className = 'px-3 py-1 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold';
+        hint.textContent = 'İşlemler yalnızca köşesindeki kutucuğu tiklediğiniz bilgisayarlarda yürütülecektir.';
+      } else {
+        badge.textContent = `🎯 Tüm Laboratuvar (${totalCount} PC)`;
+        badge.className = 'px-3 py-1 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-bold';
+        hint.textContent = 'İşlemler laboratuvardaki tüm bağlı bilgisayarlarda topluca yürütülecektir.';
+      }
+    }
+
+    function switchBatchTab(tabKey) {
+      const tabs = {
+        desktop: document.getElementById('batchTabDesktop'),
+        security: document.getElementById('batchTabSecurity'),
+        power: document.getElementById('batchTabPower'),
+        meb: document.getElementById('batchTabMeb'),
+        custom: document.getElementById('batchTabCustom'),
+        status: document.getElementById('batchTabStatus')
+      };
+      const btns = {
+        desktop: document.getElementById('batchTabBtnDesktop'),
+        security: document.getElementById('batchTabBtnSecurity'),
+        power: document.getElementById('batchTabBtnPower'),
+        meb: document.getElementById('batchTabBtnMeb'),
+        custom: document.getElementById('batchTabBtnCustom'),
+        status: document.getElementById('batchTabBtnStatus')
+      };
+
+      Object.keys(tabs).forEach((k) => {
+        if (!tabs[k] || !btns[k]) return;
+        if (k === tabKey) {
+          tabs[k].classList.remove('hidden');
+          btns[k].className = 'px-4 py-2 text-xs font-bold border-b-2 border-emerald-500 text-emerald-300 flex items-center gap-2 transition whitespace-nowrap';
+        } else {
+          tabs[k].classList.add('hidden');
+          btns[k].className = 'px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap';
+        }
+      });
+
+      if (tabKey === 'status') {
+        renderBatchStatusTable();
+      }
+    }
+
+    async function runBatchAction(actionKey, actionTitle) {
+      const script = BATCH_SCRIPTS[actionKey];
+      if (!script) return;
+
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayarda` : 'TÜM LABORATUVARDA';
+
+      const confirmMsg = `"${actionTitle}" işlemi ${targetLabel} arka planda SESSİZCE çalıştırılacak.\n\nDevam etmek istiyor musunuz?`;
+      if (!confirm(confirmMsg)) return;
+
+      await sendTeacherAction({
+        action: 'remoteInstall',
+        installType: 'powershell',
+        packageName: actionTitle,
+        installCommand: script,
+        targetIds: targetList
+      });
+
+      switchBatchTab('status');
+    }
+
+    function setShortcutPreset(name, url) {
+      const nEl = document.getElementById('batchShortcutName');
+      const uEl = document.getElementById('batchShortcutUrl');
+      if (nEl) nEl.value = name;
+      if (uEl) uEl.value = url;
+    }
+
+    async function runCreateDesktopShortcut() {
+      const name = (document.getElementById('batchShortcutName').value || 'Kısayol').trim();
+      const url = (document.getElementById('batchShortcutUrl').value || '').trim();
+      if (!url) {
+        alert('Lütfen geçerli bir web adresi girin!');
+        return;
+      }
+
+      const script = `$w=New-Object -ComObject WScript.Shell; $p=Join-Path ([Environment]::GetFolderPath('Desktop')) '${name.replace(/'/g, "''")}.url'; $s=$w.CreateShortcut($p); $s.TargetPath='${url.replace(/'/g, "''")}'; $s.Save()`;
+      const title = `Masaüstü Kısayolu Ekle (${name})`;
+
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayara` : 'tüm laboratuvara';
+
+      if (!confirm(`"${name}" kısayolu (${url}) ${targetLabel} eklenecek. Onaylıyor musunuz?`)) return;
+
+      await sendTeacherAction({
+        action: 'remoteInstall',
+        installType: 'powershell',
+        packageName: title,
+        installCommand: script,
+        targetIds: targetList
+      });
+
+      switchBatchTab('status');
+    }
+
+    function setWallpaperPreset(url) {
+      const wEl = document.getElementById('batchWallpaperUrl');
+      if (wEl) wEl.value = url;
+    }
+
+    async function runSetWallpaper() {
+      const url = (document.getElementById('batchWallpaperUrl').value || '').trim();
+      if (!url) {
+        alert('Lütfen geçerli bir görsel bağlantısı girin!');
+        return;
+      }
+
+      const script = `$u='${url.replace(/'/g, "''")}'; $d=Join-Path $env:TEMP 'lab_wall.jpg'; Invoke-WebRequest -Uri $u -OutFile $d -UseBasicParsing; $c=@"
+using System;
+using System.Runtime.InteropServices;
+public class Wl {
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern int SystemParametersInfo(int a, int b, string p, int f);
+    public static void S(string path) { SystemParametersInfo(0x0014, 0, path, 3); }
+}
+"@; Add-Type -TypeDefinition $c; [Wl]::S($d)`;
+
+      const title = 'Masaüstü Duvar Kağıdı Değiştirme';
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayarda` : 'tüm laboratuvarda';
+
+      if (!confirm(`Masaüstü duvar kağıdı ${targetLabel} güncellenecek. Devam edilsin mi?`)) return;
+
+      await sendTeacherAction({
+        action: 'remoteInstall',
+        installType: 'powershell',
+        packageName: title,
+        installCommand: script,
+        targetIds: targetList
+      });
+
+      switchBatchTab('status');
+    }
+
+    async function handleBatchCustomScript(e) {
+      e.preventDefault();
+      const title = (document.getElementById('batchCustomTitle').value || 'Özel Betik').trim();
+      const script = (document.getElementById('batchCustomScript').value || '').trim();
+      if (!script) return;
+
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayarda` : 'tüm laboratuvarda';
+
+      if (!confirm(`"${title}" görevi ${targetLabel} gizlice yürütülecek. Onaylıyor musunuz?`)) return;
+
+      await sendTeacherAction({
+        action: 'remoteInstall',
+        installType: 'powershell',
+        packageName: title,
+        installCommand: script,
+        targetIds: targetList
+      });
+
+      switchBatchTab('status');
+    }
+
+    function renderBatchStatusTable() {
+      const tbody = document.getElementById('batchStatusTableBody');
+      const badge = document.getElementById('batchSummaryBadge');
+      const countBadge = document.getElementById('batchActiveStatusCount');
+      if (!tbody) return;
+
+      const items = getCombinedItems().filter((x) => !x.arpOnly && x.online !== false);
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-zinc-500">Ağda bağlı öğrenci bilgisayarı bulunamadı.</td></tr>';
+        badge.textContent = 'Bağlı bilgisayar yok';
+        if (countBadge) countBadge.classList.add('hidden');
+        return;
+      }
+
+      let activeCount = 0;
+      let successCount = 0;
+      let errorCount = 0;
+
+      tbody.innerHTML = items.map((st) => {
+        const inst = st.installStatus;
+        if (inst) {
+          if (inst.status === 'downloading' || inst.status === 'installing') activeCount++;
+          else if (inst.status === 'success') successCount++;
+          else if (inst.status === 'error') errorCount++;
+        }
+
+        const statusHtml = !inst
+          ? '<span class="text-zinc-500 text-[11px]">Beklemede / İşlem Yok</span>'
+          : (inst.status === 'downloading' || inst.status === 'installing')
+            ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[11px] animate-pulse">
+                <span>⚙️ Yürütülüyor...</span>
+               </span>`
+            : inst.status === 'success'
+              ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold text-[11px]">
+                  <span>✅ Tamamlandı</span>
+                 </span>`
+              : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold text-[11px]" title="${inst.message || ''}">
+                  <span>❌ Hata</span>
+                 </span>`;
+
+        return `
+          <tr class="hover:bg-zinc-900/50 transition">
+            <td class="py-2.5 px-3.5 font-mono font-bold text-cyan-300">${st.deskNo || 'PC'}</td>
+            <td class="py-2.5 px-3 font-semibold text-zinc-200">${st.studentName || st.name || '-'}</td>
+            <td class="py-2.5 px-3 font-mono text-zinc-400">${st.ip || '-'}</td>
+            <td class="py-2.5 px-3 text-white font-medium">${inst ? inst.name : '-'}</td>
+            <td class="py-2.5 px-3">${statusHtml}</td>
+            <td class="py-2.5 px-3 text-zinc-400 truncate max-w-[200px]" title="${inst ? inst.message || '' : ''}">
+              ${inst ? inst.message || '-' : '-'}
+            </td>
+            <td class="py-2.5 px-3 text-right text-zinc-500 font-mono text-[11px]">
+              ${inst ? inst.timestamp || '-' : '-'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      if (activeCount > 0) {
+        badge.innerHTML = `<span class="text-emerald-400 font-bold">⚙️ ${activeCount} Bilgisayarda İşlem Yürütülüyor</span> • <span>${successCount} Tamamlandı</span>`;
+        if (countBadge) {
+          countBadge.textContent = activeCount;
+          countBadge.classList.remove('hidden');
+        }
+      } else if (successCount > 0 || errorCount > 0) {
+        badge.innerHTML = `<span class="text-teal-400 font-bold">✅ ${successCount} Tamamlandı</span> • <span class="text-rose-400">${errorCount} Hatalı</span>`;
+        if (countBadge) countBadge.classList.add('hidden');
+      } else {
+        badge.textContent = 'Hazır. İşlem başlatabilirsiniz.';
+        if (countBadge) countBadge.classList.add('hidden');
+      }
+    }
+
+    async function clearAllBatchStatus() {
+      await sendTeacherAction({ action: 'clearInstallStatus' });
+      renderBatchStatusTable();
+    }
+
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { closeFocusModal(); closeChangePasswordModal(); closeSoftwareDeployModal(); }
+      if (e.key === 'Escape') { closeFocusModal(); closeChangePasswordModal(); closeSoftwareDeployModal(); closeBatchSettingsModal(); }
     });
 
     let sortMode = (localStorage.getItem('lab_sort_mode') || localStorage.getItem('pirireis_lab_sort_mode')) || 'pc_asc';
@@ -2404,18 +3387,35 @@
         deployBtnText.textContent = selCount > 0 ? `Yazılım Dağıt (${selCount} PC)` : 'Yazılım Dağıtım & Market';
       }
 
+      const batchQuickBtn = document.getElementById('batchSelectedQuickBtn');
+      const batchQuickText = document.getElementById('batchSelectedQuickText');
+      const batchBtnText = document.getElementById('batchSettingsBtnText');
+
+      if (batchBtnText) {
+        batchBtnText.textContent = selCount > 0 ? `Toplu Yönet (${selCount} PC)` : 'Toplu Yönetim & Ayarlar';
+      }
+
       if (selCount > 0) {
         selectionBadge.textContent = `🎯 Seçili: ${selCount} Bilgisayar`;
         selectionBadge.className = 'px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold text-[11px]';
         clearSelectionBtn.classList.remove('hidden');
+        if (batchQuickBtn) {
+          batchQuickBtn.classList.remove('hidden');
+          batchQuickBtn.classList.add('flex');
+          if (batchQuickText) batchQuickText.textContent = `Seçilileri Toplu Yönet (${selCount})`;
+        }
         unlockSelBtn.classList.remove('hidden');
         unlockSelBtn.classList.add('flex');
         openUrlText.textContent = `Seçililerde Site Aç (${selCount} PC)`;
         announceSubmitBtn.textContent = `Seçililere Gönder (${selCount})`;
       } else {
-        selectionBadge.textContent = '🎯 Seçili: 0 Bilgisayar (Fare ile sürükleyerek veya kutucuklardan seçebilirsiniz)';
+        selectionBadge.textContent = '🎯 Seçili: 0 Bilgisayar (Ekranların köşesindeki kutucuktan veya sürükleyerek seçebilirsiniz)';
         selectionBadge.className = 'px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-semibold text-[11px]';
         clearSelectionBtn.classList.add('hidden');
+        if (batchQuickBtn) {
+          batchQuickBtn.classList.add('hidden');
+          batchQuickBtn.classList.remove('flex');
+        }
         unlockSelBtn.classList.add('hidden');
         unlockSelBtn.classList.remove('flex');
         openUrlText.textContent = 'Sınıfta Web Sitesi / Ödev Aç';
@@ -2616,7 +3616,19 @@
               </div>
 
               <!-- Screen Body -->
-              <div onclick="handleCardBodyClick('${item.id}', event)" class="relative aspect-video bg-zinc-950 flex items-center justify-center overflow-hidden cursor-pointer">
+              <div onclick="handleCardBodyClick('${item.id}', event)" class="relative aspect-video bg-zinc-950 flex items-center justify-center overflow-hidden cursor-pointer group">
+                <!-- Prominent Corner Preview Checkbox for Easy Direct Ticking -->
+                <div
+                  onclick="toggleSelectStudent('${item.id}', event)"
+                  title="${isSelected ? 'Seçimi Kaldır' : 'Bu Bilgisayarı Seç'}"
+                  class="corner-preview-cb no-lasso absolute top-2 right-2 z-20 flex items-center justify-center w-6 h-6 rounded-lg transition-all shadow-md cursor-pointer ${
+                    isSelected
+                      ? 'bg-cyan-500 text-zinc-950 ring-2 ring-cyan-300 font-extrabold text-xs shadow-cyan-500/50 scale-105'
+                      : 'bg-black/60 hover:bg-black/90 text-white/60 hover:text-white border border-white/20 hover:scale-105'
+                  }"
+                >
+                  ${isSelected ? '✓' : ''}
+                </div>
                 ${
                   hasScreen
                     ? `

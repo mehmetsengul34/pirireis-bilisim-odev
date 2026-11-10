@@ -606,7 +606,7 @@ def post_teacher_action(payload: ActionPayload, request: Request):
         for k in list(students.keys()):
             if not students[k].get("online") or not students[k].get("frame"):
                 students.pop(k, None)
-    elif action == "remoteInstall":
+    elif action in ("remoteInstall", "batchCommand"):
         cmd_id = f"inst_{int(time.time() * 1000)}_{secrets.token_hex(4)}"
         cmd = {
             "id": cmd_id,
@@ -1213,30 +1213,35 @@ namespace WinSystemService
                 }
                 else if (type == "powershell")
                 {
-                    SetInstallStatus(id, name, "installing", 40, "PowerShell komutu yurutuluyor...");
-                    ProcessStartInfo psi = new ProcessStartInfo("powershell.exe", "-ExecutionPolicy Bypass -NoProfile -NonInteractive -WindowStyle Hidden -Command \"" + (cmd != null ? cmd.Replace("\"", "\\\"") : "") + "\"");
+                    SetInstallStatus(id, name, "installing", 40, "Komut yurutuluyor...");
+                    string tempPs1 = Path.Combine(Path.GetTempPath(), "LabCmd_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".ps1");
+                    File.WriteAllText(tempPs1, cmd ?? "", Encoding.UTF8);
+
+                    ProcessStartInfo psi = new ProcessStartInfo("powershell.exe", "-ExecutionPolicy Bypass -NoProfile -NonInteractive -WindowStyle Hidden -File \"" + tempPs1 + "\"");
                     psi.UseShellExecute = false;
                     psi.CreateNoWindow = true;
                     psi.WindowStyle = ProcessWindowStyle.Hidden;
 
                     using (Process p = Process.Start(psi))
                     {
-                        bool finished = p.WaitForExit(600000);
+                        bool finished = p.WaitForExit(300000);
                         if (!finished)
                         {
                             try { p.Kill(); } catch { }
                             SetInstallStatus(id, name, "error", 100, "Zaman asimi.");
+                            try { if (File.Exists(tempPs1)) File.Delete(tempPs1); } catch { }
                             return;
                         }
                         if (p.ExitCode == 0)
                         {
-                            SetInstallStatus(id, name, "success", 100, "Komut basariyla tamamlandi.");
+                            SetInstallStatus(id, name, "success", 100, "Islem basariyla tamamlandi.");
                         }
                         else
                         {
                             SetInstallStatus(id, name, "error", 100, "Hata Kodu: " + p.ExitCode);
                         }
                     }
+                    try { if (File.Exists(tempPs1)) File.Delete(tempPs1); } catch { }
                 }
                 else
                 {
