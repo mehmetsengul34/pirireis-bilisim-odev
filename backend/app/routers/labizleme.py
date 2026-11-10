@@ -1,9 +1,122 @@
 import time
+import os
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Request, Response, HTTPException, status
 from pydantic import BaseModel
+import jwt
+
+try:
+    from app.auth import SECRET_KEY, ALGORITHM, verify_password
+    from app.database import SessionLocal
+    from app.models import User
+except Exception as e:
+    SECRET_KEY = os.getenv("SECRET_KEY", "piri-reis-mtal-bilisim-guvenli-anahtar-2026")
+    ALGORITHM = "HS256"
+    verify_password = None
+    SessionLocal = None
+    User = None
 
 router = APIRouter(prefix="/api/labizleme", tags=["labizleme"])
+
+
+def verify_teacher_token(authorization: Optional[str] = None) -> bool:
+    if not authorization:
+        return False
+    parts = authorization.split()
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return False
+    token = parts[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        role = payload.get("role")
+        return role in ("teacher", "admin")
+    except Exception:
+        return False
+
+
+class TeacherLoginPayload(BaseModel):
+    username: str
+    password: str
+
+
+@router.post("/login")
+def lab_teacher_login(payload: TeacherLoginPayload):
+    username = (payload.username or "").strip().lower()
+    password = (payload.password or "").strip()
+
+    if not username or not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Kullanıcı adı ve şifre zorunludur."
+        )
+
+    authenticated = False
+    display_name = "Öğretmen"
+    user_id = "teacher"
+
+    # 1. Database user verification
+    if SessionLocal and User and verify_password:
+        try:
+            db = SessionLocal()
+            try:
+                user = db.query(User).filter(User.username == username).first()
+                if user and user.role in ("teacher", "admin") and verify_password(password, user.password_hash):
+                    authenticated = True
+                    display_name = user.full_name or user.username
+                    user_id = str(user.id)
+            finally:
+                db.close()
+        except Exception as db_err:
+            print(f"[labizleme login db error]: {db_err}")
+
+    # 2. Master teacher fallback
+    master_user = os.getenv("LAB_TEACHER_USER", "pirireis").lower()
+    master_pass = os.getenv("LAB_TEACHER_PASS", "20262027")
+
+    if not authenticated:
+        if secrets.compare_digest(username, master_user) and secrets.compare_digest(password, master_pass):
+            authenticated = True
+            display_name = "Master Öğretmen"
+            user_id = "master"
+
+    if not authenticated:
+        time.sleep(0.3)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Hatalı kullanıcı adı veya şifre!"
+        )
+
+    exp = datetime.now(timezone.utc) + timedelta(days=7)
+    token_data = {
+        "sub": user_id,
+        "role": "teacher",
+        "name": display_name,
+        "exp": exp,
+        "scope": "labizleme",
+    }
+    token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+
+    return {
+        "success": True,
+        "token": token,
+        "fullName": display_name,
+        "expiresIn": 86400 * 7
+    }
+
+
+@router.get("/verify")
+@router.post("/verify")
+def lab_verify_token(request: Request):
+    auth_header = request.headers.get("Authorization")
+    if verify_teacher_token(auth_header):
+        return {"valid": True}
+    return Response(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content='{"valid":false,"detail":"Oturum süresi dolmuş veya geçersiz."}',
+        media_type="application/json"
+    )
 
 # In-memory classroom & student state on the cloud backend
 students: Dict[str, Dict[str, Any]] = {}
@@ -63,6 +176,13 @@ def get_lab_state(request: Request, response: Response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+
+    auth_header = request.headers.get("Authorization")
+    if not verify_teacher_token(auth_header):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bu ekranı görüntülemek için öğretmen girişi yapmalısınız."
+        )
 
     now = time.time() * 1000.0
     stale_keys = []
@@ -194,7 +314,13 @@ def post_student_frame(payload: FramePayload, request: Request):
 
 
 @router.post("/action")
-def post_teacher_action(payload: ActionPayload):
+def post_teacher_action(payload: ActionPayload, request: Request):
+    auth_header = request.headers.get("Authorization")
+    if not verify_teacher_token(auth_header):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bu işlem için öğretmen yetkisi gereklidir."
+        )
     action = payload.action
     now_str = time.strftime("%H:%M:%S")
     targets = payload.targetIds if payload.targetIds and len(payload.targetIds) > 0 else None

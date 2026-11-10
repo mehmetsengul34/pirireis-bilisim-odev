@@ -17,7 +17,7 @@
   <!-- Rubber-band Mouse Drag Lasso Selection Box -->
   <div id="lassoBox" class="hidden fixed z-[90] pointer-events-none border-2 border-cyan-400 bg-cyan-500/20 rounded-lg shadow-lg shadow-cyan-500/10"></div>
 
-  <!-- Teacher Login Gate (pirireis / 20262027) -->
+  <!-- Teacher Login Gate -->
   <div id="loginGate" class="fixed inset-0 z-[100] bg-zinc-950 flex items-center justify-center p-4">
     <div class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl">
       <div class="flex flex-col items-center text-center mb-6">
@@ -58,8 +58,9 @@
         </div>
 
         <button
+          id="loginSubmitBtn"
           type="submit"
-          class="w-full py-3 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-sm shadow-lg shadow-cyan-600/20 transition"
+          class="w-full py-3 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-sm shadow-lg shadow-cyan-600/20 transition flex items-center justify-center gap-2"
         >
           🔐 Yönetim Paneline Giriş Yap
         </button>
@@ -302,10 +303,11 @@
 
   <script>
     const isLocalServer = window.location.port === '4000' || window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.');
-    const API_BASE = isLocalServer ? '/api' : 'https://pirireis-api.onrender.com/api/labizleme';
-    const AUTH_KEY = 'pirireis_lab_teacher_auth_v1';
+    const API_BASE = window.location.protocol === 'file:' ? 'https://ogretmenlerodasi.info/api/labizleme' : (isLocalServer && window.location.port === '4000' ? '/api' : '/api/labizleme');
+    const AUTH_TOKEN_KEY = 'lab_teacher_auth_token_v1';
 
-    let isAuthenticated = sessionStorage.getItem(AUTH_KEY) === 'pirireis_20262027';
+    let authToken = sessionStorage.getItem(AUTH_TOKEN_KEY);
+    let isAuthenticated = Boolean(authToken);
     let gridCols = 3;
     let demoMode = false;
     let serverState = {
@@ -331,7 +333,7 @@
     function applyAuthUi() {
       const gate = document.getElementById('loginGate');
       const dash = document.getElementById('dashboardWrapper');
-      if (isAuthenticated) {
+      if (isAuthenticated && authToken) {
         gate.classList.add('hidden');
         dash.classList.remove('hidden');
       } else {
@@ -345,27 +347,66 @@
       const u = (document.getElementById('loginUsername').value || '').trim();
       const p = (document.getElementById('loginPassword').value || '').trim();
       const errBox = document.getElementById('loginError');
+      const submitBtn = document.getElementById('loginSubmitBtn');
+      const origBtnHtml = submitBtn ? submitBtn.innerHTML : '🔐 Yönetim Paneline Giriş Yap';
 
-      if (u === 'pirireis' && p === '20262027') {
-        errBox.classList.add('hidden');
-        isAuthenticated = true;
-        sessionStorage.setItem(AUTH_KEY, 'pirireis_20262027');
-        const sortSelEl = document.getElementById('sortSelect');
-    if (sortSelEl) sortSelEl.value = sortMode;
-    applyAuthUi();
-        await pollState();
-      } else {
+      if (!u || !p) {
+        errBox.textContent = 'Lütfen kullanıcı adı ve şifrenizi girin.';
         errBox.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<span class="inline-block animate-spin mr-1">⏳</span> Giriş Doğrulanıyor...';
+        }
+        errBox.classList.add('hidden');
+
+        const res = await fetch(`${API_BASE}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.success && data.token) {
+          authToken = data.token;
+          sessionStorage.setItem(AUTH_TOKEN_KEY, data.token);
+          isAuthenticated = true;
+          errBox.classList.add('hidden');
+          const sortSelEl = document.getElementById('sortSelect');
+          if (sortSelEl) sortSelEl.value = sortMode;
+          applyAuthUi();
+          await pollState();
+        } else {
+          errBox.textContent = data.detail || 'Hatalı kullanıcı adı veya şifre! Lütfen tekrar deneyin.';
+          errBox.classList.remove('hidden');
+          const passEl = document.getElementById('loginPassword');
+          if (passEl) passEl.value = '';
+        }
+      } catch (err) {
+        console.error('Login error:', err);
+        errBox.textContent = 'Sunucuya bağlanılamadı. Lütfen sunucunun aktif olduğunu kontrol edip tekrar deneyin.';
+        errBox.classList.remove('hidden');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = origBtnHtml;
+        }
       }
     }
 
     function logoutTeacher() {
       isAuthenticated = false;
-      sessionStorage.removeItem(AUTH_KEY);
-      document.getElementById('loginPassword').value = '';
+      authToken = null;
+      sessionStorage.removeItem(AUTH_TOKEN_KEY);
+      const passEl = document.getElementById('loginPassword');
+      if (passEl) passEl.value = '';
       const sortSelEl = document.getElementById('sortSelect');
-    if (sortSelEl) sortSelEl.value = sortMode;
-    applyAuthUi();
+      if (sortSelEl) sortSelEl.value = sortMode;
+      applyAuthUi();
     }
 
     function makeMockScreenSvg(desk, studentName, appTitle, codeLine1, codeLine2, accentColor) {
@@ -429,11 +470,23 @@
     }
 
     async function sendTeacherAction(payload) {
-      await fetch(`${API_BASE}/action`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      if (!authToken) return;
+      try {
+        const res = await fetch(`${API_BASE}/action`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify(payload)
+        });
+        if (res.status === 401) {
+          logoutTeacher();
+          return;
+        }
+      } catch (err) {
+        console.error('Action error:', err);
+      }
       await pollState();
     }
 
@@ -696,7 +749,10 @@
             const frame = canvas.toDataURL('image/jpeg', 0.55);
             await fetch(`${API_BASE}/action`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+              },
               body: JSON.stringify({
                 action: 'teacherScreen',
                 active: true,
@@ -931,8 +987,8 @@
       if (e.key === 'Escape') closeFocusModal();
     });
 
-    let sortMode = localStorage.getItem('pirireis_lab_sort_mode') || 'pc_asc';
-    const CUSTOM_DESK_STORAGE_KEY = 'pirireis_lab_custom_desks_v1';
+    let sortMode = (localStorage.getItem('lab_sort_mode') || localStorage.getItem('pirireis_lab_sort_mode')) || 'pc_asc';
+    const CUSTOM_DESK_STORAGE_KEY = 'lab_custom_desks_v1';
 
     function getCustomDeskMap() {
       try {
@@ -975,7 +1031,7 @@
 
     function handleSortChange(val) {
       sortMode = val || 'pc_asc';
-      localStorage.setItem('pirireis_lab_sort_mode', sortMode);
+      localStorage.setItem('lab_sort_mode', sortMode);
       lastLayoutSignature = '';
       renderGrid();
     }
@@ -1391,10 +1447,20 @@
 
     let isPolling = false;
     async function pollState() {
-      if (!isAuthenticated || isPolling) return;
+      if (!isAuthenticated || !authToken || isPolling) return;
       isPolling = true;
       try {
-        const res = await fetch(`${API_BASE}/state?_t=${Date.now()}`, { cache: 'no-store' });
+        const res = await fetch(`${API_BASE}/state?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        if (res.status === 401) {
+          logoutTeacher();
+          return;
+        }
+        if (!res.ok) return;
         const data = await res.json();
         serverState = data;
         if (isLocalServer && data.teacherIp && data.port) {
@@ -1414,8 +1480,33 @@
 
     const sortSelEl = document.getElementById('sortSelect');
     if (sortSelEl) sortSelEl.value = sortMode;
-    applyAuthUi();
-    if (isAuthenticated) pollState();
+
+    async function initSession() {
+      if (authToken) {
+        try {
+          const res = await fetch(`${API_BASE}/verify`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+          });
+          if (res.ok) {
+            isAuthenticated = true;
+            applyAuthUi();
+            pollState();
+            return;
+          }
+        } catch (e) {
+          // Keep optimistic session if network/server is slow
+          isAuthenticated = true;
+          applyAuthUi();
+          pollState();
+          return;
+        }
+        logoutTeacher();
+      } else {
+        applyAuthUi();
+      }
+    }
+
+    initSession();
     setInterval(pollState, isLocalServer ? 250 : 350);
   </script>
 </body>
