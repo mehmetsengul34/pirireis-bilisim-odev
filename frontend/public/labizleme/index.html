@@ -9,9 +9,13 @@
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .screen-card:hover .screen-overlay { opacity: 1; }
+    .lasso-selecting, .lasso-selecting * { user-select: none !important; -webkit-user-drag: none; }
   </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col">
+
+  <!-- Rubber-band Mouse Drag Lasso Selection Box -->
+  <div id="lassoBox" class="hidden fixed z-[90] pointer-events-none border-2 border-cyan-400 bg-cyan-500/20 rounded-lg shadow-lg shadow-cyan-500/10"></div>
 
   <!-- Teacher Login Gate (pirireis / 20262027) -->
   <div id="loginGate" class="fixed inset-0 z-[100] bg-zinc-950 flex items-center justify-center p-4">
@@ -68,7 +72,7 @@
 
   <!-- Top Branding & Connection Bar -->
   <header class="bg-zinc-900 border-b border-zinc-800 px-6 py-3">
-    <div class="max-w-[1650px] mx-auto flex flex-wrap items-center justify-between gap-4">
+    <div class="max-w-[1800px] mx-auto flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg">
           ⚓
@@ -85,7 +89,7 @@
         </div>
       </div>
 
-      <!-- Right: Student URL + BAT Download + Grid Size -->
+      <!-- Right: Student URL + BAT Download + Grid Size (2x2 to 8x8) -->
       <div class="flex flex-wrap items-center gap-2.5">
         <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs">
           <span class="text-zinc-400">Öğrenci Adresi:</span>
@@ -98,10 +102,12 @@
           </a>
         </div>
 
-        <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl p-1 text-xs">
+        <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl p-1 text-xs" title="Ekran Izgara Boyutu">
           <button onclick="setGridCols(2)" id="gridBtn2" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">2x2</button>
           <button onclick="setGridCols(3)" id="gridBtn3" class="px-2.5 py-1 rounded-lg bg-cyan-600 text-white font-semibold transition">3x3</button>
           <button onclick="setGridCols(4)" id="gridBtn4" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">4x4</button>
+          <button onclick="setGridCols(6)" id="gridBtn6" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">6x6</button>
+          <button onclick="setGridCols(8)" id="gridBtn8" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">8x8</button>
         </div>
 
         <button onclick="toggleDemoMode()" id="demoBtn" class="px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-semibold transition">
@@ -115,39 +121,45 @@
     </div>
   </header>
 
-  <!-- VEYON STYLE ACTION RIBBON (Sınıf Kontrol Araç Çubuğu) -->
+  <!-- VEYON STYLE ACTION RIBBON (Sınıf & Seçili Bilgisayar Kontrol Araç Çubuğu) -->
   <div class="sticky top-0 z-30 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-6 py-3 shadow-md">
-    <div class="max-w-[1650px] mx-auto flex flex-wrap items-center justify-between gap-3">
-      <!-- Primary Veyon Buttons -->
+    <div class="max-w-[1800px] mx-auto flex flex-wrap items-center justify-between gap-3">
+      <!-- Primary Veyon Buttons (Automatically targets Selected PCs or Entire Class) -->
       <div class="flex flex-wrap items-center gap-2">
-        <!-- 1. Teacher Demo Broadcast -->
+        <!-- 1. Teacher Demo Broadcast (All or Selected) -->
         <button id="teacherDemoBtn" onclick="toggleTeacherBroadcast()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm">
           <span>📺</span>
           <span id="teacherDemoText">Ekranımı Sınıfa Yansıt (Sunum)</span>
         </button>
 
-        <!-- 2. Lock All Screens (Attention Mode) -->
-        <button id="lockAllBtn" onclick="toggleLockAll()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
+        <!-- 2. Lock Screens (All or Selected) -->
+        <button id="lockAllBtn" onclick="handleToolbarLock()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
           <span id="lockAllIcon">🔒</span>
-          <span id="lockAllText">Tüm Ekranları Kilitle (Dikkat Modu)</span>
+          <span id="lockAllText">Tüm Ekranları Kilitle</span>
         </button>
 
-        <!-- 3. Open Website on All Students -->
+        <!-- 2b. Unlock Selected Button (Visible when selection has locked PCs or in selection mode) -->
+        <button id="unlockSelectedBtn" onclick="unlockSelectedComputers()" class="hidden items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition">
+          <span>🔓</span>
+          <span>Seçililerin Kilidini Aç</span>
+        </button>
+
+        <!-- 3. Open Website on All or Selected Students -->
         <button onclick="promptOpenUrl()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition">
           <span>🌐</span>
-          <span>Sınıfta Web Sitesi / Ödev Aç</span>
+          <span id="openUrlBtnText">Sınıfta Web Sitesi / Ödev Aç</span>
         </button>
 
         <!-- 4. Export Attendance CSV -->
-        <button onclick="exportAttendanceCsv()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-semibold transition">
+        <button onclick="exportAttendanceCsv()" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-semibold transition">
           <span>📋</span>
-          <span>Yoklama Listesi İndir (CSV)</span>
+          <span>Yoklama (CSV)</span>
         </button>
 
         <!-- 5. Clear Stale/Offline Screens & Force Refresh -->
-        <button onclick="forceRefreshScreens()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-xs font-semibold transition">
+        <button onclick="forceRefreshScreens()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-xs font-semibold transition">
           <span>🔄</span>
-          <span>Ekranları Yenile / Temizle</span>
+          <span>Yenile</span>
         </button>
       </div>
 
@@ -157,10 +169,10 @@
           <input
             id="announceInput"
             type="text"
-            placeholder="Tüm sınıfa anlık mesaj gönder..."
+            placeholder="Tüm sınıfa veya seçili bilgisayarlara mesaj gönder..."
             class="flex-1 px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500"
           />
-          <button type="submit" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold transition shrink-0">
+          <button id="announceSubmitBtn" type="submit" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold transition shrink-0">
             Mesaj Gönder
           </button>
           <button type="button" onclick="clearAnnouncement()" title="Duyuruyu Kaldır" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs transition">
@@ -173,17 +185,31 @@
           type="text"
           oninput="renderGrid()"
           placeholder="Masa, öğrenci veya IP filtrele..."
-          class="px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500 w-48"
+          class="px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500 w-44"
         />
       </div>
     </div>
 
-    <!-- Status Pills Bar -->
-    <div class="max-w-[1650px] mx-auto pt-2.5 mt-2.5 border-t border-zinc-800/70 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
-      <div class="flex flex-wrap items-center gap-4">
-        <span>Bağlı Öğrenci Ekranı: <strong id="sharingCount" class="text-cyan-400">0</strong></span>
-        <span>Ağda Açık Bilgisayar (ARP): <strong id="arpCount" class="text-emerald-400">0</strong></span>
-        <span>Söz / Yardım İsteyen: <strong id="handCount" class="text-amber-400">0</strong></span>
+    <!-- Status & Multi-Selection Bar -->
+    <div class="max-w-[1800px] mx-auto pt-2.5 mt-2.5 border-t border-zinc-800/70 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
+      <div class="flex flex-wrap items-center gap-3">
+        <span>Bağlı Ekran: <strong id="sharingCount" class="text-cyan-400">0</strong></span>
+        <span>Ağda Açık (ARP): <strong id="arpCount" class="text-emerald-400">0</strong></span>
+        <span>Söz İsteyen: <strong id="handCount" class="text-amber-400">0</strong></span>
+        <span class="text-zinc-700">|</span>
+
+        <!-- Selection Controls -->
+        <div class="flex items-center gap-1.5">
+          <span id="selectionBadge" class="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-semibold text-[11px]">
+            🎯 Seçili: 0 Bilgisayar (Fare ile sürükleyerek veya kutucuklardan seçebilirsiniz)
+          </span>
+          <button onclick="selectAllVisible()" class="px-2 py-0.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold transition">
+            Tümünü Seç
+          </button>
+          <button id="clearSelectionBtn" onclick="clearSelection()" class="hidden px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 text-[11px] font-semibold transition">
+            ✖ Seçimi Temizle
+          </button>
+        </div>
       </div>
       <div id="activeModeStatus" class="text-xs font-semibold text-zinc-400">
         Mod: Normal Sınıf İzleme
@@ -195,14 +221,14 @@
   <video id="teacherVideo" autoplay muted playsinline class="hidden"></video>
   <canvas id="teacherCanvas" class="hidden"></canvas>
 
-  <!-- Main Grid -->
-  <main class="flex-1 max-w-[1650px] w-full mx-auto p-6">
+  <!-- Main Grid Container (Supports Mouse Drag Lasso Selection) -->
+  <main id="gridMainArea" class="flex-1 max-w-[1800px] w-full mx-auto p-4 sm:p-6 select-none">
     <div id="screensGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
   </main>
 
-  <!-- Fullscreen Student Inspection Modal -->
-  <div id="focusModal" class="fixed inset-0 z-50 hidden bg-black/90 backdrop-blur-md flex flex-col p-4 sm:p-6">
-    <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-zinc-800 mb-4">
+  <!-- Fullscreen Student Inspection & Remote Control Modal -->
+  <div id="focusModal" class="fixed inset-0 z-50 hidden bg-black/95 backdrop-blur-md flex flex-col p-4 sm:p-6">
+    <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800 mb-3">
       <div class="flex items-center gap-3">
         <span class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-300 font-mono text-xs font-bold" id="modalDesk">PC</span>
         <div>
@@ -210,17 +236,53 @@
           <p class="text-xs text-zinc-400 font-mono" id="modalMeta">IP: -</p>
         </div>
       </div>
-      <div class="flex items-center gap-2">
+
+      <!-- Direct Single-PC Intervention Toolbar inside Modal -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button id="modalRemoteBtn" onclick="toggleRemoteControlMode()" class="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition">
+          🖱️ Uzaktan Fare/Klavye Müdahalesi: Kapalı
+        </button>
+        <button onclick="shareScreenWithFocused()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
+          📺 Ekranımı Sadece Bu PC'ye Yansıt
+        </button>
+        <button onclick="toggleFocusedLock()" id="modalLockBtn" class="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
+          🔒 Bu PC'yi Kilitle / Aç
+        </button>
         <button onclick="snapshotFocused()" class="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold">
-          📸 Ekran Görüntüsü İndir
+          📸 Görüntü İndir
         </button>
         <button onclick="closeFocusModal()" class="px-4 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold">
           Kapat (ESC)
         </button>
       </div>
     </div>
-    <div class="flex-1 flex items-center justify-center overflow-hidden rounded-2xl bg-zinc-950 border border-zinc-800">
-      <img id="modalImage" src="" alt="Canlı Ekran" class="max-w-full max-h-full object-contain" />
+
+    <!-- Remote Keyboard & Quick Command Bar (Visible when Remote Control Mode is Active) -->
+    <div id="remoteControlBar" class="hidden mb-3 p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-2 text-xs">
+      <div class="flex items-center gap-2 text-amber-300 font-semibold">
+        <span>🖱️ Canlı Müdahale Aktif:</span>
+        <span class="text-zinc-300 font-normal">Öğrenci ekranına sol tıklayabilir, çift tıklayabilir veya sağ tıklayabilirsiniz.</span>
+      </div>
+      <div class="flex flex-wrap items-center gap-1.5">
+        <input id="remoteKeyInput" type="text" placeholder="Öğrenci bilgisayarına metin yazıp gönderin..." class="px-3 py-1 rounded-lg bg-zinc-950 border border-zinc-700 text-white text-xs w-60 focus:outline-none focus:border-amber-400" />
+        <button onclick="sendRemoteText()" class="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold transition">Yazı Gönder</button>
+        <button onclick="sendRemoteSpecialKey('{ENTER}')" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono">Enter</button>
+        <button onclick="sendRemoteSpecialKey('{ESC}')" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono">ESC</button>
+        <button onclick="sendRemoteSpecialKey('{BACKSPACE}')" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-mono">Sil</button>
+        <button onclick="sendRemoteSpecialKey('%{F4}')" class="px-2 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 font-mono">Alt+F4</button>
+      </div>
+    </div>
+
+    <div class="flex-1 flex items-center justify-center overflow-hidden rounded-2xl bg-zinc-950 border border-zinc-800 relative">
+      <img
+        id="modalImage"
+        src=""
+        alt="Canlı Ekran"
+        onclick="handleModalImageClick(event, 'left')"
+        ondblclick="handleModalImageClick(event, 'double')"
+        oncontextmenu="handleModalImageRightClick(event)"
+        class="max-w-full max-h-full object-contain select-none"
+      />
     </div>
   </div>
   </div> <!-- End dashboardWrapper -->
@@ -237,12 +299,17 @@
       teacherIp: 'ogretmenlerodasi.info/labizleme',
       port: 443,
       arpDevices: [],
-      classroomState: { lockAll: false, teacherStreamActive: false },
+      classroomState: { lockAll: false, teacherStreamActive: false, teacherStreamTargets: null },
       students: []
     };
     let focusedStudentId = null;
+    let remoteControlActive = false;
     let teacherStream = null;
     let teacherBroadcastTimer = null;
+    let teacherBroadcastTargetIds = null; // null = entire class, array = specific student IDs
+
+    // Multi-computer selection set (populated via checkbox click, Ctrl/Shift click, or mouse drag lasso)
+    const selectedStudentIds = new Set();
 
     if (isLocalServer) {
       document.getElementById('batDownloadLink').href = '/WinSystemSetup.bat';
@@ -316,68 +383,32 @@
     }
 
     function getDemoStudents() {
-      return [
-        {
-          id: 'demo-216',
-          deskNo: 'PC-01',
-          studentName: 'Ahmet Yılmaz',
-          name: 'PC-01 (Ahmet Yılmaz)',
-          ip: '192.168.23.216',
-          mac: '74-D4-35-C1-E2-D6',
-          online: true,
-          isDemo: true,
-          locked: false,
-          handRaised: true,
-          firstSeen: '16:30:00',
-          resolution: '1920x1080',
-          frame: makeMockScreenSvg('PC-01', 'Ahmet Yılmaz', 'portfolyo-odev', '<div class="container">', '  <h1>Torbalı Piri Reis Ticaret MTAL</h1>', '#06b6d4')
-        },
-        {
-          id: 'demo-222',
-          deskNo: 'PC-02',
-          studentName: 'Zeynep Kaya',
-          name: 'PC-02 (Zeynep Kaya)',
-          ip: '192.168.23.222',
-          mac: '90-2B-34-B3-81-E8',
-          online: true,
-          isDemo: true,
-          locked: false,
-          handRaised: false,
-          firstSeen: '16:31:10',
-          resolution: '1920x1080',
-          frame: makeMockScreenSvg('PC-02', 'Zeynep Kaya', 'web-tasarim', 'function hesaplaNot(vize, final) {', '  return vize * 0.4 + final * 0.6;', '#10b981')
-        },
-        {
-          id: 'demo-226',
-          deskNo: 'PC-03',
-          studentName: 'Caner Demir',
-          name: 'PC-03 (Caner Demir)',
-          ip: '192.168.23.226',
-          mac: '74-D4-35-6A-FE-77',
-          online: true,
-          isDemo: true,
-          locked: false,
-          handRaised: false,
-          firstSeen: '16:31:45',
-          resolution: '1920x1080',
-          frame: makeMockScreenSvg('PC-03', 'Caner Demir', 'python-algoritma', 'for ogrenci in sinif_listesi:', '    print(ogrenci.ad, ogrenci.numara)', '#8b5cf6')
-        },
-        {
-          id: 'demo-250',
-          deskNo: 'PC-04',
-          studentName: 'Elif Şahin',
-          name: 'PC-04 (Elif Şahin)',
-          ip: '192.168.23.250',
-          mac: '00-E0-1C-1B-64-44',
-          online: true,
-          isDemo: true,
-          locked: false,
-          handRaised: false,
-          firstSeen: '16:32:12',
-          resolution: '1920x1080',
-          frame: makeMockScreenSvg('PC-04', 'Elif Şahin', 'mobil-uygulama', '<ConstraintLayout xmlns:android="...">', '  <Button android:text="Giriş Yap" />', '#f59e0b')
-        }
+      const names = [
+        'Ahmet Yılmaz', 'Zeynep Kaya', 'Caner Demir', 'Elif Şahin',
+        'Mustafa Çelik', 'Selin Arslan', 'Burak Koç', 'Ece Yıldız',
+        'Emre Aydın', 'Buse Özdemir', 'Kaan Doğan', 'Deniz Kılıç',
+        'Mert Çetin', 'İrem Kara', 'Kerem Özkan', 'Sude Şimşek'
       ];
+      const colors = ['#06b6d4', '#10b981', '#8b5cf6', '#f59e0b', '#ec4899', '#3b82f6'];
+      return names.map((sName, idx) => {
+        const num = String(idx + 1).padStart(2, '0');
+        const desk = `PC-${num}`;
+        return {
+          id: `demo-${num}`,
+          deskNo: desk,
+          studentName: sName,
+          name: `${desk} (${sName})`,
+          ip: `192.168.23.${201 + idx}`,
+          mac: `74-D4-35-C1-E2-${num}`,
+          online: true,
+          isDemo: true,
+          locked: false,
+          handRaised: idx === 0,
+          firstSeen: '09:00:00',
+          resolution: '1920x1080',
+          frame: makeMockScreenSvg(desk, sName, 'lab-proje', '<div class="lab-card">', `  <h1>${desk} • ${sName}</h1>`, colors[idx % colors.length])
+        };
+      });
     }
 
     async function sendTeacherAction(payload) {
@@ -389,14 +420,176 @@
       await pollState();
     }
 
-    // 1. Lock / Unlock All Screens
-    async function toggleLockAll() {
-      const nextLock = !(serverState.classroomState && serverState.classroomState.lockAll);
-      await sendTeacherAction({
-        action: 'toggleLockAll',
-        lock: nextLock,
-        message: '🔒 Öğretmen dersi anlatıyor. Lütfen ekranınıza değil öğretmeninize odaklanın.'
+    // --- SELECTION MANAGEMENT & RUBBER-BAND LASSO ---
+    function toggleSelectStudent(studentId, event) {
+      if (event) event.stopPropagation();
+      if (selectedStudentIds.has(studentId)) {
+        selectedStudentIds.delete(studentId);
+      } else {
+        selectedStudentIds.add(studentId);
+      }
+      lastLayoutSignature = '';
+      renderGrid();
+    }
+
+    function handleCardBodyClick(studentId, event) {
+      if (event && (event.ctrlKey || event.metaKey || event.shiftKey)) {
+        event.preventDefault();
+        event.stopPropagation();
+        toggleSelectStudent(studentId);
+        return;
+      }
+      openFocusModal(studentId);
+    }
+
+    function selectAllVisible() {
+      const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+      const visible = getCombinedItems().filter((item) => {
+        if (!query) return true;
+        return (
+          (item.name || '').toLowerCase().includes(query) ||
+          (item.ip || '').toLowerCase().includes(query) ||
+          (item.deskNo || '').toLowerCase().includes(query)
+        );
       });
+      visible.forEach((item) => selectedStudentIds.add(item.id));
+      lastLayoutSignature = '';
+      renderGrid();
+    }
+
+    function clearSelection() {
+      selectedStudentIds.clear();
+      lastLayoutSignature = '';
+      renderGrid();
+    }
+
+    // Mouse Drag Rubber-band Lasso Selection on Main Grid Area
+    (function initLassoSelection() {
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+      let additiveDrag = false;
+      let preDragSelection = new Set();
+
+      const mainArea = document.getElementById('gridMainArea');
+      const lasso = document.getElementById('lassoBox');
+
+      mainArea.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return; // Only left mouse button
+        if (e.target.closest('button, a, input, label, .no-lasso')) return;
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        additiveDrag = e.ctrlKey || e.metaKey || e.shiftKey;
+        preDragSelection = new Set(selectedStudentIds);
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = Math.abs(e.clientX - startX);
+        const dy = Math.abs(e.clientY - startY);
+        if (dx < 8 && dy < 8) return; // Threshold so normal clicks don't trigger lasso
+
+        document.body.classList.add('lasso-selecting');
+        const left = Math.min(startX, e.clientX);
+        const top = Math.min(startY, e.clientY);
+        const width = Math.abs(e.clientX - startX);
+        const height = Math.abs(e.clientY - startY);
+
+        lasso.style.left = left + 'px';
+        lasso.style.top = top + 'px';
+        lasso.style.width = width + 'px';
+        lasso.style.height = height + 'px';
+        lasso.classList.remove('hidden');
+
+        const boxRect = { left, top, right: left + width, bottom: top + height };
+        if (!additiveDrag) {
+          selectedStudentIds.clear();
+        } else {
+          preDragSelection.forEach((id) => selectedStudentIds.add(id));
+        }
+
+        const cards = document.querySelectorAll('.screen-card[data-student-id]');
+        cards.forEach((card) => {
+          const r = card.getBoundingClientRect();
+          const intersects = !(
+            r.right < boxRect.left ||
+            r.left > boxRect.right ||
+            r.bottom < boxRect.top ||
+            r.top > boxRect.bottom
+          );
+          const sid = card.getAttribute('data-student-id');
+          if (intersects && sid) {
+            selectedStudentIds.add(sid);
+          } else if (!additiveDrag && sid) {
+            selectedStudentIds.delete(sid);
+          }
+        });
+
+        updateSelectionUiInPlace();
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        const wasLassoVisible = !lasso.classList.contains('hidden');
+        isDragging = false;
+        lasso.classList.add('hidden');
+        document.body.classList.remove('lasso-selecting');
+        if (wasLassoVisible) {
+          lastLayoutSignature = '';
+          renderGrid();
+        }
+      });
+    })();
+
+    function updateSelectionUiInPlace() {
+      const cards = document.querySelectorAll('.screen-card[data-student-id]');
+      cards.forEach((card) => {
+        const sid = card.getAttribute('data-student-id');
+        const cb = card.querySelector('.card-select-cb');
+        const isSel = selectedStudentIds.has(sid);
+        if (cb) cb.checked = isSel;
+        if (isSel) {
+          card.classList.add('ring-2', 'ring-cyan-400', 'border-cyan-400');
+        } else {
+          card.classList.remove('ring-2', 'ring-cyan-400', 'border-cyan-400');
+        }
+      });
+      updateToolbarUi();
+    }
+
+    // 1. Lock / Unlock (Handles Selected Computers OR Entire Class)
+    async function handleToolbarLock() {
+      if (selectedStudentIds.size > 0) {
+        await sendTeacherAction({
+          action: 'toggleLockSelected',
+          targetIds: Array.from(selectedStudentIds),
+          lock: true,
+          message: '🔒 Öğretmen ekranınızı kilitledi. Lütfen öğretmeninize odaklanın.'
+        });
+      } else {
+        const nextLock = !(serverState.classroomState && serverState.classroomState.lockAll);
+        await sendTeacherAction({
+          action: 'toggleLockAll',
+          lock: nextLock,
+          message: '🔒 Öğretmen dersi anlatıyor. Lütfen ekranınıza değil öğretmeninize odaklanın.'
+        });
+      }
+    }
+
+    async function unlockSelectedComputers() {
+      if (selectedStudentIds.size > 0) {
+        await sendTeacherAction({
+          action: 'toggleLockSelected',
+          targetIds: Array.from(selectedStudentIds),
+          lock: false
+        });
+      } else {
+        await sendTeacherAction({
+          action: 'toggleLockAll',
+          lock: false
+        });
+      }
     }
 
     // 2. Lock / Unlock Single Student
@@ -427,24 +620,42 @@
       });
     }
 
-    // 5. Open Website on All Connected Student Portals
+    // 5. Open Website on Selected or All Student Computers
     async function promptOpenUrl() {
-      const url = prompt('Tüm öğrenci bilgisayarlarında yeni sekmede açılacak web adresini girin:', 'https://ogretmenlerodasi.info');
+      const targetList = selectedStudentIds.size > 0 ? Array.from(selectedStudentIds) : null;
+      const scopeLabel = targetList ? `seçili ${targetList.length} bilgisayarda` : 'tüm öğrenci bilgisayarlarında';
+      const url = prompt(`${scopeLabel} açılacak web adresini girin:`, 'https://ogretmenlerodasi.info');
       if (!url) return;
       await sendTeacherAction({
         action: 'openUrl',
-        url: url.trim()
+        url: url.trim(),
+        targetIds: targetList
       });
-      alert('Bağlantı komutu tüm aktif öğrenci ekranlarına gönderildi!');
+      alert(`Bağlantı komutu ${scopeLabel} çalıştırıldı!`);
     }
 
-    // 6. Broadcast Teacher's Screen to Students (Veyon Demo Mode)
+    // 6. Broadcast Teacher's Screen to All or Selected Student(s)
     let isSendingBroadcast = false;
-    async function toggleTeacherBroadcast() {
+    async function toggleTeacherBroadcast(customTargetIds) {
+      // If teacher clicks a per-student share button while already streaming, switch target immediately
+      if (teacherStream && Array.isArray(customTargetIds)) {
+        teacherBroadcastTargetIds = customTargetIds;
+        await pollState();
+        return;
+      }
       if (teacherStream) {
         stopTeacherBroadcast();
         return;
       }
+
+      if (Array.isArray(customTargetIds) && customTargetIds.length > 0) {
+        teacherBroadcastTargetIds = customTargetIds;
+      } else if (selectedStudentIds.size > 0) {
+        teacherBroadcastTargetIds = Array.from(selectedStudentIds);
+      } else {
+        teacherBroadcastTargetIds = null; // null = broadcast to entire class
+      }
+
       try {
         teacherStream = await navigator.mediaDevices.getDisplayMedia({
           video: { frameRate: 4 },
@@ -469,26 +680,120 @@
             await fetch(`${API_BASE}/action`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ action: 'teacherScreen', active: true, frame })
+              body: JSON.stringify({
+                action: 'teacherScreen',
+                active: true,
+                frame,
+                targetIds: teacherBroadcastTargetIds
+              })
             });
           } catch (e) {} finally {
             isSendingBroadcast = false;
           }
-        }, 450);
+        }, 420);
         await pollState();
       } catch (e) {
         alert('Öğretmen ekran paylaşımı başlatılamadı: ' + e.message);
       }
     }
 
+    async function shareScreenWithStudent(studentId, event) {
+      if (event) event.stopPropagation();
+      selectedStudentIds.clear();
+      selectedStudentIds.add(studentId);
+      lastLayoutSignature = '';
+      renderGrid();
+      await toggleTeacherBroadcast([studentId]);
+    }
+
+    async function shareScreenWithFocused() {
+      if (!focusedStudentId) return;
+      await shareScreenWithStudent(focusedStudentId);
+    }
+
     async function stopTeacherBroadcast() {
       if (teacherBroadcastTimer) clearInterval(teacherBroadcastTimer);
       teacherBroadcastTimer = null;
+      teacherBroadcastTargetIds = null;
       if (teacherStream) {
         teacherStream.getTracks().forEach((t) => t.stop());
         teacherStream = null;
       }
-      await sendTeacherAction({ action: 'teacherScreen', active: false, frame: null });
+      await sendTeacherAction({ action: 'teacherScreen', active: false, frame: null, targetIds: null });
+    }
+
+    // --- REMOTE MOUSE & KEYBOARD INTERVENTION ---
+    function toggleRemoteControlMode() {
+      remoteControlActive = !remoteControlActive;
+      updateRemoteControlUi();
+    }
+
+    function updateRemoteControlUi() {
+      const btn = document.getElementById('modalRemoteBtn');
+      const bar = document.getElementById('remoteControlBar');
+      const img = document.getElementById('modalImage');
+      if (remoteControlActive) {
+        btn.textContent = '🖱️ Uzaktan Fare/Klavye Müdahalesi: AÇIK';
+        btn.className = 'px-3 py-1.5 rounded-xl bg-amber-500 text-zinc-950 text-xs font-extrabold transition shadow-lg';
+        bar.classList.remove('hidden');
+        img.classList.add('cursor-crosshair', 'ring-2', 'ring-amber-400');
+      } else {
+        btn.textContent = '🖱️ Uzaktan Fare/Klavye Müdahalesi: Kapalı';
+        btn.className = 'px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition';
+        bar.classList.add('hidden');
+        img.classList.remove('cursor-crosshair', 'ring-2', 'ring-amber-400');
+      }
+    }
+
+    async function handleModalImageClick(event, clickType) {
+      if (!remoteControlActive || !focusedStudentId) return;
+      const img = event.currentTarget;
+      const rect = img.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const normX = Math.max(0, Math.min(1000, Math.round(((event.clientX - rect.left) / rect.width) * 1000)));
+      const normY = Math.max(0, Math.min(1000, Math.round(((event.clientY - rect.top) / rect.height) * 1000)));
+      await sendTeacherAction({
+        action: 'remoteInput',
+        studentId: focusedStudentId,
+        x: normX,
+        y: normY,
+        click: clickType
+      });
+    }
+
+    async function handleModalImageRightClick(event) {
+      if (!remoteControlActive || !focusedStudentId) return;
+      event.preventDefault();
+      await handleModalImageClick(event, 'right');
+    }
+
+    async function sendRemoteText() {
+      if (!focusedStudentId) return;
+      const inp = document.getElementById('remoteKeyInput');
+      const val = inp.value;
+      if (!val) return;
+      inp.value = '';
+      await sendTeacherAction({
+        action: 'remoteInput',
+        studentId: focusedStudentId,
+        keys: val
+      });
+    }
+
+    async function sendRemoteSpecialKey(keySeq) {
+      if (!focusedStudentId) return;
+      await sendTeacherAction({
+        action: 'remoteInput',
+        studentId: focusedStudentId,
+        keys: keySeq
+      });
+    }
+
+    async function toggleFocusedLock() {
+      if (!focusedStudentId) return;
+      const item = getCombinedItems().find((x) => x.id === focusedStudentId);
+      const cur = item ? Boolean(item.locked) : false;
+      await toggleStudentLock(focusedStudentId, cur);
     }
 
     // 7. Download Snapshot PNG of a Student Screen
@@ -538,14 +843,27 @@
     function setGridCols(cols) {
       gridCols = cols;
       const grid = document.getElementById('screensGrid');
-      grid.className = `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${cols} gap-5`;
-      [2, 3, 4].forEach((c) => {
+      if (cols === 8) {
+        grid.className = 'grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2';
+      } else if (cols === 6) {
+        grid.className = 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3';
+      } else if (cols === 4) {
+        grid.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4';
+      } else if (cols === 2) {
+        grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-5';
+      } else {
+        grid.className = 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5';
+      }
+      [2, 3, 4, 6, 8].forEach((c) => {
         const btn = document.getElementById('gridBtn' + c);
+        if (!btn) return;
         btn.className =
           c === cols
             ? 'px-2.5 py-1 rounded-lg bg-cyan-600 text-white font-semibold transition'
             : 'px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition';
       });
+      lastLayoutSignature = '';
+      renderGrid();
     }
 
     function toggleDemoMode() {
@@ -555,6 +873,7 @@
       btn.className = demoMode
         ? 'px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold transition'
         : 'px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-semibold transition';
+      lastLayoutSignature = '';
       renderGrid();
     }
 
@@ -568,22 +887,26 @@
       e.preventDefault();
       const input = document.getElementById('announceInput');
       const msg = input.value.trim();
-      await sendTeacherAction({ action: 'announce', message: msg });
+      const targets = selectedStudentIds.size > 0 ? Array.from(selectedStudentIds) : null;
+      await sendTeacherAction({ action: 'announce', message: msg, targetIds: targets });
       input.value = '';
     }
 
     async function clearAnnouncement() {
-      await sendTeacherAction({ action: 'announce', message: '' });
+      await sendTeacherAction({ action: 'announce', message: '', targetIds: null });
     }
 
-    function openFocusModal(id) {
+    function openFocusModal(id, startWithRemote = false) {
       focusedStudentId = id;
+      remoteControlActive = Boolean(startWithRemote);
+      updateRemoteControlUi();
       updateFocusModal();
       document.getElementById('focusModal').classList.remove('hidden');
     }
 
     function closeFocusModal() {
       focusedStudentId = null;
+      remoteControlActive = false;
       document.getElementById('focusModal').classList.add('hidden');
     }
 
@@ -639,28 +962,61 @@
 
     function updateToolbarUi() {
       const cs = serverState.classroomState || {};
+      const selCount = selectedStudentIds.size;
       const lockBtn = document.getElementById('lockAllBtn');
       const lockIcon = document.getElementById('lockAllIcon');
       const lockText = document.getElementById('lockAllText');
+      const unlockSelBtn = document.getElementById('unlockSelectedBtn');
+      const openUrlText = document.getElementById('openUrlBtnText');
+      const announceSubmitBtn = document.getElementById('announceSubmitBtn');
+      const selectionBadge = document.getElementById('selectionBadge');
+      const clearSelectionBtn = document.getElementById('clearSelectionBtn');
+
+      if (selCount > 0) {
+        selectionBadge.textContent = `🎯 Seçili: ${selCount} Bilgisayar`;
+        selectionBadge.className = 'px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold text-[11px]';
+        clearSelectionBtn.classList.remove('hidden');
+        unlockSelBtn.classList.remove('hidden');
+        unlockSelBtn.classList.add('flex');
+        openUrlText.textContent = `Seçililerde Site Aç (${selCount} PC)`;
+        announceSubmitBtn.textContent = `Seçililere Gönder (${selCount})`;
+      } else {
+        selectionBadge.textContent = '🎯 Seçili: 0 Bilgisayar (Fare ile sürükleyerek veya kutucuklardan seçebilirsiniz)';
+        selectionBadge.className = 'px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-semibold text-[11px]';
+        clearSelectionBtn.classList.add('hidden');
+        unlockSelBtn.classList.add('hidden');
+        unlockSelBtn.classList.remove('flex');
+        openUrlText.textContent = 'Sınıfta Web Sitesi / Ödev Aç';
+        announceSubmitBtn.textContent = 'Mesaj Gönder';
+      }
 
       if (cs.lockAll) {
         lockBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold transition shadow-lg';
         lockIcon.textContent = '🔓';
-        lockText.textContent = 'Ekran Kilidini Kaldır (Dikkat Modu Aktif)';
+        lockText.textContent = 'Tüm Sınıfın Kilidini Kaldır';
+      } else if (selCount > 0) {
+        lockBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-600/25 hover:bg-rose-600/35 border border-rose-500/40 text-rose-200 text-xs font-bold transition';
+        lockIcon.textContent = '🔒';
+        lockText.textContent = `Seçili Ekranları Kilitle (${selCount} PC)`;
       } else {
         lockBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition';
         lockIcon.textContent = '🔒';
-        lockText.textContent = 'Tüm Ekranları Kilitle (Dikkat Modu)';
+        lockText.textContent = 'Tüm Ekranları Kilitle';
       }
 
       const demoBtn = document.getElementById('teacherDemoBtn');
       const demoText = document.getElementById('teacherDemoText');
+      const activeTargets = cs.teacherStreamTargets || teacherBroadcastTargetIds;
       if (teacherStream || cs.teacherStreamActive) {
         demoBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl bg-amber-500 text-zinc-950 text-xs font-bold transition shadow-lg animate-pulse';
-        demoText.textContent = 'Sunumu Durdur (Öğretmen Ekranı Yansıtılıyor)';
+        demoText.textContent = activeTargets && activeTargets.length > 0
+          ? `Sunumu Durdur (${activeTargets.length} PC'ye Yansıtılıyor)`
+          : 'Sunumu Durdur (Tüm Sınıfa Yansıtılıyor)';
       } else {
         demoBtn.className = 'flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm';
-        demoText.textContent = 'Ekranımı Sınıfa Yansıt (Sunum)';
+        demoText.textContent = selCount > 0
+          ? `Ekranımı Seçililere Yansıt (${selCount} PC)`
+          : 'Ekranımı Sınıfa Yansıt (Sunum)';
       }
 
       const modeEl = document.getElementById('activeModeStatus');
@@ -668,7 +1024,10 @@
         modeEl.textContent = '🔒 Mod: Dikkat Modu (Tüm Öğrenci Ekranları Kilitli)';
         modeEl.className = 'text-xs font-bold text-rose-400';
       } else if (cs.teacherStreamActive) {
-        modeEl.textContent = '📺 Mod: Öğretmen Ekranı Tüm Sınıfa Yansıtılıyor';
+        const targetLabel = cs.teacherStreamTargets && cs.teacherStreamTargets.length > 0
+          ? `${cs.teacherStreamTargets.length} Seçili Bilgisayara`
+          : 'Tüm Sınıfa';
+        modeEl.textContent = `📺 Mod: Öğretmen Ekranı ${targetLabel} Yansıtılıyor`;
         modeEl.className = 'text-xs font-bold text-amber-400';
       } else if (cs.announcement && cs.announcement.message) {
         modeEl.textContent = '📢 Aktif Duyuru: ' + cs.announcement.message;
@@ -697,13 +1056,21 @@
       const hands = allItems.filter((x) => x.handRaised).length;
       document.getElementById('handCount').textContent = hands;
 
+      const cs = serverState.classroomState || {};
+      const streamTargets = cs.teacherStreamTargets;
+      const isCompact = gridCols >= 6;
+
       const layoutSig = filtered
         .map((item) => {
           const hasScreen = Boolean((item.online !== false) && item.frame);
           const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly);
           const isNative = item.clientType === 'native';
-          const isLocked = Boolean((serverState.classroomState && serverState.classroomState.lockAll) || item.locked);
-          return `${item.id}:${hasScreen ? 1 : 0}:${isStoppedStudent ? 1 : 0}:${isNative ? 1 : 0}:${isLocked ? 1 : 0}:${item.handRaised ? 1 : 0}:${item.name}:${item.ip}`;
+          const isLocked = Boolean(cs.lockAll || item.locked);
+          const isSelected = selectedStudentIds.has(item.id);
+          const isReceivingStream = Boolean(
+            cs.teacherStreamActive && (!streamTargets || streamTargets.length === 0 || streamTargets.includes(item.id))
+          );
+          return `${gridCols}:${item.id}:${hasScreen ? 1 : 0}:${isStoppedStudent ? 1 : 0}:${isNative ? 1 : 0}:${isLocked ? 1 : 0}:${isSelected ? 1 : 0}:${isReceivingStream ? 1 : 0}:${item.handRaised ? 1 : 0}:${item.name}:${item.ip}`;
         })
         .join('|');
 
@@ -719,9 +1086,11 @@
           const badgeText = hasScreen
             ? item.isDemo
               ? 'Simülasyon'
-              : `${isNative ? '🛡️ LanSchool' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
+              : isCompact
+                ? (isNative ? '🛡️ Aktif' : 'Canlı')
+                : `${isNative ? '🛡️ LanSchool' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
             : isStoppedStudent
-              ? '🚨 Paylaşım Kapalı'
+              ? '🚨 Kapalı'
               : 'Ağda Açık';
 
           const imgEl = document.getElementById('screen-img-' + safeId);
@@ -745,7 +1114,14 @@
           const hasScreen = Boolean((item.online !== false) && item.frame);
           const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly);
           const isNative = item.clientType === 'native';
-          const isLocked = Boolean((serverState.classroomState && serverState.classroomState.lockAll) || item.locked);
+          const isLocked = Boolean(cs.lockAll || item.locked);
+          const isSelected = selectedStudentIds.has(item.id);
+          const isReceivingStream = Boolean(
+            !item.arpOnly &&
+            cs.teacherStreamActive &&
+            (!streamTargets || streamTargets.length === 0 || streamTargets.includes(item.id))
+          );
+
           const badgeClass = hasScreen
             ? item.isDemo
               ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
@@ -755,90 +1131,110 @@
             : isStoppedStudent
               ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
               : 'bg-zinc-800 text-zinc-400 border-zinc-700';
+
           const badgeText = hasScreen
             ? item.isDemo
               ? 'Simülasyon'
-              : `${isNative ? '🛡️ LanSchool' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
+              : isCompact
+                ? (isNative ? '🛡️ Aktif' : 'Canlı')
+                : `${isNative ? '🛡️ LanSchool' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
             : isStoppedStudent
-              ? '🚨 Paylaşım Kapalı'
+              ? '🚨 Kapalı'
               : 'Ağda Açık';
 
+          const borderClass = isSelected
+            ? 'border-cyan-400 ring-2 ring-cyan-400'
+            : item.handRaised
+              ? 'border-amber-400 ring-2 ring-amber-400/20'
+              : isStoppedStudent
+                ? 'border-rose-500/70 ring-1 ring-rose-500/30'
+                : 'border-zinc-800';
+
           return `
-            <div class="screen-card bg-zinc-900 border ${item.handRaised ? 'border-amber-400 ring-2 ring-amber-400/20' : isStoppedStudent ? 'border-rose-500/70 ring-1 ring-rose-500/30' : 'border-zinc-800'} rounded-2xl overflow-hidden shadow-lg flex flex-col transition hover:border-cyan-500/50">
+            <div data-student-id="${item.id}" class="screen-card bg-zinc-900 border ${borderClass} ${isCompact ? 'rounded-xl' : 'rounded-2xl'} overflow-hidden shadow-lg flex flex-col transition hover:border-cyan-500/50">
               <!-- Card Header -->
-              <div class="px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between gap-2">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span class="px-2 py-0.5 rounded-md bg-cyan-500/15 text-cyan-300 font-mono text-[11px] font-bold shrink-0">
+              <div class="${isCompact ? 'px-2 py-1.5' : 'px-3.5 py-2'} bg-zinc-900 border-b border-zinc-800 flex items-center justify-between gap-1.5">
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <input
+                    type="checkbox"
+                    ${isSelected ? 'checked' : ''}
+                    onclick="toggleSelectStudent('${item.id}', event)"
+                    title="Bu bilgisayarı seç (Toplu müdahale veya ekran paylaşımı için)"
+                    class="card-select-cb no-lasso w-3.5 h-3.5 rounded accent-cyan-500 cursor-pointer shrink-0"
+                  />
+                  <span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 font-mono ${isCompact ? 'text-[9px]' : 'text-[11px]'} font-bold shrink-0">
                     ${item.deskNo || 'PC'}
                   </span>
-                  <span class="text-xs font-bold text-zinc-100 truncate">${item.name}</span>
+                  <span class="${isCompact ? 'text-[10px]' : 'text-xs'} font-bold text-zinc-100 truncate">${item.name}</span>
                   ${
                     item.handRaised
-                      ? `<button onclick="clearStudentHand('${item.id}')" title="Söz İsteğini Onayla/Kapat" class="px-2 py-0.5 rounded-full bg-amber-500 text-zinc-950 text-[10px] font-extrabold animate-bounce shrink-0">✋ Söz İstiyor</button>`
+                      ? `<button onclick="clearStudentHand('${item.id}')" title="Söz İsteğini Onayla/Kapat" class="px-1.5 py-0.5 rounded-full bg-amber-500 text-zinc-950 text-[9px] font-extrabold animate-bounce shrink-0">✋</button>`
                       : ''
                   }
                 </div>
-                <span id="screen-badge-${safeId}" class="px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${badgeClass}">
+                <span id="screen-badge-${safeId}" class="px-1.5 py-0.5 rounded-full ${isCompact ? 'text-[9px]' : 'text-[10px]'} font-semibold border shrink-0 ${badgeClass}">
                   ${badgeText}
                 </span>
               </div>
 
               <!-- Screen Body -->
-              <div class="relative aspect-video bg-zinc-950 flex items-center justify-center overflow-hidden">
+              <div onclick="handleCardBodyClick('${item.id}', event)" class="relative aspect-video bg-zinc-950 flex items-center justify-center overflow-hidden cursor-pointer">
                 ${
                   hasScreen
                     ? `
-                      <img id="screen-img-${safeId}" src="${item.frame}" alt="${item.name}" class="w-full h-full object-cover" />
+                      <img id="screen-img-${safeId}" src="${item.frame}" alt="${item.name}" class="w-full h-full object-cover pointer-events-none" />
                       ${
                         isLocked
-                          ? `<div class="absolute inset-0 bg-rose-950/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white p-4 text-center">
-                               <span class="text-2xl mb-1">🔒</span>
-                               <span class="text-xs font-bold">Ekran Kilitli (Dikkat Modu)</span>
+                          ? `<div class="absolute inset-0 bg-rose-950/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white p-2 text-center">
+                               <span class="${isCompact ? 'text-base' : 'text-2xl'}">🔒</span>
+                               <span class="text-[10px] font-bold">Kilitli</span>
                              </div>`
                           : ''
                       }
-                      <div onclick="openFocusModal('${item.id}')" class="screen-overlay opacity-0 transition-opacity duration-150 cursor-pointer absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span class="px-3.5 py-2 rounded-xl bg-white text-zinc-900 font-bold text-xs shadow-lg">
-                          🔍 Tam Ekran İncele
+                      ${
+                        isReceivingStream
+                          ? `<div class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md bg-indigo-600/90 text-white text-[9px] font-bold shadow">
+                               📺 Sunum Alıyor
+                             </div>`
+                          : ''
+                      }
+                      <div class="screen-overlay opacity-0 transition-opacity duration-150 absolute inset-0 bg-black/50 flex items-center justify-center gap-1.5 p-2">
+                        <span class="px-2.5 py-1.5 rounded-xl bg-white text-zinc-900 font-bold ${isCompact ? 'text-[10px]' : 'text-xs'} shadow-lg">
+                          🔍 İncele & Müdahale Et
                         </span>
                       </div>
                     `
                     : isStoppedStudent
                       ? `
-                        <div class="text-center p-5 bg-rose-950/20 w-full h-full flex flex-col items-center justify-center">
-                          <div class="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/40 mx-auto mb-2 flex items-center justify-center text-lg">
-                            🚨
-                          </div>
-                          <p class="text-xs font-bold text-rose-300">Öğrenci Tarayıcı Paylaşımını Durdurdu!</p>
-                          <p class="text-[11px] text-zinc-400 mt-1 max-w-xs">Öğrenci ekranında zorunlu paylaşım uyarısı aktif. Kapatılamaz LanSchool modu için bu bilgisayarda <strong>.BAT İndir</strong> dosyasını çalıştırın.</p>
+                        <div class="text-center p-2 bg-rose-950/20 w-full h-full flex flex-col items-center justify-center">
+                          <div class="${isCompact ? 'text-sm' : 'text-lg'} mb-0.5">🚨</div>
+                          <p class="${isCompact ? 'text-[9px]' : 'text-xs'} font-bold text-rose-300">Paylaşım Durduruldu</p>
                         </div>
                       `
                       : `
-                        <div class="text-center p-6">
-                          <div class="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 mx-auto mb-2 flex items-center justify-center text-zinc-500">
-                            🖥️
-                          </div>
-                          <p class="text-xs font-medium text-zinc-400">Cihaz Ağda Aktif (${item.ip})</p>
-                          <p class="text-[11px] text-zinc-500 mt-1">Öğrenci istemcisi (.BAT) çalıştırıldığında canlı ekran görüntüsü burada belirecektir.</p>
+                        <div class="text-center p-2">
+                          <div class="${isCompact ? 'text-sm' : 'text-lg'} text-zinc-500 mb-0.5">🖥️</div>
+                          <p class="${isCompact ? 'text-[9px]' : 'text-xs'} font-medium text-zinc-400">${item.ip}</p>
                         </div>
                       `
                 }
               </div>
 
               <!-- Veyon Per-Computer Control Footer -->
-              <div class="px-3 py-2 bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between gap-2 text-[11px]">
-                <span class="text-zinc-400 font-mono truncate">IP: ${item.ip || '-'}</span>
+              <div class="${isCompact ? 'px-1.5 py-1' : 'px-3 py-2'} bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between gap-1 text-[10px]">
+                <span class="text-zinc-400 font-mono truncate">${item.ip || '-'}</span>
                 ${
                   !item.arpOnly
                     ? `
-                      <div class="flex items-center gap-1">
-                        <button onclick="openFocusModal('${item.id}')" title="Tam Ekran İzle" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">🔍</button>
-                        <button onclick="toggleStudentLock('${item.id}', ${Boolean(item.locked)})" title="Bu Bilgisayarı Kilitle / Aç" class="px-2 py-1 rounded-lg ${item.locked ? 'bg-rose-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'} transition">🔒</button>
-                        <button onclick="promptStudentMessage('${item.id}', '${(item.name || '').replace(/'/g, '')}')" title="Özel Mesaj Gönder" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">💬</button>
-                        <button onclick="downloadSnapshot('${item.id}')" title="Ekran Görüntüsü Kaydet (PNG)" class="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">📸</button>
+                      <div class="flex items-center gap-0.5 shrink-0">
+                        <button onclick="openFocusModal('${item.id}', true)" title="Bu Bilgisayara Uzaktan Fare/Klavye ile Müdahale Et" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition">🖱️</button>
+                        <button onclick="shareScreenWithStudent('${item.id}', event)" title="Ekranımı Sadece Bu Bilgisayara Yansıt" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 transition">📺</button>
+                        <button onclick="toggleStudentLock('${item.id}', ${Boolean(item.locked)})" title="Bu Bilgisayarı Kilitle / Aç" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded ${item.locked ? 'bg-rose-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'} transition">🔒</button>
+                        <button onclick="promptStudentMessage('${item.id}', '${(item.name || '').replace(/'/g, '')}')" title="Özel Mesaj Gönder" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">💬</button>
+                        ${!isCompact ? `<button onclick="downloadSnapshot('${item.id}')" title="Ekran Görüntüsü Kaydet (PNG)" class="px-1.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">📸</button>` : ''}
                       </div>
                     `
-                    : `<span class="text-zinc-500 font-mono">${item.mac || ''}</span>`
+                    : `<span class="text-zinc-500 font-mono truncate">${isCompact ? '' : (item.mac || '')}</span>`
                 }
               </div>
             </div>

@@ -14,6 +14,7 @@ classroom_state: Dict[str, Any] = {
     "lockAll": False,
     "lockMessage": "Öğretmen dersi anlatıyor. Lütfen ekranınıza değil öğretmeninize odaklanın.",
     "teacherStreamActive": False,
+    "teacherStreamTargets": None,
     "teacherFrame": None,
     "announcement": None,
     "openUrlCommand": None,
@@ -39,9 +40,14 @@ class ActionPayload(BaseModel):
     lock: Optional[bool] = None
     message: Optional[str] = None
     studentId: Optional[str] = None
+    targetIds: Optional[List[str]] = None
     url: Optional[str] = None
     active: Optional[bool] = None
     frame: Optional[str] = None
+    x: Optional[int] = None
+    y: Optional[int] = None
+    click: Optional[str] = None
+    keys: Optional[str] = None
 
 
 class ArpSyncPayload(BaseModel):
@@ -85,6 +91,7 @@ def get_lab_state(request: Request, response: Response):
             "lockAll": classroom_state["lockAll"],
             "lockMessage": classroom_state["lockMessage"],
             "teacherStreamActive": classroom_state["teacherStreamActive"],
+            "teacherStreamTargets": classroom_state["teacherStreamTargets"],
             "announcement": classroom_state["announcement"],
             "openUrlCommand": classroom_state["openUrlCommand"],
         },
@@ -153,21 +160,30 @@ def post_student_frame(payload: FramePayload, request: Request):
         "handRaised": bool(payload.handRaised) if payload.handRaised is not None else bool(existing.get("handRaised", False)),
         "locked": existing.get("locked", False),
         "privateMessage": existing.get("privateMessage", None),
+        "openUrlCommand": existing.get("openUrlCommand", None),
+        "remoteInput": existing.get("remoteInput", None),
         "online": True,
         "firstSeen": existing.get("firstSeen") or now_str,
         "lastSeen": now_ms,
     }
     students[student_id] = updated
 
+    targets = classroom_state.get("teacherStreamTargets")
+    is_stream_target = bool(
+        classroom_state["teacherStreamActive"]
+        and (not targets or student_id in targets)
+    )
+
     return {
         "ok": True,
         "nativeAgentActive": native_active,
         "locked": bool(classroom_state["lockAll"] or updated["locked"]),
         "lockMessage": classroom_state["lockMessage"],
-        "teacherStreamActive": classroom_state["teacherStreamActive"],
-        "teacherFrame": classroom_state["teacherFrame"] if classroom_state["teacherStreamActive"] else None,
+        "teacherStreamActive": is_stream_target,
+        "teacherFrame": classroom_state["teacherFrame"] if is_stream_target else None,
         "announcement": updated["privateMessage"] or classroom_state["announcement"],
-        "openUrlCommand": classroom_state["openUrlCommand"],
+        "openUrlCommand": updated["openUrlCommand"] or classroom_state["openUrlCommand"],
+        "remoteInput": updated["remoteInput"],
     }
 
 
@@ -175,21 +191,41 @@ def post_student_frame(payload: FramePayload, request: Request):
 def post_teacher_action(payload: ActionPayload):
     action = payload.action
     now_str = time.strftime("%H:%M:%S")
+    targets = payload.targetIds if payload.targetIds and len(payload.targetIds) > 0 else None
 
     if action == "toggleLockAll":
         classroom_state["lockAll"] = bool(payload.lock)
+        if payload.message:
+            classroom_state["lockMessage"] = payload.message
+        if not classroom_state["lockAll"]:
+            for st in students.values():
+                st["locked"] = False
+    elif action == "toggleLockSelected":
+        if targets:
+            for tid in targets:
+                if tid in students:
+                    students[tid]["locked"] = bool(payload.lock)
         if payload.message:
             classroom_state["lockMessage"] = payload.message
     elif action == "toggleLockStudent":
         if payload.studentId and payload.studentId in students:
             students[payload.studentId]["locked"] = bool(payload.lock)
     elif action == "announce":
-        if payload.message:
-            classroom_state["announcement"] = {"message": payload.message, "timestamp": now_str}
+        if targets:
+            for tid in targets:
+                if tid in students:
+                    students[tid]["privateMessage"] = (
+                        {"message": f"[Özel Mesaj] {payload.message}", "timestamp": now_str}
+                        if payload.message
+                        else None
+                    )
         else:
-            classroom_state["announcement"] = None
-            for st in students.values():
-                st["privateMessage"] = None
+            if payload.message:
+                classroom_state["announcement"] = {"message": payload.message, "timestamp": now_str}
+            else:
+                classroom_state["announcement"] = None
+                for st in students.values():
+                    st["privateMessage"] = None
     elif action == "privateMessage":
         if payload.studentId and payload.studentId in students:
             students[payload.studentId]["privateMessage"] = (
@@ -198,14 +234,34 @@ def post_teacher_action(payload: ActionPayload):
                 else None
             )
     elif action == "openUrl":
-        classroom_state["openUrlCommand"] = (
+        cmd = (
             {"id": str(int(time.time() * 1000)), "url": payload.url, "timestamp": int(time.time() * 1000)}
             if payload.url
             else None
         )
+        if targets:
+            for tid in targets:
+                if tid in students:
+                    students[tid]["openUrlCommand"] = cmd
+        else:
+            classroom_state["openUrlCommand"] = cmd
     elif action == "teacherScreen":
         classroom_state["teacherStreamActive"] = bool(payload.active)
         classroom_state["teacherFrame"] = payload.frame if payload.active else None
+        if payload.active:
+            if payload.targetIds is not None:
+                classroom_state["teacherStreamTargets"] = targets
+        else:
+            classroom_state["teacherStreamTargets"] = None
+    elif action == "remoteInput":
+        if payload.studentId and payload.studentId in students:
+            students[payload.studentId]["remoteInput"] = {
+                "id": f"{int(time.time() * 1000)}",
+                "x": payload.x if payload.x is not None else -1,
+                "y": payload.y if payload.y is not None else -1,
+                "click": payload.click or "",
+                "keys": payload.keys or "",
+            }
     elif action == "clearHand":
         if payload.studentId and payload.studentId in students:
             students[payload.studentId]["handRaised"] = False
@@ -314,11 +370,19 @@ using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
 
 namespace WinSystemService
 {
     public class LabAgentForm : Form
     {
+        [DllImport("user32.dll")]
+        private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
+        private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+        private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+        private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+        private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+
         private Label lockLabel;
         private PictureBox demoPic;
         private System.Windows.Forms.Timer captureTimer;
@@ -327,6 +391,7 @@ namespace WinSystemService
         private bool isDemoActive = false;
         private string lastUrlId = "";
         private string lastAnnounce = "";
+        private string lastInputId = "";
         private string deskNo;
         private string studentName;
         private string clientId;
@@ -746,6 +811,54 @@ namespace WinSystemService
                 {
                     lastUrlId = uid;
                     try { Process.Start(url); } catch { }
+                }
+            }
+
+            // Remote Input (Mouse / Keyboard Intervention) check
+            Match inputBlock = Regex.Match(json, "\"remoteInput\"\\s*:\\s*\\{([^\\}]+)\\}");
+            if (inputBlock.Success)
+            {
+                string block = inputBlock.Groups[1].Value;
+                string iid = ExtractJsonString(block, "id");
+                if (!string.IsNullOrEmpty(iid) && iid != lastInputId)
+                {
+                    lastInputId = iid;
+                    try
+                    {
+                        string clickType = ExtractJsonString(block, "click");
+                        string keys = ExtractJsonString(block, "keys");
+                        Match mx = Regex.Match(block, "\"x\"\\s*:\\s*(\\d+)");
+                        Match my = Regex.Match(block, "\"y\"\\s*:\\s*(\\d+)");
+                        if (mx.Success && my.Success)
+                        {
+                            int rx = int.Parse(mx.Groups[1].Value);
+                            int ry = int.Parse(my.Groups[1].Value);
+                            Rectangle b = Screen.PrimaryScreen.Bounds;
+                            int px = b.Left + (b.Width * rx) / 1000;
+                            int py = b.Top + (b.Height * ry) / 1000;
+                            Cursor.Position = new Point(px, py);
+                            if (clickType == "left")
+                            {
+                                mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
+                            }
+                            else if (clickType == "double")
+                            {
+                                mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
+                                Thread.Sleep(40);
+                                mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
+                            }
+                            else if (clickType == "right")
+                            {
+                                mouse_event(MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_RIGHTUP, (uint)px, (uint)py, 0, 0);
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(keys))
+                        {
+                            SendKeys.SendWait(keys);
+                        }
+                        lastFrameHash = 0;
+                    }
+                    catch { }
                 }
             }
 

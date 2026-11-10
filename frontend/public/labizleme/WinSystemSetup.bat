@@ -87,11 +87,19 @@ using System.Diagnostics;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
 
 namespace WinSystemService
 {
     public class LabAgentForm : Form
     {
+        [DllImport("user32.dll")]
+        private static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, int dwExtraInfo);
+        private const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+        private const uint MOUSEEVENTF_LEFTUP = 0x0004;
+        private const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+        private const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+
         private Label lockLabel;
         private PictureBox demoPic;
         private System.Windows.Forms.Timer captureTimer;
@@ -100,6 +108,7 @@ namespace WinSystemService
         private bool isDemoActive = false;
         private string lastUrlId = "";
         private string lastAnnounce = "";
+        private string lastInputId = "";
         private string deskNo;
         private string studentName;
         private string clientId;
@@ -519,6 +528,54 @@ namespace WinSystemService
                 {
                     lastUrlId = uid;
                     try { Process.Start(url); } catch { }
+                }
+            }
+
+            // Remote Input (Mouse / Keyboard Intervention) check
+            Match inputBlock = Regex.Match(json, "\"remoteInput\"\\s*:\\s*\\{([^\\}]+)\\}");
+            if (inputBlock.Success)
+            {
+                string block = inputBlock.Groups[1].Value;
+                string iid = ExtractJsonString(block, "id");
+                if (!string.IsNullOrEmpty(iid) && iid != lastInputId)
+                {
+                    lastInputId = iid;
+                    try
+                    {
+                        string clickType = ExtractJsonString(block, "click");
+                        string keys = ExtractJsonString(block, "keys");
+                        Match mx = Regex.Match(block, "\"x\"\\s*:\\s*(\\d+)");
+                        Match my = Regex.Match(block, "\"y\"\\s*:\\s*(\\d+)");
+                        if (mx.Success && my.Success)
+                        {
+                            int rx = int.Parse(mx.Groups[1].Value);
+                            int ry = int.Parse(my.Groups[1].Value);
+                            Rectangle b = Screen.PrimaryScreen.Bounds;
+                            int px = b.Left + (b.Width * rx) / 1000;
+                            int py = b.Top + (b.Height * ry) / 1000;
+                            Cursor.Position = new Point(px, py);
+                            if (clickType == "left")
+                            {
+                                mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
+                            }
+                            else if (clickType == "double")
+                            {
+                                mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
+                                Thread.Sleep(40);
+                                mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
+                            }
+                            else if (clickType == "right")
+                            {
+                                mouse_event(MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_RIGHTUP, (uint)px, (uint)py, 0, 0);
+                            }
+                        }
+                        if (!string.IsNullOrEmpty(keys))
+                        {
+                            SendKeys.SendWait(keys);
+                        }
+                        lastFrameHash = 0; // Force immediate frame update after intervention
+                    }
+                    catch { }
                 }
             }
 
