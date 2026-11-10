@@ -180,6 +180,19 @@
           </button>
         </form>
 
+        <select
+          id="sortSelect"
+          onchange="handleSortChange(this.value)"
+          title="Bilgisayar Sıralama Ölçütü"
+          class="px-2.5 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-cyan-300 font-semibold focus:outline-none focus:border-cyan-500 cursor-pointer"
+        >
+          <option value="pc_asc">🔢 PC No: 1 → 64 (Artan)</option>
+          <option value="pc_desc">🔢 PC No: 64 → 1 (Azalan)</option>
+          <option value="ip_asc">🌐 IP Adresine Göre</option>
+          <option value="name_asc">👤 Öğrenci / Cihaz Adı (A→Z)</option>
+          <option value="status">✋ Duruma Göre (Canlı Önce)</option>
+        </select>
+
         <input
           id="searchInput"
           type="text"
@@ -337,7 +350,9 @@
         errBox.classList.add('hidden');
         isAuthenticated = true;
         sessionStorage.setItem(AUTH_KEY, 'pirireis_20262027');
-        applyAuthUi();
+        const sortSelEl = document.getElementById('sortSelect');
+    if (sortSelEl) sortSelEl.value = sortMode;
+    applyAuthUi();
         await pollState();
       } else {
         errBox.classList.remove('hidden');
@@ -348,7 +363,9 @@
       isAuthenticated = false;
       sessionStorage.removeItem(AUTH_KEY);
       document.getElementById('loginPassword').value = '';
-      applyAuthUi();
+      const sortSelEl = document.getElementById('sortSelect');
+    if (sortSelEl) sortSelEl.value = sortMode;
+    applyAuthUi();
     }
 
     function makeMockScreenSvg(desk, studentName, appTitle, codeLine1, codeLine2, accentColor) {
@@ -914,9 +931,128 @@
       if (e.key === 'Escape') closeFocusModal();
     });
 
+    let sortMode = localStorage.getItem('pirireis_lab_sort_mode') || 'pc_asc';
+    const CUSTOM_DESK_STORAGE_KEY = 'pirireis_lab_custom_desks_v1';
+
+    function getCustomDeskMap() {
+      try {
+        return JSON.parse(localStorage.getItem(CUSTOM_DESK_STORAGE_KEY) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveCustomDesk(id, ip, deskNo) {
+      const map = getCustomDeskMap();
+      if (id) map[id] = deskNo;
+      if (ip) map['ip:' + ip] = deskNo;
+      localStorage.setItem(CUSTOM_DESK_STORAGE_KEY, JSON.stringify(map));
+    }
+
+    async function promptRenameDesk(studentId, ip, currentDesk, event) {
+      if (event) event.stopPropagation();
+      const raw = prompt(
+        `Bu bilgisayarın PC / Masa numarasını girin (Örn: 1, 05 veya PC-05):`,
+        currentDesk || 'PC-01'
+      );
+      if (raw === null) return;
+      let val = raw.trim().toUpperCase();
+      if (!val) return;
+      if (/^\d+$/.test(val)) {
+        val = 'PC-' + val.padStart(2, '0');
+      }
+      saveCustomDesk(studentId, ip, val);
+      lastLayoutSignature = '';
+      renderGrid();
+      if (studentId && !String(studentId).startsWith('arp-')) {
+        await sendTeacherAction({
+          action: 'renameStudent',
+          studentId,
+          deskNo: val
+        });
+      }
+    }
+
+    function handleSortChange(val) {
+      sortMode = val || 'pc_asc';
+      localStorage.setItem('pirireis_lab_sort_mode', sortMode);
+      lastLayoutSignature = '';
+      renderGrid();
+    }
+
+    function extractPcNumber(item) {
+      const desk = String(item.deskNo || '').trim();
+      const matchDesk = desk.match(/(\d+)/);
+      if (matchDesk) return parseInt(matchDesk[1], 10);
+      const nameClean = String(item.name || '').replace(/\(\d+\.\d+\.\d+\.\d+\)/g, '');
+      const matchName = nameClean.match(/(?:PC|MASA|LAB|OGRENCI)[-_ ]*(\d+)/i);
+      if (matchName) return parseInt(matchName[1], 10);
+      return null;
+    }
+
+    function ipToNumber(ip) {
+      const parts = String(ip || '').split('.').map((x) => parseInt(x, 10));
+      if (parts.length !== 4 || parts.some(isNaN)) return 999999999;
+      return ((parts[0] << 24) >>> 0) + (parts[1] << 16) + (parts[2] << 8) + parts[3];
+    }
+
+    function sortItemsList(items) {
+      const copy = [...items];
+      copy.sort((a, b) => {
+        if (sortMode === 'status') {
+          if (Boolean(a.handRaised) !== Boolean(b.handRaised)) return a.handRaised ? -1 : 1;
+          const aLive = Boolean(a.frame && !a.arpOnly);
+          const bLive = Boolean(b.frame && !b.arpOnly);
+          if (aLive !== bLive) return aLive ? -1 : 1;
+        }
+        if (sortMode === 'ip_asc') {
+          return ipToNumber(a.ip) - ipToNumber(b.ip);
+        }
+        if (sortMode === 'name_asc') {
+          if (Boolean(a.arpOnly) !== Boolean(b.arpOnly)) return a.arpOnly ? 1 : -1;
+          return String(a.name || '').localeCompare(String(b.name || ''), 'tr', { numeric: true, sensitivity: 'base' });
+        }
+
+        // Default: Sort by PC Number ('pc_asc' or 'pc_desc')
+        const numA = extractPcNumber(a);
+        const numB = extractPcNumber(b);
+        const hasNumA = numA !== null;
+        const hasNumB = numB !== null;
+
+        if (hasNumA && hasNumB && numA !== numB) {
+          return sortMode === 'pc_desc' ? numB - numA : numA - numB;
+        }
+        if (hasNumA !== hasNumB) {
+          return hasNumA ? -1 : 1; // Computers with PC numbers always appear before unnumbered network devices
+        }
+        if (Boolean(a.arpOnly) !== Boolean(b.arpOnly)) {
+          return a.arpOnly ? 1 : -1;
+        }
+        const cmp = String(a.deskNo || a.name || '').localeCompare(
+          String(b.deskNo || b.name || ''),
+          'tr',
+          { numeric: true, sensitivity: 'base' }
+        );
+        if (cmp !== 0) return sortMode === 'pc_desc' ? -cmp : cmp;
+        return ipToNumber(a.ip) - ipToNumber(b.ip);
+      });
+      return copy;
+    }
+
     function getCombinedItems() {
+      const customMap = getCustomDeskMap();
       const realStudents = (serverState.students || []).filter((s) => s.online !== false);
-      const items = [...realStudents];
+      const items = realStudents.map((s) => {
+        const overrideDesk = customMap[s.id] || customMap['ip:' + s.ip];
+        if (overrideDesk) {
+          return {
+            ...s,
+            deskNo: overrideDesk,
+            name: `${overrideDesk} (${s.studentName || s.ip || 'Öğrenci'})`
+          };
+        }
+        return s;
+      });
 
       if (demoMode && realStudents.length === 0) {
         items.push(...getDemoStudents());
@@ -926,17 +1062,19 @@
       for (const arp of serverState.arpDevices || []) {
         if (!seenIps.has(arp.ip)) {
           seenIps.add(arp.ip);
-          let roleLabel = 'AĞ CİHAZI';
-          let titleLabel = `Laboratuvar PC (${arp.ip})`;
-          if (arp.ip === '192.168.16.1') {
+          const arpId = 'arp-' + arp.ip;
+          const overrideDesk = customMap[arpId] || customMap['ip:' + arp.ip];
+          let roleLabel = overrideDesk || 'AĞ CİHAZI';
+          let titleLabel = overrideDesk ? `${overrideDesk} (${arp.ip})` : `Laboratuvar PC (${arp.ip})`;
+          if (!overrideDesk && arp.ip === '192.168.16.1') {
             roleLabel = 'GATEWAY';
             titleLabel = 'Ana Ağ Geçidi (Gateway)';
-          } else if (arp.ip === '192.168.23.212') {
+          } else if (!overrideDesk && arp.ip === '192.168.23.212') {
             roleLabel = 'LCD PANO / KIOSK';
             titleLabel = `LCD Pano Bilgisayarı (${arp.ip})`;
           }
           items.push({
-            id: 'arp-' + arp.ip,
+            id: arpId,
             deskNo: roleLabel,
             name: titleLabel,
             ip: arp.ip,
@@ -947,7 +1085,7 @@
           });
         }
       }
-      return items;
+      return sortItemsList(items);
     }
 
     function updateFocusModal() {
@@ -1162,9 +1300,14 @@
                     title="Bu bilgisayarı seç (Toplu müdahale veya ekran paylaşımı için)"
                     class="card-select-cb no-lasso w-3.5 h-3.5 rounded accent-cyan-500 cursor-pointer shrink-0"
                   />
-                  <span class="px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 font-mono ${isCompact ? 'text-[9px]' : 'text-[11px]'} font-bold shrink-0">
-                    ${item.deskNo || 'PC'}
-                  </span>
+                  <button
+                    type="button"
+                    onclick="promptRenameDesk('${item.id}', '${item.ip || ''}', '${(item.deskNo || 'PC').replace(/'/g, '')}', event)"
+                    title="PC Numarasını Değiştirmek İçin Tıklayın (Örn: PC-01)"
+                    class="no-lasso px-1.5 py-0.5 rounded bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 font-mono ${isCompact ? 'text-[9px]' : 'text-[11px]'} font-bold shrink-0 transition"
+                  >
+                    ${item.deskNo || 'PC'} ✎
+                  </button>
                   <span class="${isCompact ? 'text-[10px]' : 'text-xs'} font-bold text-zinc-100 truncate">${item.name}</span>
                   ${
                     item.handRaised
@@ -1269,6 +1412,8 @@
       }
     }
 
+    const sortSelEl = document.getElementById('sortSelect');
+    if (sortSelEl) sortSelEl.value = sortMode;
     applyAuthUi();
     if (isAuthenticated) pollState();
     setInterval(pollState, isLocalServer ? 250 : 350);

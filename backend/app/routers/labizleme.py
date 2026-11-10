@@ -41,6 +41,8 @@ class ActionPayload(BaseModel):
     message: Optional[str] = None
     studentId: Optional[str] = None
     targetIds: Optional[List[str]] = None
+    deskNo: Optional[str] = None
+    studentName: Optional[str] = None
     url: Optional[str] = None
     active: Optional[bool] = None
     frame: Optional[str] = None
@@ -110,8 +112,10 @@ def post_student_frame(payload: FramePayload, request: Request):
     student_id = payload.id or client_ip
     existing = students.get(student_id, {})
 
-    desk_no = payload.deskNo or existing.get("deskNo") or "PC"
-    student_name = payload.studentName or existing.get("studentName") or "Öğrenci"
+    custom_desk = existing.get("customDeskNo")
+    custom_student = existing.get("customStudentName")
+    desk_no = custom_desk or payload.deskNo or existing.get("deskNo") or "PC"
+    student_name = custom_student or payload.studentName or existing.get("studentName") or "Öğrenci"
 
     now_ms = time.time() * 1000.0
     now_str = time.strftime("%H:%M:%S")
@@ -146,8 +150,10 @@ def post_student_frame(payload: FramePayload, request: Request):
     updated = {
         "id": student_id,
         "deskNo": desk_no,
+        "customDeskNo": custom_desk,
         "studentName": student_name,
-        "name": payload.name or f"{desk_no} ({student_name})",
+        "customStudentName": custom_student,
+        "name": f"{desk_no} ({student_name})" if custom_desk else (payload.name or f"{desk_no} ({student_name})"),
         "ip": client_ip,
         "mac": payload.mac or existing.get("mac") or "",
         "frame": active_frame,
@@ -262,6 +268,15 @@ def post_teacher_action(payload: ActionPayload):
                 "click": payload.click or "",
                 "keys": payload.keys or "",
             }
+    elif action == "renameStudent":
+        if payload.studentId and payload.studentId in students and payload.deskNo:
+            st = students[payload.studentId]
+            st["customDeskNo"] = payload.deskNo.strip()
+            st["deskNo"] = st["customDeskNo"]
+            if payload.studentName:
+                st["customStudentName"] = payload.studentName.strip()
+                st["studentName"] = st["customStudentName"]
+            st["name"] = f"{st['deskNo']} ({st.get('studentName') or st.get('ip')})"
     elif action == "clearHand":
         if payload.studentId and payload.studentId in students:
             students[payload.studentId]["handRaised"] = False
