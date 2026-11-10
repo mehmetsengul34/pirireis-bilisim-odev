@@ -108,6 +108,15 @@ namespace WinSystemService
         private ImageCodecInfo jpegCodec;
         private EncoderParameters encParams;
 
+        private Bitmap screenBmp;
+        private Bitmap resizedBmp;
+        private int lastScreenW = 0;
+        private int lastScreenH = 0;
+        private uint lastFrameHash = 0;
+        private int unchangedCount = 0;
+        private int isSendingCloud = 0;
+        private int isSendingLocal = 0;
+
         private const string LIVE_API = "https://pirireis-api.onrender.com/api/labizleme/frame";
         private const string LOCAL_API = "http://192.168.23.244:4000/api/frame";
 
@@ -115,6 +124,10 @@ namespace WinSystemService
         {
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Tls;
             ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+            ServicePointManager.DefaultConnectionLimit = 32;
+            ServicePointManager.Expect100Continue = false;
+            ServicePointManager.UseNagleAlgorithm = false;
+            WebRequest.DefaultWebProxy = null;
 
             deskNo = Environment.MachineName;
             studentName = Environment.UserName;
@@ -130,7 +143,7 @@ namespace WinSystemService
                 }
             }
             encParams = new EncoderParameters(1);
-            encParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 60L);
+            encParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 52L);
 
             this.Text = "";
             this.FormBorderStyle = FormBorderStyle.None;
@@ -163,12 +176,12 @@ namespace WinSystemService
             this.FormClosing += new FormClosingEventHandler(OnFormClosing);
 
             captureTimer = new System.Windows.Forms.Timer();
-            captureTimer.Interval = 1000;
+            captureTimer.Interval = 320; // ~3 FPS high-speed capture
             captureTimer.Tick += new EventHandler(OnCaptureTick);
             captureTimer.Start();
 
             topMostTimer = new System.Windows.Forms.Timer();
-            topMostTimer.Interval = 400;
+            topMostTimer.Interval = 350;
             topMostTimer.Tick += new EventHandler(OnTopMostTick);
             topMostTimer.Start();
         }
@@ -266,31 +279,64 @@ namespace WinSystemService
             catch { }
         }
 
-        private string CaptureScreenDataUrl(out string resolution)
+        private static uint ComputeFastHash(byte[] bytes)
+        {
+            uint hash = 2166136261u;
+            int step = Math.Max(1, bytes.Length / 256);
+            for (int i = 0; i < bytes.Length; i += step)
+            {
+                hash ^= bytes[i];
+                hash *= 16777619u;
+            }
+            return hash;
+        }
+
+        private string CaptureScreenDataUrl(out string resolution, out bool frameChanged)
         {
             Rectangle bounds = Screen.PrimaryScreen.Bounds;
             resolution = bounds.Width + "x" + bounds.Height;
-            using (Bitmap bmp = new Bitmap(bounds.Width, bounds.Height))
+            int targetW = 800;
+            int targetH = (int)Math.Round(bounds.Height * ((double)targetW / bounds.Width));
+
+            if (screenBmp == null || lastScreenW != bounds.Width || lastScreenH != bounds.Height)
             {
-                using (Graphics g = Graphics.FromImage(bmp))
+                if (screenBmp != null) screenBmp.Dispose();
+                if (resizedBmp != null) resizedBmp.Dispose();
+                screenBmp = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
+                resizedBmp = new Bitmap(targetW, targetH, PixelFormat.Format24bppRgb);
+                lastScreenW = bounds.Width;
+                lastScreenH = bounds.Height;
+            }
+
+            using (Graphics g = Graphics.FromImage(screenBmp))
+            {
+                g.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size, CopyPixelOperation.SourceCopy);
+            }
+
+            using (Graphics g2 = Graphics.FromImage(resizedBmp))
+            {
+                g2.InterpolationMode = InterpolationMode.Low;
+                g2.CompositingQuality = CompositingQuality.HighSpeed;
+                g2.SmoothingMode = SmoothingMode.None;
+                g2.PixelOffsetMode = PixelOffsetMode.HighSpeed;
+                g2.DrawImage(screenBmp, 0, 0, targetW, targetH);
+            }
+
+            using (MemoryStream ms = new MemoryStream(32768))
+            {
+                resizedBmp.Save(ms, jpegCodec, encParams);
+                byte[] arr = ms.ToArray();
+                uint h = ComputeFastHash(arr);
+                if (h == lastFrameHash && unchangedCount < 6)
                 {
-                    g.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
+                    unchangedCount++;
+                    frameChanged = false;
+                    return null;
                 }
-                int targetW = 854;
-                int targetH = (int)Math.Round(bounds.Height * ((double)targetW / bounds.Width));
-                using (Bitmap resized = new Bitmap(targetW, targetH))
-                {
-                    using (Graphics g2 = Graphics.FromImage(resized))
-                    {
-                        g2.InterpolationMode = InterpolationMode.Bilinear;
-                        g2.DrawImage(bmp, 0, 0, targetW, targetH);
-                    }
-                    using (MemoryStream ms = new MemoryStream())
-                    {
-                        resized.Save(ms, jpegCodec, encParams);
-                        return "data:image/jpeg;base64," + Convert.ToBase64String(ms.ToArray());
-                    }
-                }
+                lastFrameHash = h;
+                unchangedCount = 0;
+                frameChanged = true;
+                return "data:image/jpeg;base64," + Convert.ToBase64String(arr);
             }
         }
 
@@ -309,6 +355,8 @@ namespace WinSystemService
                 req.ContentType = "application/json; charset=utf-8";
                 req.Timeout = timeoutMs;
                 req.ReadWriteTimeout = timeoutMs;
+                req.KeepAlive = true;
+                req.Proxy = null;
                 req.ContentLength = data.Length;
                 using (Stream reqStream = req.GetRequestStream())
                 {
@@ -328,11 +376,13 @@ namespace WinSystemService
 
         private void OnCaptureTick(object sender, EventArgs e)
         {
-            captureTimer.Stop();
+            if (isSendingCloud == 1 && isSendingLocal == 1) return;
+
             try
             {
                 string resStr;
-                string dataUrl = CaptureScreenDataUrl(out resStr);
+                bool changed;
+                string dataUrl = CaptureScreenDataUrl(out resStr, out changed);
 
                 string json = "{"
                     + "\"id\":\"" + EscapeJson(clientId) + "\","
@@ -344,35 +394,61 @@ namespace WinSystemService
                     + "\"resolution\":\"" + EscapeJson(resStr) + "\","
                     + "\"handRaised\":false,"
                     + "\"sharingActive\":true,"
-                    + "\"clientType\":\"native\","
-                    + "\"frame\":\"" + dataUrl + "\""
+                    + "\"clientType\":\"native\""
+                    + (changed && dataUrl != null ? ",\"frame\":\"" + dataUrl + "\"" : "")
                     + "}";
 
                 byte[] payloadBytes = Encoding.UTF8.GetBytes(json);
 
-                ThreadPool.QueueUserWorkItem(delegate
+                // 1. Ultra-fast Local LAN dispatch (non-blocking)
+                if (Interlocked.CompareExchange(ref isSendingLocal, 1, 0) == 0)
                 {
-                    string respText = PostJson(LIVE_API, payloadBytes, 3500);
-                    string localResp = PostJson(LOCAL_API, payloadBytes, 1000);
-                    string activeResp = respText ?? localResp;
-                    if (!string.IsNullOrEmpty(activeResp))
+                    ThreadPool.QueueUserWorkItem(delegate
                     {
                         try
                         {
-                            this.BeginInvoke((MethodInvoker)delegate
+                            string localResp = PostJson(LOCAL_API, payloadBytes, 600);
+                            if (!string.IsNullOrEmpty(localResp))
                             {
-                                ApplyServerResponse(activeResp);
-                            });
+                                this.BeginInvoke((MethodInvoker)delegate
+                                {
+                                    ApplyServerResponse(localResp);
+                                });
+                            }
                         }
                         catch { }
-                    }
-                });
+                        finally
+                        {
+                            Interlocked.Exchange(ref isSendingLocal, 0);
+                        }
+                    });
+                }
+
+                // 2. Parallel Cloud dispatch (non-blocking, independent of LAN)
+                if (Interlocked.CompareExchange(ref isSendingCloud, 1, 0) == 0)
+                {
+                    ThreadPool.QueueUserWorkItem(delegate
+                    {
+                        try
+                        {
+                            string cloudResp = PostJson(LIVE_API, payloadBytes, 2500);
+                            if (!string.IsNullOrEmpty(cloudResp))
+                            {
+                                this.BeginInvoke((MethodInvoker)delegate
+                                {
+                                    ApplyServerResponse(cloudResp);
+                                });
+                            }
+                        }
+                        catch { }
+                        finally
+                        {
+                            Interlocked.Exchange(ref isSendingCloud, 0);
+                        }
+                    });
+                }
             }
             catch { }
-            finally
-            {
-                captureTimer.Start();
-            }
         }
 
         private static string ExtractJsonString(string json, string key)

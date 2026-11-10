@@ -439,6 +439,7 @@
     }
 
     // 6. Broadcast Teacher's Screen to Students (Veyon Demo Mode)
+    let isSendingBroadcast = false;
     async function toggleTeacherBroadcast() {
       if (teacherStream) {
         stopTeacherBroadcast();
@@ -446,7 +447,7 @@
       }
       try {
         teacherStream = await navigator.mediaDevices.getDisplayMedia({
-          video: { frameRate: 2 },
+          video: { frameRate: 4 },
           audio: false
         });
         const video = document.getElementById('teacherVideo');
@@ -454,21 +455,26 @@
         teacherStream.getVideoTracks()[0].addEventListener('ended', stopTeacherBroadcast);
 
         teacherBroadcastTimer = setInterval(async () => {
-          if (!video.videoWidth) return;
-          const canvas = document.getElementById('teacherCanvas');
-          const w = 960;
-          const scale = w / video.videoWidth;
-          canvas.width = w;
-          canvas.height = Math.round(video.videoHeight * scale);
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const frame = canvas.toDataURL('image/jpeg', 0.65);
-          await fetch(`${API_BASE}/action`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'teacherScreen', active: true, frame })
-          });
-        }, 1200);
+          if (!video.videoWidth || isSendingBroadcast) return;
+          isSendingBroadcast = true;
+          try {
+            const canvas = document.getElementById('teacherCanvas');
+            const w = 854;
+            const scale = w / video.videoWidth;
+            canvas.width = w;
+            canvas.height = Math.round(video.videoHeight * scale);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const frame = canvas.toDataURL('image/jpeg', 0.55);
+            await fetch(`${API_BASE}/action`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'teacherScreen', active: true, frame })
+            });
+          } catch (e) {} finally {
+            isSendingBroadcast = false;
+          }
+        }, 450);
         await pollState();
       } catch (e) {
         alert('Öğretmen ekran paylaşımı başlatılamadı: ' + e.message);
@@ -673,6 +679,8 @@
       }
     }
 
+    let lastLayoutSignature = '';
+
     function renderGrid() {
       const query = (document.getElementById('searchInput').value || '').toLowerCase().trim();
       const allItems = getCombinedItems();
@@ -689,9 +697,51 @@
       const hands = allItems.filter((x) => x.handRaised).length;
       document.getElementById('handCount').textContent = hands;
 
+      const layoutSig = filtered
+        .map((item) => {
+          const hasScreen = Boolean((item.online !== false) && item.frame);
+          const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly);
+          const isNative = item.clientType === 'native';
+          const isLocked = Boolean((serverState.classroomState && serverState.classroomState.lockAll) || item.locked);
+          return `${item.id}:${hasScreen ? 1 : 0}:${isStoppedStudent ? 1 : 0}:${isNative ? 1 : 0}:${isLocked ? 1 : 0}:${item.handRaised ? 1 : 0}:${item.name}:${item.ip}`;
+        })
+        .join('|');
+
       const grid = document.getElementById('screensGrid');
+
+      if (layoutSig === lastLayoutSignature && grid.children.length === filtered.length) {
+        // Fast in-place update without rebuilding DOM (Zero Flicker)
+        for (const item of filtered) {
+          const safeId = String(item.id).replace(/[^a-zA-Z0-9_-]/g, '_');
+          const hasScreen = Boolean((item.online !== false) && item.frame);
+          const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly);
+          const isNative = item.clientType === 'native';
+          const badgeText = hasScreen
+            ? item.isDemo
+              ? 'Simülasyon'
+              : `${isNative ? '🛡️ LanSchool' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
+            : isStoppedStudent
+              ? '🚨 Paylaşım Kapalı'
+              : 'Ağda Açık';
+
+          const imgEl = document.getElementById('screen-img-' + safeId);
+          if (imgEl && item.frame && imgEl.getAttribute('src') !== item.frame) {
+            imgEl.setAttribute('src', item.frame);
+          }
+          const badgeEl = document.getElementById('screen-badge-' + safeId);
+          if (badgeEl && badgeEl.textContent.trim() !== badgeText) {
+            badgeEl.textContent = badgeText;
+          }
+        }
+        updateFocusModal();
+        updateToolbarUi();
+        return;
+      }
+
+      lastLayoutSignature = layoutSig;
       grid.innerHTML = filtered
         .map((item) => {
+          const safeId = String(item.id).replace(/[^a-zA-Z0-9_-]/g, '_');
           const hasScreen = Boolean((item.online !== false) && item.frame);
           const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly);
           const isNative = item.clientType === 'native';
@@ -728,7 +778,7 @@
                       : ''
                   }
                 </div>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${badgeClass}">
+                <span id="screen-badge-${safeId}" class="px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${badgeClass}">
                   ${badgeText}
                 </span>
               </div>
@@ -738,7 +788,7 @@
                 ${
                   hasScreen
                     ? `
-                      <img src="${item.frame}" alt="${item.name}" class="w-full h-full object-cover" />
+                      <img id="screen-img-${safeId}" src="${item.frame}" alt="${item.name}" class="w-full h-full object-cover" />
                       ${
                         isLocked
                           ? `<div class="absolute inset-0 bg-rose-950/75 backdrop-blur-[2px] flex flex-col items-center justify-center text-white p-4 text-center">
@@ -800,8 +850,10 @@
       updateToolbarUi();
     }
 
+    let isPolling = false;
     async function pollState() {
-      if (!isAuthenticated) return;
+      if (!isAuthenticated || isPolling) return;
+      isPolling = true;
       try {
         const res = await fetch(`${API_BASE}/state?_t=${Date.now()}`, { cache: 'no-store' });
         const data = await res.json();
@@ -816,12 +868,14 @@
         renderGrid();
       } catch (e) {
         console.error('State fetch error:', e);
+      } finally {
+        isPolling = false;
       }
     }
 
     applyAuthUi();
     if (isAuthenticated) pollState();
-    setInterval(pollState, 1000);
+    setInterval(pollState, isLocalServer ? 250 : 350);
   </script>
 </body>
 </html>

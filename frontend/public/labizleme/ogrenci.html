@@ -264,7 +264,7 @@
       try {
         const mediaStream = await navigator.mediaDevices.getDisplayMedia({
           video: {
-            frameRate: 2,
+            frameRate: 4,
             displaySurface: 'monitor'
           },
           audio: false,
@@ -307,8 +307,8 @@
         });
 
         if (intervalId) clearInterval(intervalId);
-        setTimeout(() => sendFrame(), 250);
-        intervalId = setInterval(() => sendFrame(), 1100);
+        setTimeout(() => sendFrame(), 150);
+        intervalId = setInterval(() => sendFrame(), 400);
       } catch (err) {
         updateShareGuardUi('🚨 Ekran paylaşımı başlatılmadı! Derse devam etmek için yeşil butona tıklayıp "Tüm Ekranı" paylaşmanız zorunludur.');
       } finally {
@@ -379,29 +379,33 @@
       }
     }
 
+    let isSendingFrame = false;
+
     async function postPayload(bodyObj) {
       const jsonStr = JSON.stringify(bodyObj);
-      let cloudData = null;
-      try {
-        const res = await fetch(`${API_BASE}/frame`, {
+      const tasks = [
+        fetch(`${API_BASE}/frame`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: jsonStr
-        });
-        cloudData = await res.json();
-      } catch (e) {}
-
+        }).then((r) => r.json())
+      ];
       if (!isLocalServer) {
-        try {
-          const localRes = await fetch(`${LOCAL_API}/frame`, {
+        tasks.push(
+          fetch(`${LOCAL_API}/frame`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: jsonStr
-          });
-          if (!cloudData) cloudData = await localRes.json();
-        } catch (e) {}
+          }).then((r) => r.json())
+        );
       }
-      if (cloudData) applyServerCommands(cloudData);
+      const results = await Promise.allSettled(tasks);
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) {
+          applyServerCommands(r.value);
+          break;
+        }
+      }
     }
 
     async function sendHeartbeatOnly() {
@@ -421,34 +425,41 @@
     }
 
     async function sendFrame() {
-      const deskNo = document.getElementById('deskNo').value.trim() || 'PC';
-      const studentName = document.getElementById('studentName').value.trim() || 'Öğrenci';
+      if (isSendingFrame) return;
       const video = document.getElementById('previewVideo');
       if (!video.videoWidth) return;
 
-      const canvas = document.getElementById('captureCanvas');
-      const targetWidth = 854;
-      const scale = targetWidth / video.videoWidth;
-      canvas.width = targetWidth;
-      canvas.height = Math.round(video.videoHeight * scale);
+      isSendingFrame = true;
+      try {
+        const deskNo = document.getElementById('deskNo').value.trim() || 'PC';
+        const studentName = document.getElementById('studentName').value.trim() || 'Öğrenci';
 
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
+        const canvas = document.getElementById('captureCanvas');
+        const targetWidth = 800;
+        const scale = targetWidth / video.videoWidth;
+        canvas.width = targetWidth;
+        canvas.height = Math.round(video.videoHeight * scale);
 
-      await postPayload({
-        id: getClientId(),
-        deskNo,
-        studentName,
-        name: `${deskNo} (${studentName})`,
-        localIp: urlIp || undefined,
-        mac: urlMac || undefined,
-        resolution: `${video.videoWidth}x${video.videoHeight}`,
-        handRaised,
-        sharingActive: true,
-        clientType: 'web',
-        frame: dataUrl
-      });
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.55);
+
+        await postPayload({
+          id: getClientId(),
+          deskNo,
+          studentName,
+          name: `${deskNo} (${studentName})`,
+          localIp: urlIp || undefined,
+          mac: urlMac || undefined,
+          resolution: `${video.videoWidth}x${video.videoHeight}`,
+          handRaised,
+          sharingActive: true,
+          clientType: 'web',
+          frame: dataUrl
+        });
+      } finally {
+        isSendingFrame = false;
+      }
     }
   </script>
 </body>
