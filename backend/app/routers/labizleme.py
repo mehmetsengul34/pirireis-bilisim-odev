@@ -1201,66 +1201,47 @@ namespace WinSystemService
                     SetInstallStatus(id, name, "installing", 20, "Winget ile sessiz kurulum baslatiliyor (" + cmd + ")...");
                     string pkg = (cmd ?? "").Trim();
 
-                    // 1. ADIM: --scope user ile yonetici izni gerektirmeden kullanici alanina kurmayi dene (UAC sormaz)
-                    string userArgs = "install " + pkg + " --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force";
-                    if (!string.IsNullOrEmpty(args)) userArgs += " " + args;
+                    // PS1 script dosyasina yaz - cmd uzerinden calistirmak __COMPAT_LAYER'i child'a dogru aktarir
+                    string tempPs = Path.Combine(Path.GetTempPath(), "LabWinget_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".ps1");
+                    string psContent =
+                        "$env:__COMPAT_LAYER = 'RunAsInvoker'\r\n" +
+                        "$env:WINGET_DISABLE_INTERACTIVITY = '1'\r\n" +
+                        "# 1. DENEME: kullanici alani (UAC gerektirmez)\r\n" +
+                        "$r1 = Start-Process 'winget' -ArgumentList 'install " + pkg + " --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force" + (string.IsNullOrEmpty(args) ? "" : " " + args.Replace("'", "''")) + "' -Wait -PassThru -WindowStyle Hidden\r\n" +
+                        "if ($r1.ExitCode -eq 0 -or $r1.ExitCode -eq 3010) { exit 0 }\r\n" +
+                        "# 2. DENEME: sistem alani, RunAsInvoker ile UAC bastir\r\n" +
+                        "$r2 = Start-Process 'winget' -ArgumentList 'install " + pkg + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force" + (string.IsNullOrEmpty(args) ? "" : " " + args.Replace("'", "''")) + "' -Wait -PassThru -WindowStyle Hidden\r\n" +
+                        "exit $r2.ExitCode\r\n";
+                    File.WriteAllText(tempPs, psContent, Encoding.UTF8);
 
-                    ProcessStartInfo psiUser = new ProcessStartInfo("winget", userArgs);
-                    psiUser.UseShellExecute = false;
-                    psiUser.CreateNoWindow = true;
-                    psiUser.WindowStyle = ProcessWindowStyle.Hidden;
-                    psiUser.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
-                    psiUser.EnvironmentVariables["WINGET_DISABLE_INTERACTIVITY"] = "1";
+                    ProcessStartInfo psiPs = new ProcessStartInfo("powershell.exe",
+                        "-ExecutionPolicy Bypass -NonInteractive -NoProfile -WindowStyle Hidden -File \"" + tempPs + "\"");
+                    psiPs.UseShellExecute = false;
+                    psiPs.CreateNoWindow = true;
+                    psiPs.WindowStyle = ProcessWindowStyle.Hidden;
+                    psiPs.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
+                    psiPs.EnvironmentVariables["WINGET_DISABLE_INTERACTIVITY"] = "1";
+                    psiPs.EnvironmentVariables["SEE_MASK_NOZONECHECKS"] = "1";
 
-                    int userExitCode = -1;
-                    using (Process p = Process.Start(psiUser))
+                    int exitCode = -1;
+                    using (Process p = Process.Start(psiPs))
                     {
                         bool finished = p.WaitForExit(900000);
                         if (!finished)
                         {
                             try { p.Kill(); } catch { }
+                            try { if (File.Exists(tempPs)) File.Delete(tempPs); } catch { }
                             SetInstallStatus(id, name, "error", 100, "Zaman asimi: Kurulum 15 dakikada tamamlanamadi.");
                             return;
                         }
-                        userExitCode = p.ExitCode;
+                        exitCode = p.ExitCode;
                     }
+                    try { if (File.Exists(tempPs)) File.Delete(tempPs); } catch { }
 
-                    if (userExitCode == 0 || userExitCode == 3010)
-                    {
-                        SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu (UAC atlandi, kullanici alani)!");
-                        return;
-                    }
-
-                    // 2. ADIM: Paket sistem/machine seviyesinde yukleme gerektiriyorsa RunAsInvoker ve silent modda kur
-                    SetInstallStatus(id, name, "installing", 50, "Sistem modunda sessiz kurulum deneniyor (" + cmd + ")...");
-                    string machineArgs = "install " + pkg + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force";
-                    if (!string.IsNullOrEmpty(args)) machineArgs += " " + args;
-
-                    ProcessStartInfo psiMachine = new ProcessStartInfo("winget", machineArgs);
-                    psiMachine.UseShellExecute = false;
-                    psiMachine.CreateNoWindow = true;
-                    psiMachine.WindowStyle = ProcessWindowStyle.Hidden;
-                    psiMachine.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
-                    psiMachine.EnvironmentVariables["WINGET_DISABLE_INTERACTIVITY"] = "1";
-
-                    using (Process p2 = Process.Start(psiMachine))
-                    {
-                        bool finished = p2.WaitForExit(900000);
-                        if (!finished)
-                        {
-                            try { p2.Kill(); } catch { }
-                            SetInstallStatus(id, name, "error", 100, "Zaman asimi: Kurulum 15 dakikada tamamlanamadi.");
-                            return;
-                        }
-                        if (p2.ExitCode == 0 || p2.ExitCode == 3010)
-                        {
-                            SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu!");
-                        }
-                        else
-                        {
-                            SetInstallStatus(id, name, "error", 100, "Kurulum basarisiz oldu. Hata Kodu: " + p2.ExitCode);
-                        }
-                    }
+                    if (exitCode == 0 || exitCode == 3010)
+                        SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu (sessiz, UAC yok)!");
+                    else
+                        SetInstallStatus(id, name, "error", 100, "Winget kurulum hatasi. Kod: " + exitCode);
                 }
                 else if (type == "powershell")
                 {
