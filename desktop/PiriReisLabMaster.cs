@@ -19,6 +19,16 @@ namespace PiriReisLabMaster
         [DllImport("user32.dll")]
         private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
 
+        [DllImport("user32.dll")]
+        private static extern bool EnumWindows(EnumWindowsProc enumProc, IntPtr lParam);
+        public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        private static extern bool IsWindowVisible(IntPtr hWnd);
+
         private NotifyIcon trayIcon;
         private ContextMenuStrip trayMenu;
         private Process browserProcess;
@@ -258,19 +268,36 @@ namespace PiriReisLabMaster
             return null;
         }
 
+        private void MaximizeAppWindow()
+        {
+            try
+            {
+                EnumWindows(delegate(IntPtr hWnd, IntPtr lParam)
+                {
+                    if (IsWindowVisible(hWnd))
+                    {
+                        StringBuilder sb = new StringBuilder(256);
+                        GetWindowText(hWnd, sb, 256);
+                        string title = sb.ToString();
+                        if (title.Contains("Piri Reis") || title.Contains("Lab Master") || title.Contains("Torbalı") || title.Contains("ogretmenlerodasi.info"))
+                        {
+                            ShowWindow(hWnd, 3); // 3 = SW_MAXIMIZE (Tam Ekran)
+                            SetForegroundWindow(hWnd);
+                        }
+                    }
+                    return true;
+                }, IntPtr.Zero);
+            }
+            catch { }
+        }
+
         private void LaunchAppWindow(bool forceNew = false)
         {
             try
             {
-                if (!forceNew && browserProcess != null && !browserProcess.HasExited)
+                if (!forceNew)
                 {
-                    try
-                    {
-                        ShowWindow(browserProcess.MainWindowHandle, 9); // SW_RESTORE
-                        SetForegroundWindow(browserProcess.MainWindowHandle);
-                        return;
-                    }
-                    catch { }
+                    MaximizeAppWindow();
                 }
 
                 string browserExe = FindBrowserExecutable();
@@ -278,10 +305,23 @@ namespace PiriReisLabMaster
 
                 if (!string.IsNullOrEmpty(browserExe))
                 {
-                    string args = "--app=\"" + currentServerUrl + "\" --user-data-dir=\"" + userDataDir + "\" --window-size=1600,950 --enable-features=OverlayScrollbar";
+                    string args = "--app=\"" + currentServerUrl + "\" --user-data-dir=\"" + userDataDir + "\" --start-maximized --enable-features=OverlayScrollbar";
                     ProcessStartInfo psi = new ProcessStartInfo(browserExe, args);
                     psi.UseShellExecute = false;
                     browserProcess = Process.Start(psi);
+
+                    ThreadPool.QueueUserWorkItem(delegate
+                    {
+                        try
+                        {
+                            for (int i = 0; i < 20; i++)
+                            {
+                                Thread.Sleep(250);
+                                MaximizeAppWindow();
+                            }
+                        }
+                        catch { }
+                    });
                 }
                 else
                 {

