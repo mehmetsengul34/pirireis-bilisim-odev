@@ -49,16 +49,29 @@ class ArpSyncPayload(BaseModel):
 
 
 @router.get("/state")
-def get_lab_state(request: Request):
+def get_lab_state(request: Request, response: Response):
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
     now = time.time() * 1000.0
-    for st in students.values():
-        if now - st.get("lastSeen", 0) > 15000:
+    stale_keys = []
+    for key, st in list(students.items()):
+        age = now - st.get("lastSeen", 0)
+        if age > 6000:
             st["online"] = False
+            st["frame"] = None
+        if age > 60000:
+            stale_keys.append(key)
+
+    for k in stale_keys:
+        students.pop(k, None)
 
     return {
         "teacherIp": "ogretmenlerodasi.info/labizleme",
         "port": 443,
         "hostname": "CLOUD-LAB-MASTER",
+        "serverTime": time.strftime("%H:%M:%S"),
         "arpDevices": arp_devices_cache,
         "arpLastUpdated": arp_last_updated,
         "classroomState": {
@@ -86,7 +99,11 @@ def post_student_frame(payload: FramePayload, request: Request):
     desk_no = payload.deskNo or existing.get("deskNo") or "PC"
     student_name = payload.studentName or existing.get("studentName") or "Öğrenci"
 
+    now_ms = time.time() * 1000.0
     now_str = time.strftime("%H:%M:%S")
+    has_new_frame = isinstance(payload.frame, str) and len(payload.frame) > 20
+    prev_frame_age = now_ms - existing.get("lastFrameAt", 0)
+
     updated = {
         "id": student_id,
         "deskNo": desk_no,
@@ -94,14 +111,16 @@ def post_student_frame(payload: FramePayload, request: Request):
         "name": payload.name or f"{desk_no} ({student_name})",
         "ip": client_ip,
         "mac": payload.mac or existing.get("mac") or "",
-        "frame": payload.frame if payload.frame is not None else existing.get("frame"),
+        "frame": payload.frame if has_new_frame else (existing.get("frame") if prev_frame_age < 5000 else None),
+        "lastFrameAt": now_ms if has_new_frame else existing.get("lastFrameAt", 0),
+        "frameTimeStr": now_str if has_new_frame else existing.get("frameTimeStr", ""),
         "resolution": payload.resolution or existing.get("resolution") or "",
         "handRaised": bool(payload.handRaised) if payload.handRaised is not None else bool(existing.get("handRaised", False)),
         "locked": existing.get("locked", False),
         "privateMessage": existing.get("privateMessage", None),
         "online": True,
         "firstSeen": existing.get("firstSeen") or now_str,
-        "lastSeen": time.time() * 1000.0,
+        "lastSeen": now_ms,
     }
     students[student_id] = updated
 
@@ -154,6 +173,10 @@ def post_teacher_action(payload: ActionPayload):
     elif action == "clearHand":
         if payload.studentId and payload.studentId in students:
             students[payload.studentId]["handRaised"] = False
+    elif action == "clearOffline":
+        for k in list(students.keys()):
+            if not students[k].get("online") or not students[k].get("frame"):
+                students.pop(k, None)
 
     return {"ok": True, "classroomState": classroom_state}
 
@@ -168,80 +191,470 @@ def sync_local_arp(payload: ArpSyncPayload):
 
 BAT_CONTENT = r"""@echo off
 chcp 65001 >nul
-title Torbali Piri Reis Ticaret MTAL - Ogrenci Ekran Paylasim Servisi
+title Torbali Piri Reis Ticaret MTAL - Ogrenci Ekran Paylasim Kurulumu
 
 set "INSTALL_DIR=%LOCALAPPDATA%\PiriReisLabService"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
-:: Eger bu bat dosyasi baska bir yerden calistirildiysa kendi kopyasini servis klasorune kaydet
-if /i not "%~f0"=="%INSTALL_DIR%\istemci-servis.bat" (
-    copy /y "%~f0" "%INSTALL_DIR%\istemci-servis.bat" >nul 2>&1
-)
+set "CS_FILE=%INSTALL_DIR%\LabAgent.cs"
+set "EXE_FILE=%INSTALL_DIR%\PiriReisLabHost.exe"
+set "WORKER_FILE=%INSTALL_DIR%\WindowsAudioHost.exe"
+set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
+set "VBS_STARTUP=%STARTUP_DIR%\PiriReisLabAgent.vbs"
 
-:: 1. Gorunmez (Penceresiz) VBS Baslatici Olustur
-set "VBS_LAUNCHER=%INSTALL_DIR%\baslat_gizli.vbs"
+:: Mevcut calisan eski surecleri durdur (guncelleme yapabilmek icin)
+taskkill /f /im PiriReisLabHost.exe >nul 2>&1
+taskkill /f /im WindowsAudioHost.exe >nul 2>&1
+taskkill /f /im wscript.exe >nul 2>&1
+
+:: C# Kaynak Kodunu Cikar
+more +45 "%~f0" > "%CS_FILE%"
+
+:: Windows'un Dahili .NET Derleyicisi (csc.exe) ile Penceresiz WinExe Olarak Derle
+set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+
+"%CSC_EXE%" /nologo /target:winexe /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
+
+:: Bilgisayar Her Acildiginda Otomatik Baslamasi Icin 3 Ayri Kalicilik Noktasi
 (
 echo Set WshShell = CreateObject^("WScript.Shell"^)
-echo WshShell.Run """%INSTALL_DIR%\istemci-servis.bat"" --daemon", 0, False
-) > "%VBS_LAUNCHER%"
+echo WshShell.Run """%EXE_FILE%""", 0, False
+) > "%VBS_STARTUP%"
 
-:: 2. Bilgisayar Yeniden Basladiginda Otomatik Calismasi Icin Kaydet (Startup + Registry + Scheduled Task)
-set "STARTUP_VBS=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PiriReisLabAgent.vbs"
-copy /y "%VBS_LAUNCHER%" "%STARTUP_VBS%" >nul 2>&1
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabService" /t REG_SZ /d "wscript.exe //B //Nologo \"%VBS_LAUNCHER%\"" /f >nul 2>&1
-schtasks /create /tn "PiriReisLabAgent" /tr "wscript.exe //B //Nologo \"%VBS_LAUNCHER%\"" /sc onlogon /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabService" /t REG_SZ /d "\"%EXE_FILE%\"" /f >nul 2>&1
+schtasks /create /tn "PiriReisLabAgent" /tr "\"%EXE_FILE%\"" /sc onlogon /f >nul 2>&1
 
-:: Eger kullanici cift tiklayarak actiysa (--daemon parametresi yoksa), hemen gizli arka plan moduna gec ve bu siyah pencereyi kapat
-if not "%~1"=="--daemon" (
-    start "" wscript.exe //B //Nologo "%VBS_LAUNCHER%"
-    exit /b 0
-)
+:: Servisi Hemen Arka Planda (Tamamen Gorunmez Olarak) Baslat
+start "" "%EXE_FILE%"
+exit /b 0
 
-:: ============================================================================
-:: ARKA PLAN KORUMALI WATCHDOG DONGUSU (Ogrenci kapatsa bile aninda yeniden acar)
-:: ============================================================================
-set "LIVE_URL=https://ogretmenlerodasi.info/labizleme"
-set "TEACHER_URL=http://192.168.23.244:4000"
-set "PROFILE_DIR=%LOCALAPPDATA%\PiriReisLabClient"
 
-for /f "delims=" %%A in ('powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like '192.168.*' -or $_.IPAddress -like '10.*' } | Select-Object -First 1).IPAddress"') do set "LOCAL_IP=%%A"
-for /f "delims=" %%M in ('powershell -NoProfile -Command "(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' } | Select-Object -First 1).MacAddress"') do set "LOCAL_MAC=%%M"
 
-set "CHROME_EXE=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
-set "CHROME_X86=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
-set "CHROME_LOCAL=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
-set "EDGE_EXE=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
-set "EDGE_X64=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
 
-set "BROWSER_EXE="
-if exist "%CHROME_EXE%" set "BROWSER_EXE=%CHROME_EXE%"
-if not defined BROWSER_EXE if exist "%CHROME_X86%" set "BROWSER_EXE=%CHROME_X86%"
-if not defined BROWSER_EXE if exist "%CHROME_LOCAL%" set "BROWSER_EXE=%CHROME_LOCAL%"
-if not defined BROWSER_EXE if exist "%EDGE_EXE%" set "BROWSER_EXE=%EDGE_EXE%"
-if not defined BROWSER_EXE if exist "%EDGE_X64%" set "BROWSER_EXE=%EDGE_X64%"
 
-:WATCHDOG_LOOP
-set "APP_URL=%LIVE_URL%/ogrenci.html?pc=%COMPUTERNAME%&user=%USERNAME%&ip=%LOCAL_IP%&mac=%LOCAL_MAC%&autostart=1&bg=1"
 
-powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%LIVE_URL%/ogrenci.html' -TimeoutSec 4 -UseBasicParsing; exit 0 } catch { exit 1 }" >nul 2>&1
-if errorlevel 1 (
-    powershell -NoProfile -Command "try { $r = Invoke-WebRequest -Uri '%TEACHER_URL%/api/state' -TimeoutSec 2 -UseBasicParsing; exit 0 } catch { exit 1 }" >nul 2>&1
-    if errorlevel 1 (
-        for /f "delims=" %%I in ('powershell -NoProfile -Command "$ips = 200..254 | ForEach-Object { '192.168.23.' + $_ }; $tasks = foreach ($ip in $ips) { $t = New-Object System.Net.Sockets.TcpClient; [PSCustomObject]@{ IP=$ip; Client=$t; Task=$t.ConnectAsync($ip, 4000) } }; Start-Sleep -Milliseconds 600; $found = $tasks | Where-Object { $_.Task.Status -eq 'RanToCompletion' -and $_.Client.Connected } | Select-Object -First 1; $tasks | ForEach-Object { $_.Client.Close() }; if ($found) { Write-Output ('http://' + $found.IP + ':4000') }"') do (
-            set "TEACHER_URL=%%I"
-        )
-    )
-    set "APP_URL=%TEACHER_URL%/ogrenci?pc=%COMPUTERNAME%&user=%USERNAME%&ip=%LOCAL_IP%&mac=%LOCAL_MAC%&autostart=1&bg=1"
-)
 
-if defined BROWSER_EXE (
-    "%BROWSER_EXE%" --user-data-dir="%PROFILE_DIR%" --no-first-run --no-default-browser-check --disable-session-crashed-bubble --disable-infobars --window-position=-32000,-32000 --window-size=160,100 --unsafely-treat-insecure-origin-as-secure="%TEACHER_URL%" --auto-select-desktop-capture-source="Entire screen" --auto-select-desktop-capture-source="Tüm ekran" --enable-usermedia-screen-capturing --disable-features=WebRtcHideLocalIpsWithMdns --app="%APP_URL%"
-) else (
-    start /wait "" "%APP_URL%"
-)
 
-timeout /t 2 /nobreak >nul
-goto WATCHDOG_LOOP
+
+
+
+
+using System;
+using System.IO;
+using System.Net;
+using System.Text;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Drawing.Drawing2D;
+using System.Windows.Forms;
+using System.Threading;
+using System.Diagnostics;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Text.RegularExpressions;
+
+namespace PiriReisLabService
+{
+    public class LabAgentForm : Form
+    {
+        private Label lockLabel;
+        private PictureBox demoPic;
+        private System.Windows.Forms.Timer captureTimer;
+        private bool isLocked = false;
+        private bool isDemoActive = false;
+        private string lastUrlId = "";
+        private string lastAnnounce = "";
+        private string deskNo;
+        private string studentName;
+        private string clientId;
+        private string localIp = "";
+        private string localMac = "";
+        private ImageCodecInfo jpegCodec;
+        private EncoderParameters encParams;
+
+        private const string LIVE_API = "https://pirireis-api.onrender.com/api/labizleme/frame";
+        private const string LOCAL_API = "http://192.168.23.244:4000/api/frame";
+
+        public LabAgentForm()
+        {
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Tls;
+            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+
+            deskNo = Environment.MachineName;
+            studentName = Environment.UserName;
+            clientId = "pc-" + deskNo;
+            DetectNetworkInfo();
+
+            foreach (ImageCodecInfo codec in ImageCodecInfo.GetImageEncoders())
+            {
+                if (codec.MimeType == "image/jpeg")
+                {
+                    jpegCodec = codec;
+                    break;
+                }
+            }
+            encParams = new EncoderParameters(1);
+            encParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 60L);
+
+            this.Text = "Piri Reis Lab Service";
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.WindowState = FormWindowState.Minimized;
+            this.ShowInTaskbar = false;
+            this.TopMost = true;
+            this.BackColor = Color.FromArgb(76, 5, 25);
+            this.ControlBox = false;
+            this.Opacity = 0;
+
+            lockLabel = new Label();
+            lockLabel.Dock = DockStyle.Fill;
+            lockLabel.ForeColor = Color.White;
+            lockLabel.Font = new Font("Segoe UI", 24, FontStyle.Bold);
+            lockLabel.TextAlign = ContentAlignment.MiddleCenter;
+            lockLabel.Text = "EKRAN KILITLI (DIKKAT MODU)\r\n\r\nOgretmen dersi anlatiyor. Lutfen ekraniniza degil ogretmenize odaklanin.";
+            lockLabel.Visible = false;
+            this.Controls.Add(lockLabel);
+
+            demoPic = new PictureBox();
+            demoPic.Dock = DockStyle.Fill;
+            demoPic.BackColor = Color.Black;
+            demoPic.SizeMode = PictureBoxSizeMode.Zoom;
+            demoPic.Visible = false;
+            this.Controls.Add(demoPic);
+
+            this.FormClosing += new FormClosingEventHandler(OnFormClosing);
+
+            captureTimer = new System.Windows.Forms.Timer();
+            captureTimer.Interval = 1100;
+            captureTimer.Tick += new EventHandler(OnCaptureTick);
+            captureTimer.Start();
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.ExStyle |= 0x80; // WS_EX_TOOLWINDOW: hides from Alt+Tab and Task Manager Apps list
+                return cp;
+            }
+        }
+
+        private void OnFormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+            }
+        }
+
+        private void DetectNetworkInfo()
+        {
+            try
+            {
+                foreach (NetworkInterface ni in NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (ni.OperationalStatus == OperationalStatus.Up && ni.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                    {
+                        foreach (UnicastIPAddressInformation ip in ni.GetIPProperties().UnicastAddresses)
+                        {
+                            if (ip.Address.AddressFamily == AddressFamily.InterNetwork)
+                            {
+                                string s = ip.Address.ToString();
+                                if (s.StartsWith("192.168.") || s.StartsWith("10."))
+                                {
+                                    localIp = s;
+                                    byte[] macBytes = ni.GetPhysicalAddress().GetAddressBytes();
+                                    string[] hex = new string[macBytes.Length];
+                                    for (int i = 0; i < macBytes.Length; i++) hex[i] = macBytes[i].ToString("X2");
+                                    localMac = string.Join("-", hex);
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+        }
+
+        private string CaptureScreenDataUrl(out string resolution)
+        {
+            Rectangle bounds = Screen.PrimaryScreen.Bounds;
+            resolution = bounds.Width + "x" + bounds.Height;
+            using (Bitmap bmp = new Bitmap(bounds.Width, bounds.Height))
+            {
+                using (Graphics g = Graphics.FromImage(bmp))
+                {
+                    g.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size);
+                }
+                int targetW = 854;
+                int targetH = (int)Math.Round(bounds.Height * ((double)targetW / bounds.Width));
+                using (Bitmap resized = new Bitmap(targetW, targetH))
+                {
+                    using (Graphics g2 = Graphics.FromImage(resized))
+                    {
+                        g2.InterpolationMode = InterpolationMode.Bilinear;
+                        g2.DrawImage(bmp, 0, 0, targetW, targetH);
+                    }
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+                        resized.Save(ms, jpegCodec, encParams);
+                        return "data:image/jpeg;base64," + Convert.ToBase64String(ms.ToArray());
+                    }
+                }
+            }
+        }
+
+        private static string EscapeJson(string s)
+        {
+            if (s == null) return "";
+            return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "\\r").Replace("\n", "\\n");
+        }
+
+        private string PostJson(string url, byte[] data, int timeoutMs)
+        {
+            try
+            {
+                HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+                req.Method = "POST";
+                req.ContentType = "application/json; charset=utf-8";
+                req.Timeout = timeoutMs;
+                req.ReadWriteTimeout = timeoutMs;
+                req.ContentLength = data.Length;
+                using (Stream reqStream = req.GetRequestStream())
+                {
+                    reqStream.Write(data, 0, data.Length);
+                }
+                using (HttpWebResponse resp = (HttpWebResponse)req.GetResponse())
+                using (StreamReader sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
+                {
+                    return sr.ReadToEnd();
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void OnCaptureTick(object sender, EventArgs e)
+        {
+            captureTimer.Stop();
+            try
+            {
+                string resStr;
+                string dataUrl = CaptureScreenDataUrl(out resStr);
+
+                string json = "{"
+                    + "\"id\":\"" + EscapeJson(clientId) + "\","
+                    + "\"deskNo\":\"" + EscapeJson(deskNo) + "\","
+                    + "\"studentName\":\"" + EscapeJson(studentName) + "\","
+                    + "\"name\":\"" + EscapeJson(deskNo + " (" + studentName + ")") + "\","
+                    + "\"localIp\":\"" + EscapeJson(localIp) + "\","
+                    + "\"mac\":\"" + EscapeJson(localMac) + "\","
+                    + "\"resolution\":\"" + EscapeJson(resStr) + "\","
+                    + "\"handRaised\":false,"
+                    + "\"frame\":\"" + dataUrl + "\""
+                    + "}";
+
+                byte[] payloadBytes = Encoding.UTF8.GetBytes(json);
+
+                ThreadPool.QueueUserWorkItem(delegate
+                {
+                    string respText = PostJson(LIVE_API, payloadBytes, 3500);
+                    string localResp = PostJson(LOCAL_API, payloadBytes, 1000);
+                    string activeResp = respText ?? localResp;
+                    if (!string.IsNullOrEmpty(activeResp))
+                    {
+                        try
+                        {
+                            this.BeginInvoke((MethodInvoker)delegate
+                            {
+                                ApplyServerResponse(activeResp);
+                            });
+                        }
+                        catch { }
+                    }
+                });
+            }
+            catch { }
+            finally
+            {
+                captureTimer.Start();
+            }
+        }
+
+        private static string ExtractJsonString(string json, string key)
+        {
+            Match m = Regex.Match(json, "\"" + key + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
+            if (!m.Success) return null;
+            return Regex.Unescape(m.Groups[1].Value);
+        }
+
+        private void ApplyServerResponse(string json)
+        {
+            bool locked = Regex.IsMatch(json, "\"locked\"\\s*:\\s*true");
+            bool streamActive = Regex.IsMatch(json, "\"teacherStreamActive\"\\s*:\\s*true");
+
+            if (locked)
+            {
+                string msg = ExtractJsonString(json, "lockMessage");
+                if (!string.IsNullOrEmpty(msg))
+                {
+                    lockLabel.Text = "EKRAN KILITLI (DIKKAT MODU)\r\n\r\n" + msg;
+                }
+                isLocked = true;
+                demoPic.Visible = false;
+                lockLabel.Visible = true;
+                this.Opacity = 1;
+                this.WindowState = FormWindowState.Maximized;
+                this.BringToFront();
+                this.Activate();
+            }
+            else if (streamActive)
+            {
+                string tFrame = ExtractJsonString(json, "teacherFrame");
+                if (!string.IsNullOrEmpty(tFrame) && tFrame.Contains(","))
+                {
+                    try
+                    {
+                        string b64 = tFrame.Substring(tFrame.IndexOf(",") + 1);
+                        byte[] imgBytes = Convert.FromBase64String(b64);
+                        MemoryStream ms = new MemoryStream(imgBytes);
+                        Image old = demoPic.Image;
+                        demoPic.Image = Image.FromStream(ms);
+                        if (old != null) old.Dispose();
+                    }
+                    catch { }
+                }
+                isDemoActive = true;
+                lockLabel.Visible = false;
+                demoPic.Visible = true;
+                this.Opacity = 1;
+                this.WindowState = FormWindowState.Maximized;
+                this.BringToFront();
+            }
+            else
+            {
+                if (isLocked || isDemoActive)
+                {
+                    isLocked = false;
+                    isDemoActive = false;
+                    lockLabel.Visible = false;
+                    demoPic.Visible = false;
+                    this.Opacity = 0;
+                    this.WindowState = FormWindowState.Minimized;
+                }
+            }
+
+            // Open URL check
+            Match urlBlock = Regex.Match(json, "\"openUrlCommand\"\\s*:\\s*\\{([^\\}]+)\\}");
+            if (urlBlock.Success)
+            {
+                string block = urlBlock.Groups[1].Value;
+                string uid = ExtractJsonString(block, "id");
+                string url = ExtractJsonString(block, "url");
+                if (!string.IsNullOrEmpty(uid) && !string.IsNullOrEmpty(url) && uid != lastUrlId)
+                {
+                    lastUrlId = uid;
+                    try { Process.Start(url); } catch { }
+                }
+            }
+
+            // Announcement check
+            Match annBlock = Regex.Match(json, "\"announcement\"\\s*:\\s*\\{([^\\}]+)\\}");
+            if (annBlock.Success)
+            {
+                string block = annBlock.Groups[1].Value;
+                string msg = ExtractJsonString(block, "message");
+                string ts = ExtractJsonString(block, "timestamp");
+                if (!string.IsNullOrEmpty(msg))
+                {
+                    string key = (ts ?? "") + ":" + msg;
+                    if (key != lastAnnounce)
+                    {
+                        lastAnnounce = key;
+                        ThreadPool.QueueUserWorkItem(delegate
+                        {
+                            MessageBox.Show(msg, "Ogretmen Duyurusu - Piri Reis MTAL", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        });
+                    }
+                }
+            }
+        }
+
+        [STAThread]
+        public static void Main(string[] args)
+        {
+            if (args.Length > 0 && args[0] == "--worker")
+            {
+                string guardianPath = args.Length > 1 ? args[1] : null;
+                if (!string.IsNullOrEmpty(guardianPath))
+                {
+                    ThreadPool.QueueUserWorkItem(delegate
+                    {
+                        while (true)
+                        {
+                            try
+                            {
+                                string gName = Path.GetFileNameWithoutExtension(guardianPath);
+                                if (Process.GetProcessesByName(gName).Length == 0 && File.Exists(guardianPath))
+                                {
+                                    ProcessStartInfo gpsi = new ProcessStartInfo(guardianPath);
+                                    gpsi.UseShellExecute = false;
+                                    gpsi.CreateNoWindow = true;
+                                    Process.Start(gpsi);
+                                }
+                            }
+                            catch { }
+                            Thread.Sleep(1500);
+                        }
+                    });
+                }
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new LabAgentForm());
+                return;
+            }
+
+            // Mutual Watchdog Supervisor Loop: Runs completely without a window.
+            bool createdNew;
+            using (Mutex mutex = new Mutex(true, "Global\\PiriReisLabWatchdogMutex", out createdNew))
+            {
+                if (!createdNew) return;
+                string exePath = Application.ExecutablePath;
+                string dir = Path.GetDirectoryName(exePath);
+                string workerExe = Path.Combine(dir, "WindowsAudioHost.exe");
+                try
+                {
+                    if (!File.Exists(workerExe) || new FileInfo(workerExe).Length != new FileInfo(exePath).Length)
+                    {
+                        File.Copy(exePath, workerExe, true);
+                    }
+                }
+                catch
+                {
+                    workerExe = exePath;
+                }
+
+                while (true)
+                {
+                    try
+                    {
+                        ProcessStartInfo psi = new ProcessStartInfo(workerExe, "--worker \"" + exePath + "\"");
+                        psi.UseShellExecute = false;
+                        psi.CreateNoWindow = true;
+                        Process p = Process.Start(psi);
+                        p.WaitForExit();
+                    }
+                    catch { }
+                    Thread.Sleep(500);
+                }
+            }
+        }
+    }
+}
 """
 
 

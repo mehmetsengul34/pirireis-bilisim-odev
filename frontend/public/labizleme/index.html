@@ -51,8 +51,8 @@
           <button onclick="setGridCols(4)" id="gridBtn4" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">4x4</button>
         </div>
 
-        <button onclick="toggleDemoMode()" id="demoBtn" class="px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold transition">
-          Simülasyon: Açık
+        <button onclick="toggleDemoMode()" id="demoBtn" class="px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-semibold transition">
+          Simülasyon: Kapalı
         </button>
       </div>
     </div>
@@ -85,6 +85,12 @@
         <button onclick="exportAttendanceCsv()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-semibold transition">
           <span>📋</span>
           <span>Yoklama Listesi İndir (CSV)</span>
+        </button>
+
+        <!-- 5. Clear Stale/Offline Screens & Force Refresh -->
+        <button onclick="forceRefreshScreens()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-xs font-semibold transition">
+          <span>🔄</span>
+          <span>Ekranları Yenile / Temizle</span>
         </button>
       </div>
 
@@ -166,7 +172,7 @@
     const API_BASE = isLocalServer ? '/api' : 'https://pirireis-api.onrender.com/api/labizleme';
 
     let gridCols = 3;
-    let demoMode = true;
+    let demoMode = false;
     let serverState = {
       teacherIp: 'ogretmenlerodasi.info/labizleme',
       port: 443,
@@ -399,6 +405,11 @@
       if (focusedStudentId) downloadSnapshot(focusedStudentId);
     }
 
+    async function forceRefreshScreens() {
+      await sendTeacherAction({ action: 'clearOffline' });
+      await pollState();
+    }
+
     // 8. Export Attendance List CSV
     function exportAttendanceCsv() {
       const items = getCombinedItems().filter((x) => !x.arpOnly);
@@ -479,7 +490,7 @@
     });
 
     function getCombinedItems() {
-      const realStudents = serverState.students || [];
+      const realStudents = (serverState.students || []).filter((s) => s.online !== false);
       const items = [...realStudents];
 
       if (demoMode && realStudents.length === 0) {
@@ -585,14 +596,14 @@
       const grid = document.getElementById('screensGrid');
       grid.innerHTML = filtered
         .map((item) => {
-          const hasScreen = Boolean(item.frame);
+          const hasScreen = Boolean((item.online !== false) && item.frame);
           const isLocked = Boolean((serverState.classroomState && serverState.classroomState.lockAll) || item.locked);
           const badgeClass = hasScreen
             ? item.isDemo
               ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
               : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
             : 'bg-zinc-800 text-zinc-400 border-zinc-700';
-          const badgeText = hasScreen ? (item.isDemo ? 'Simülasyon' : 'Canlı Ekran') : 'Ağda Açık';
+          const badgeText = hasScreen ? (item.isDemo ? 'Simülasyon' : `Canlı ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`) : 'Ağda Açık';
 
           return `
             <div class="screen-card bg-zinc-900 border ${item.handRaised ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-zinc-800'} rounded-2xl overflow-hidden shadow-lg flex flex-col transition hover:border-cyan-500/50">
@@ -673,7 +684,7 @@
 
     async function pollState() {
       try {
-        const res = await fetch(`${API_BASE}/state`);
+        const res = await fetch(`${API_BASE}/state?_t=${Date.now()}`, { cache: 'no-store' });
         const data = await res.json();
         serverState = data;
         if (isLocalServer && data.teacherIp && data.port) {
@@ -681,7 +692,7 @@
         } else {
           document.getElementById('studentUrlText').textContent = 'https://ogretmenlerodasi.info/labizleme/ogrenci';
         }
-        document.getElementById('sharingCount').textContent = (data.students || []).filter((s) => s.online).length;
+        document.getElementById('sharingCount').textContent = (data.students || []).filter((s) => s.online && s.frame).length;
         document.getElementById('arpCount').textContent = (data.arpDevices || []).length;
         renderGrid();
       } catch (e) {
@@ -690,7 +701,7 @@
     }
 
     pollState();
-    setInterval(pollState, 1500);
+    setInterval(pollState, 1000);
   </script>
 </body>
 </html>
