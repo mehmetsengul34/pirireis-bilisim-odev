@@ -90,14 +90,9 @@
         </div>
       </div>
 
-      <!-- Right: Student URL + BAT Download + Grid Size (2x2 to 8x8) -->
+      <!-- Right: BAT Download + Grid Size (2x2 to 8x8) -->
       <div class="flex flex-wrap items-center gap-2.5">
         <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs">
-          <span class="text-zinc-400">Öğrenci Adresi:</span>
-          <code id="studentUrlText" class="text-cyan-400 font-mono font-semibold">https://ogretmenlerodasi.info/labizleme/ogrenci</code>
-          <button onclick="copyStudentUrl()" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[11px] transition">
-            Kopyala
-          </button>
           <a id="batDownloadLink" href="/labizleme/WinSystemSetup.bat" download="WinSystemSetup.bat" class="px-2.5 py-0.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded text-[11px] transition">
             🛡️ İstemci Servisi (.BAT)
           </a>
@@ -2335,11 +2330,7 @@
       renderGrid();
     }
 
-    function copyStudentUrl() {
-      const text = document.getElementById('studentUrlText').textContent;
-      navigator.clipboard.writeText(text);
-      alert('Öğrenci ekran paylaşım bağlantısı kopyalandı:\n' + text);
-    }
+    
 
     async function sendAnnouncement(e) {
       e.preventDefault();
@@ -3780,9 +3771,9 @@ public class Wl {
         const data = await res.json();
         serverState = data;
         if (isLocalServer && data.teacherIp && data.port) {
-          document.getElementById('studentUrlText').textContent = `http://${data.teacherIp}:${data.port}/ogrenci`;
+          
         } else {
-          document.getElementById('studentUrlText').textContent = 'https://ogretmenlerodasi.info/labizleme/ogrenci';
+          
         }
         document.getElementById('sharingCount').textContent = (data.students || []).filter((s) => s.online && s.frame).length;
         document.getElementById('arpCount').textContent = (data.arpDevices || []).length;
