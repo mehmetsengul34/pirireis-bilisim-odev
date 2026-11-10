@@ -31,6 +31,8 @@ backend/uploads/documents/*
 !backend/uploads/documents/.gitkeep
 backend/uploads/images/*
 !backend/uploads/images/.gitkeep
+backend/app/data/installers/*
+!backend/app/data/installers/.gitkeep
 
 # Frontend Build
 frontend/dist/

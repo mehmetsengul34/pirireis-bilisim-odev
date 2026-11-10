@@ -156,7 +156,13 @@
           <span id="openUrlBtnText">Sınıfta Web Sitesi / Ödev Aç</span>
         </button>
 
-        <!-- 4. Export Attendance CSV -->
+        <!-- 4. Remote Software Deployment & App Store -->
+        <button onclick="openSoftwareDeployModal()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold transition shadow-sm">
+          <span>📦</span>
+          <span id="deployBtnText">Yazılım Dağıtım & Market</span>
+        </button>
+
+        <!-- 5. Export Attendance CSV -->
         <button onclick="exportAttendanceCsv()" class="flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-semibold transition">
           <span>📋</span>
           <span>Yoklama (CSV)</span>
@@ -412,6 +418,410 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  
+  <!-- Remote Software Deployment & App Store Modal -->
+  <div id="softwareDeployModal" class="fixed inset-0 z-[120] hidden bg-black/90 backdrop-blur-md flex items-center justify-center p-3 sm:p-5">
+    <div class="w-full max-w-5xl bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-zinc-900/90 border-b border-zinc-800 flex items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-500/20 border border-violet-500/30 flex items-center justify-center text-violet-400 text-2xl shadow-inner">
+            📦
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+              <span>Uzaktan Yazılım Dağıtımı & Bilişim Marketi</span>
+              <span class="px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 text-[10px] font-semibold border border-violet-500/30">Sessiz Kurulum</span>
+            </h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Laboratuvardaki bilgisayarlara tek tıkla arka planda sessizce program yükleyin</p>
+          </div>
+        </div>
+        <button onclick="closeSoftwareDeployModal()" class="w-8 h-8 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition">
+          ✕
+        </button>
+      </div>
+
+      <!-- Scope / Target Info Ribbon -->
+      <div class="px-6 py-2.5 bg-zinc-950/80 border-b border-zinc-800 flex flex-wrap items-center justify-between gap-2 text-xs shrink-0">
+        <div class="flex items-center gap-2">
+          <span class="text-zinc-400 font-medium">Hedef Kapsam:</span>
+          <span id="deployModalTargetBadge" class="px-3 py-1 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300 font-bold">
+            🎯 Tüm Laboratuvar
+          </span>
+          <span id="deployModalTargetHint" class="text-[11px] text-zinc-500">
+            (Ana ekranda seçtiğiniz bilgisayarlara özel yükleme yapabilirsiniz)
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="switchToStatusTab()" class="px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold transition flex items-center gap-1.5">
+            <span>📊</span>
+            <span>Canlı Durumları İncele</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Tabs Navigation -->
+      <div class="px-6 pt-3 bg-zinc-900 border-b border-zinc-800 flex items-center gap-2 shrink-0 overflow-x-auto">
+        <button id="deployTabBtnMarket" onclick="switchDeployTab('market')" class="px-4 py-2 text-xs font-bold border-b-2 border-violet-500 text-violet-300 flex items-center gap-2 transition whitespace-nowrap">
+          <span>🏪</span>
+          <span>Bilişim Yazılımları Marketi</span>
+        </button>
+        <button id="deployTabBtnLocal" onclick="switchDeployTab('local')" class="px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap">
+          <span>💻</span>
+          <span>Kendi Bilgisayarımdan Kur (Yerel Ağ / Yükle)</span>
+        </button>
+        <button id="deployTabBtnCustom" onclick="switchDeployTab('custom')" class="px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap">
+          <span>⚡</span>
+          <span>Özel Komut / PowerShell Scripti</span>
+        </button>
+        <button id="deployTabBtnStatus" onclick="switchDeployTab('status')" class="px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap">
+          <span>📊</span>
+          <span>Canlı Kurulum Durumu</span>
+          <span id="deployActiveStatusCount" class="hidden px-1.5 py-0.2 rounded-full bg-cyan-500 text-zinc-950 text-[10px] font-extrabold">0</span>
+        </button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+
+        <!-- TAB 1: BİLİŞİM YAZILIMLARI MARKETİ -->
+        <div id="deployTabMarket" class="space-y-4">
+          <!-- Filter & Method Ribbon -->
+          <div class="flex flex-wrap items-center justify-between gap-3 bg-zinc-950/70 p-3 rounded-2xl border border-zinc-800/80">
+            <div class="flex flex-wrap items-center gap-1.5" id="marketCategoryFilters">
+              <button onclick="filterMarketCatalog('all', this)" class="px-3 py-1 rounded-xl bg-violet-600 text-white font-bold text-xs transition">Tümü</button>
+              <button onclick="filterMarketCatalog('ide', this)" class="px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs transition">Kod Editörleri</button>
+              <button onclick="filterMarketCatalog('lang', this)" class="px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs transition">Programlama Dilleri</button>
+              <button onclick="filterMarketCatalog('edu', this)" class="px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs transition">MEB & Temel Kodlama</button>
+              <button onclick="filterMarketCatalog('web', this)" class="px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs transition">Web & Tarayıcı</button>
+              <button onclick="filterMarketCatalog('tools', this)" class="px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs transition">Sistem & Tasarım</button>
+            </div>
+
+            <div class="flex items-center gap-2 bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 text-xs">
+              <span class="text-zinc-400">Kurulum Motoru:</span>
+              <select id="marketEngineSelect" class="bg-transparent text-violet-300 font-semibold focus:outline-none cursor-pointer">
+                <option value="winget" class="bg-zinc-900 text-white">⚡ Winget (Microsoft Resmi Depo - Önerilen)</option>
+                <option value="download_exe" class="bg-zinc-900 text-white">🌐 Doğrudan İndirip Sessiz Kur</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Software Cards Grid -->
+          <div id="marketCatalogGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+
+        <!-- TAB 2: KENDİ BİLGİSAYARIMDAN KUR (YEREL AĞ / DOSYA YÜKLEME) -->
+        <div id="deployTabLocal" class="hidden space-y-6">
+          <!-- Section 1: Upload Installer File from Teacher PC -->
+          <div class="p-5 rounded-2xl bg-zinc-950/70 border border-zinc-800 space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center text-xl">
+                📤
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">1. Yöntem: Bilgisayarımdan Kurulum Dosyası Yükle (.exe / .msi)</h3>
+                <p class="text-xs text-zinc-400">Kendi bilgisayarınızdaki herhangi bir programı sunucuya yükleyip tüm laboratuvara dağıtın</p>
+              </div>
+            </div>
+
+            <form onsubmit="handleUploadAndDeploy(event)" class="space-y-3.5">
+              <div class="border-2 border-dashed border-zinc-800 hover:border-violet-500/50 rounded-2xl p-6 text-center cursor-pointer transition bg-zinc-900/50 relative">
+                <input
+                  type="file"
+                  id="localInstallerFileInput"
+                  accept=".exe,.msi,.bat"
+                  onchange="handleInstallerFileSelected(this)"
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <div class="text-3xl mb-2">📁</div>
+                <div class="text-xs font-semibold text-zinc-200" id="localFileLabel">
+                  Kurulum dosyasını buraya sürükleyin veya <span class="text-violet-400 underline">dosya seçin</span> (.exe, .msi)
+                </div>
+                <p class="text-[11px] text-zinc-500 mt-1">Örn: setup.exe, python-installer.exe, vlc-setup.exe</p>
+              </div>
+
+              <!-- Upload Progress Indicator -->
+              <div id="uploadProgressBox" class="hidden space-y-2 p-3 rounded-xl bg-zinc-900 border border-zinc-800">
+                <div class="flex items-center justify-between text-xs">
+                  <span id="uploadProgressText" class="text-violet-300 font-semibold">Dosya yükleniyor...</span>
+                  <span id="uploadProgressPercent" class="text-zinc-400 font-mono">0%</span>
+                </div>
+                <div class="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
+                  <div id="uploadProgressBar" class="bg-gradient-to-r from-violet-500 to-indigo-500 h-2 rounded-full w-0 transition-all duration-200"></div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-zinc-300 mb-1">Program Adı</label>
+                  <input
+                    type="text"
+                    id="localUploadPkgName"
+                    placeholder="Örn: VLC Media Player"
+                    class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-zinc-300 mb-1">Sessiz Parametre Şablonu</label>
+                  <select
+                    id="localUploadPresetSelect"
+                    onchange="applySilentPreset('localUploadPresetSelect', 'localUploadArgs')"
+                    class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-violet-300 font-semibold focus:outline-none focus:border-violet-500"
+                  >
+                    <option value="/VERYSILENT /NORESTART /SP-">Inno Setup (/VERYSILENT /NORESTART)</option>
+                    <option value="/S">NSIS Kurulumu (/S)</option>
+                    <option value="/qn /norestart">MSI Paketi (/qn /norestart)</option>
+                    <option value="/quiet InstallAllUsers=1 PrependPath=1">Python Installer (/quiet InstallAllUsers=1)</option>
+                    <option value="/s /v&quot;/qn&quot;">InstallShield (/s /v"/qn")</option>
+                    <option value="custom">Özel Parametre...</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-zinc-300 mb-1">Sessiz Kurulum Parametresi (Komut Satırı Argümanı)</label>
+                <input
+                  type="text"
+                  id="localUploadArgs"
+                  value="/VERYSILENT /NORESTART /SP-"
+                  placeholder="/VERYSILENT /NORESTART"
+                  class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-violet-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                id="localUploadSubmitBtn"
+                class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-violet-600/20 transition flex items-center justify-center gap-2"
+              >
+                <span>🚀</span>
+                <span id="localUploadBtnLabel">Dosyayı Yükle ve Sessiz Dağıtımı Başlat</span>
+              </button>
+            </form>
+          </div>
+
+          <!-- Section 2: LAN HTTP or Shared Link Deployment -->
+          <div class="p-5 rounded-2xl bg-zinc-950/70 border border-zinc-800 space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center text-xl">
+                🌐
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">2. Yöntem: Yerel Ağ (LAN) veya Doğrudan İndirme Bağlantısı</h3>
+                <p class="text-xs text-zinc-400">Öğretmen bilgisayarındaki yerel web sunucusu (LAN HTTP) veya doğrudan internet indirme linki</p>
+              </div>
+            </div>
+
+            <form onsubmit="handleLanUrlDeploy(event)" class="space-y-3.5">
+              <div>
+                <label class="block text-xs font-semibold text-zinc-300 mb-1">İndirme / Kurulum Bağlantısı (URL)</label>
+                <input
+                  type="url"
+                  id="lanDeployUrl"
+                  required
+                  placeholder="http://192.168.23.244:8000/setup.exe veya https://.../installer.exe"
+                  class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-cyan-300 placeholder-zinc-500 focus:outline-none focus:border-cyan-500"
+                />
+                <p class="text-[11px] text-zinc-500 mt-1">İpucu: Kendi bilgisayarınızda bir klasörü yerel ağa açmak için Python ile <code class="text-zinc-400">python -m http.server 8000</code> çalıştırabilirsiniz.</p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-semibold text-zinc-300 mb-1">Program Adı</label>
+                  <input
+                    type="text"
+                    id="lanDeployPkgName"
+                    required
+                    placeholder="Örn: Ders Yazılımı 2026"
+                    class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-zinc-300 mb-1">Sessiz Parametre Şablonu</label>
+                  <select
+                    id="lanPresetSelect"
+                    onchange="applySilentPreset('lanPresetSelect', 'lanDeployArgs')"
+                    class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-cyan-300 font-semibold focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="/VERYSILENT /NORESTART /SP-">Inno Setup (/VERYSILENT /NORESTART)</option>
+                    <option value="/S">NSIS Kurulumu (/S)</option>
+                    <option value="/qn /norestart">MSI Paketi (/qn /norestart)</option>
+                    <option value="/quiet InstallAllUsers=1 PrependPath=1">Python Installer (/quiet InstallAllUsers=1)</option>
+                    <option value="/s /v&quot;/qn&quot;">InstallShield (/s /v"/qn")</option>
+                    <option value="custom">Özel Parametre...</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-zinc-300 mb-1">Sessiz Parametre</label>
+                <input
+                  type="text"
+                  id="lanDeployArgs"
+                  value="/VERYSILENT /NORESTART /SP-"
+                  placeholder="/VERYSILENT /NORESTART"
+                  class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                class="w-full py-2.5 px-4 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow-lg shadow-cyan-600/20 transition flex items-center justify-center gap-2"
+              >
+                <span>🚀</span>
+                <span>Ağ Üzerinden Sessiz Kurulumu Başlat</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- TAB 3: ÖZEL KOMUT / POWERSHELL SCRİPTİ -->
+        <div id="deployTabCustom" class="hidden space-y-4">
+          <div class="p-5 rounded-2xl bg-zinc-950/70 border border-zinc-800 space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-xl">
+                ⚡
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-white">Uzaktan Sessiz PowerShell / Komut Çalıştırma</h3>
+                <p class="text-xs text-zinc-400">Hedef bilgisayarlarda arka planda gizlice PowerShell veya CMD komutları yürütün</p>
+              </div>
+            </div>
+
+            <!-- Quick Preset Buttons -->
+            <div>
+              <label class="block text-xs font-semibold text-zinc-400 mb-1.5">Hazır Bilişim Komutları (Tek Tıkla Doldur):</label>
+              <div class="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onclick="setCustomCommand('pip install numpy pandas matplotlib pygame requests openpyxl', 'Python Veri & Oyun Kütüphaneleri')"
+                  class="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] text-zinc-300 transition"
+                >
+                  🐍 Pip Kütüphaneleri (numpy, pygame...)
+                </button>
+                <button
+                  type="button"
+                  onclick="setCustomCommand('npm install -g nodemon vite create-react-app typescript', 'Node.js Global Paketler')"
+                  class="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] text-zinc-300 transition"
+                >
+                  🟩 NPM Global Paketler (vite, nodemon...)
+                </button>
+                <button
+                  type="button"
+                  onclick="setCustomCommand('winget upgrade --all --silent --accept-package-agreements --accept-source-agreements', 'Tüm Programları Güncelle')"
+                  class="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] text-zinc-300 transition"
+                >
+                  ⚡ Winget ile Tüm Programları Güncelle
+                </button>
+                <button
+                  type="button"
+                  onclick="setCustomCommand('ipconfig /flushdns; gpupdate /force', 'DNS & Grup Politikası Yenile')"
+                  class="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[11px] text-zinc-300 transition"
+                >
+                  🌐 Ağ & DNS Yenile
+                </button>
+              </div>
+            </div>
+
+            <form onsubmit="handleCustomScriptDeploy(event)" class="space-y-3.5">
+              <div>
+                <label class="block text-xs font-semibold text-zinc-300 mb-1">Görev Adı</label>
+                <input
+                  type="text"
+                  id="customTaskName"
+                  required
+                  placeholder="Örn: Python Kütüphane Kurulumu"
+                  class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-zinc-300 mb-1">Çalıştırılacak PowerShell Scripti / Komut</label>
+                <textarea
+                  id="customScriptText"
+                  rows="4"
+                  required
+                  placeholder="Örn: pip install pygame"
+                  class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-amber-300 placeholder-zinc-500 focus:outline-none focus:border-amber-500 resize-y"
+                ></textarea>
+                <p class="text-[11px] text-zinc-500 mt-1">Komut öğrencinin ekranında herhangi bir pencere açılmadan tamamen gizli yürütülür.</p>
+              </div>
+
+              <button
+                type="submit"
+                class="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition flex items-center justify-center gap-2"
+              >
+                <span>⚡</span>
+                <span>Komutu Hedef Bilgisayarlarda Sessiz Çalıştır</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- TAB 4: CANLI KURULUM DURUMU (TÜM LABORATUVAR) -->
+        <div id="deployTabStatus" class="hidden space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 bg-zinc-950/70 p-3 rounded-2xl border border-zinc-800">
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-zinc-400">Canlı Durum Özeti:</span>
+              <span id="deploySummaryBadge" class="text-xs font-bold text-zinc-200">
+                Yükleniyor...
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="renderDeployStatusTable()" class="px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition flex items-center gap-1.5">
+                <span>🔄</span>
+                <span>Yenile</span>
+              </button>
+              <button onclick="clearAllDeployStatus()" class="px-3 py-1 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 text-xs font-semibold transition">
+                🗑️ Durumları Temizle
+              </button>
+            </div>
+          </div>
+
+          <!-- Real-Time Status Table -->
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950/60 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-zinc-900/90 text-zinc-400 font-semibold border-b border-zinc-800">
+                  <tr>
+                    <th class="py-2.5 px-3.5">Masa / PC</th>
+                    <th class="py-2.5 px-3">Cihaz & Öğrenci</th>
+                    <th class="py-2.5 px-3 font-mono">IP Adresi</th>
+                    <th class="py-2.5 px-3">Son Kurulan Yazılım</th>
+                    <th class="py-2.5 px-3">İlerleme & Durum</th>
+                    <th class="py-2.5 px-3">Detay</th>
+                    <th class="py-2.5 px-3 text-right">Zaman</th>
+                  </tr>
+                </thead>
+                <tbody id="deployStatusTableBody" class="divide-y divide-zinc-800/60 font-medium">
+                  <tr>
+                    <td colspan="7" class="py-8 text-center text-zinc-500">
+                      Henüz aktif bir kurulum komutu gönderilmedi.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div> <!-- End Modal Body -->
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400 shrink-0">
+        <div class="flex items-center gap-2">
+          <span>🛡️ Sessiz Mod Güvencesi:</span>
+          <span class="text-zinc-500">Tüm işlemler öğrenci masaüstünde pencere açmadan arka planda çalışır.</span>
+        </div>
+        <button onclick="closeSoftwareDeployModal()" class="px-4 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold transition">
+          Kapat
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1241,8 +1651,573 @@
       document.getElementById('focusModal').classList.add('hidden');
     }
 
+    
+    // =========================================================================
+    // SOFTWARE DEPLOYMENT & BİLİŞİM MARKETİ JAVASCRIPT LOGIC
+    // =========================================================================
+    const SOFTWARE_CATALOG = [
+      {
+        id: 'vscode',
+        name: 'Visual Studio Code',
+        category: 'ide',
+        icon: '💻',
+        version: 'x64 (En Güncel)',
+        desc: 'Python, HTML/CSS, JavaScript, C# ve tüm diller için Microsoft kod editörü.',
+        wingetId: 'Microsoft.VisualStudioCode',
+        directUrl: 'https://update.code.visualstudio.com/latest/win32-x64-user/stable',
+        silentArgs: '/VERYSILENT /NORESTART /MERGETASKS="!runcode,addcontextmenufiles,addcontextmenufolders,associatewithfiles,addtopath"'
+      },
+      {
+        id: 'python',
+        name: 'Python 3.12',
+        category: 'lang',
+        icon: '🐍',
+        version: '3.12.8 LTS (64-bit)',
+        desc: 'Programlama, yapay zeka ve veri bilimi için resmi Python ve pip ortamı.',
+        wingetId: 'Python.Python.3.12',
+        directUrl: 'https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe',
+        silentArgs: '/quiet InstallAllUsers=1 PrependPath=1 Include_test=0 SimpleInstall=1'
+      },
+      {
+        id: 'nodejs',
+        name: 'Node.js LTS (v20)',
+        category: 'web',
+        icon: '🟩',
+        version: 'v20.18 LTS (x64)',
+        desc: 'JavaScript çalışma ortamı ve modern web geliştirme için dahili NPM.',
+        wingetId: 'OpenJS.NodeJS.LTS',
+        directUrl: 'https://nodejs.org/dist/v20.18.0/node-v20.18.0-x64.msi',
+        silentArgs: '/qn /norestart'
+      },
+      {
+        id: 'git',
+        name: 'Git for Windows',
+        category: 'tools',
+        icon: '🐙',
+        version: '2.47.1 (64-bit)',
+        desc: 'Sürüm kontrol sistemi, Git Bash terminali ve GitHub entegrasyonu.',
+        wingetId: 'Git.Git',
+        directUrl: 'https://github.com/git-for-windows/git/releases/download/v2.47.1.windows.1/Git-2.47.1-64-bit.exe',
+        silentArgs: '/VERYSILENT /NORESTART'
+      },
+      {
+        id: 'scratch',
+        name: 'Scratch 3 Desktop',
+        category: 'edu',
+        icon: '🐱',
+        version: '3.29.1 Çevrimdışı',
+        desc: 'MEB Bilişim dersleri ve blok tabanlı görsel algoritma eğitimi.',
+        wingetId: 'ScratchFoundation.Scratch',
+        directUrl: 'https://downloads.scratch.mit.edu/desktop/Scratch%20Setup.exe',
+        silentArgs: '/S'
+      },
+      {
+        id: 'arduino',
+        name: 'Arduino IDE 2.3',
+        category: 'edu',
+        icon: '🤖',
+        version: '2.3.4 (x64)',
+        desc: 'Robotik kodlama, Arduino kartları ve sensör programlama geliştirme ortamı.',
+        wingetId: 'ArduinoSA.IDE.stable',
+        directUrl: 'https://downloads.arduino.cc/arduino-ide/arduino-ide_2.3.4_Windows_64bit.exe',
+        silentArgs: '/S'
+      },
+      {
+        id: 'chrome',
+        name: 'Google Chrome',
+        category: 'web',
+        icon: '🌐',
+        version: 'Enterprise (x64)',
+        desc: 'Hızlı, kararlı ve modern web tarayıcısı (Sessiz MSI paketi).',
+        wingetId: 'Google.Chrome',
+        directUrl: 'https://dl.google.com/chrome/install/GoogleChromeStandaloneEnterprise64.msi',
+        silentArgs: '/qn /norestart'
+      },
+      {
+        id: '7zip',
+        name: '7-Zip Arşiv Yöneticisi',
+        category: 'tools',
+        icon: '🗜️',
+        version: '24.08 (64-bit)',
+        desc: 'Yüksek performanslı dosya sıkıştırma ve arşiv açma aracı.',
+        wingetId: '7zip.7zip',
+        directUrl: 'https://www.7-zip.org/a/7z2408-x64.exe',
+        silentArgs: '/S'
+      },
+      {
+        id: 'notepadpp',
+        name: 'Notepad++',
+        category: 'ide',
+        icon: '📝',
+        version: '8.7.2 (64-bit)',
+        desc: 'Hızlı, sekmeli kaynak kod editörü ve sözdizimi renklendirici.',
+        wingetId: 'Notepad++.Notepad++',
+        directUrl: 'https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.7.2/npp.8.7.2.Installer.x64.exe',
+        silentArgs: '/S'
+      },
+      {
+        id: 'blender',
+        name: 'Blender 3D',
+        category: 'tools',
+        icon: '🎨',
+        version: '4.3 LTS (x64)',
+        desc: '3B modelleme, animasyon, render ve oyun grafikleri tasarım yazılımı.',
+        wingetId: 'BlenderFoundation.Blender',
+        directUrl: 'https://download.blender.org/release/Blender4.3/blender-4.3.0-windows-x64.msi',
+        silentArgs: '/qn /norestart'
+      },
+      {
+        id: 'java',
+        name: 'Eclipse Temurin JDK 21',
+        category: 'lang',
+        icon: '☕',
+        version: 'OpenJDK 21 LTS',
+        desc: 'Java derleyicisi, JVM çalışma ortamı ve geliştirme kütüphaneleri.',
+        wingetId: 'EclipseAdoptium.Temurin.21.JDK',
+        directUrl: '',
+        silentArgs: '/qn /norestart ADDLOCAL=FeatureMain,FeatureEnvironment,FeatureJarFileRunWith,FeatureJavaHome'
+      },
+      {
+        id: 'dbeaver',
+        name: 'DBeaver Community',
+        category: 'web',
+        icon: '🐘',
+        version: 'Universal SQL (x64)',
+        desc: 'MySQL, PostgreSQL, SQLite ve SQL veritabanı yönetim aracı.',
+        wingetId: 'dbeaver.dbeaver',
+        directUrl: '',
+        silentArgs: '/S'
+      }
+    ];
+
+    let currentMarketCategory = 'all';
+    let deployStatusPollTimer = null;
+
+    function openSoftwareDeployModal() {
+      const modal = document.getElementById('softwareDeployModal');
+      modal.classList.remove('hidden');
+      updateDeployModalTarget();
+      renderMarketCatalog();
+      renderDeployStatusTable();
+      if (!deployStatusPollTimer) {
+        deployStatusPollTimer = setInterval(() => {
+          if (!modal.classList.contains('hidden')) {
+            renderDeployStatusTable();
+          }
+        }, 1500);
+      }
+    }
+
+    function closeSoftwareDeployModal() {
+      document.getElementById('softwareDeployModal').classList.add('hidden');
+      if (deployStatusPollTimer) {
+        clearInterval(deployStatusPollTimer);
+        deployStatusPollTimer = null;
+      }
+    }
+
+    function updateDeployModalTarget() {
+      const selCount = selectedStudentIds.size;
+      const totalCount = (serverState.students || []).filter((s) => s.online).length;
+      const badge = document.getElementById('deployModalTargetBadge');
+      const hint = document.getElementById('deployModalTargetHint');
+      if (selCount > 0) {
+        badge.textContent = `🎯 Seçili: ${selCount} Bilgisayar`;
+        badge.className = 'px-3 py-1 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold';
+        hint.textContent = 'Kurulum yalnızca seçtiğiniz bilgisayarlarda başlatılacaktır.';
+      } else {
+        badge.textContent = `🎯 Tüm Laboratuvar (${totalCount} PC)`;
+        badge.className = 'px-3 py-1 rounded-xl bg-violet-500/15 border border-violet-500/30 text-violet-300 font-bold';
+        hint.textContent = 'Kurulum laboratuvardaki tüm bağlı bilgisayarlarda başlatılacaktır.';
+      }
+    }
+
+    function switchDeployTab(tabKey) {
+      const tabs = {
+        market: document.getElementById('deployTabMarket'),
+        local: document.getElementById('deployTabLocal'),
+        custom: document.getElementById('deployTabCustom'),
+        status: document.getElementById('deployTabStatus')
+      };
+      const btns = {
+        market: document.getElementById('deployTabBtnMarket'),
+        local: document.getElementById('deployTabBtnLocal'),
+        custom: document.getElementById('deployTabBtnCustom'),
+        status: document.getElementById('deployTabBtnStatus')
+      };
+
+      Object.keys(tabs).forEach((k) => {
+        if (k === tabKey) {
+          tabs[k].classList.remove('hidden');
+          btns[k].className = 'px-4 py-2 text-xs font-bold border-b-2 border-violet-500 text-violet-300 flex items-center gap-2 transition whitespace-nowrap';
+        } else {
+          tabs[k].classList.add('hidden');
+          btns[k].className = 'px-4 py-2 text-xs font-bold border-b-2 border-transparent text-zinc-400 hover:text-zinc-200 flex items-center gap-2 transition whitespace-nowrap';
+        }
+      });
+
+      if (tabKey === 'status') {
+        renderDeployStatusTable();
+      }
+    }
+
+    function switchToStatusTab() {
+      switchDeployTab('status');
+    }
+
+    function filterMarketCatalog(cat, btnEl) {
+      currentMarketCategory = cat;
+      const container = document.getElementById('marketCategoryFilters');
+      Array.from(container.children).forEach((b) => {
+        b.className = 'px-3 py-1 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold text-xs transition';
+      });
+      if (btnEl) {
+        btnEl.className = 'px-3 py-1 rounded-xl bg-violet-600 text-white font-bold text-xs transition';
+      }
+      renderMarketCatalog();
+    }
+
+    function renderMarketCatalog() {
+      const grid = document.getElementById('marketCatalogGrid');
+      const filtered = SOFTWARE_CATALOG.filter((item) => {
+        if (currentMarketCategory === 'all') return true;
+        return item.category === currentMarketCategory;
+      });
+
+      grid.innerHTML = filtered.map((sw) => {
+        return `
+          <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-violet-500/40 transition flex flex-col justify-between shadow-lg">
+            <div>
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <div class="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xl shrink-0">
+                  ${sw.icon}
+                </div>
+                <span class="px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-400 text-[10px] font-mono border border-zinc-800">
+                  ${sw.version}
+                </span>
+              </div>
+              <h4 class="text-sm font-bold text-white mb-1">${sw.name}</h4>
+              <p class="text-xs text-zinc-400 leading-relaxed mb-3">${sw.desc}</p>
+            </div>
+
+            <div class="pt-2 border-t border-zinc-900 flex items-center justify-between gap-2">
+              <span class="text-[10px] text-zinc-500 font-mono truncate max-w-[140px]" title="${sw.wingetId}">
+                ${sw.wingetId}
+              </span>
+              <button
+                onclick="triggerMarketInstall('${sw.id}')"
+                class="px-3 py-1.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-violet-600/20 shrink-0"
+              >
+                <span>🚀</span>
+                <span>Bu Programı Kur</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function triggerMarketInstall(swId) {
+      const sw = SOFTWARE_CATALOG.find((x) => x.id === swId);
+      if (!sw) return;
+
+      const engine = document.getElementById('marketEngineSelect').value || 'winget';
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayara` : 'TÜM LABORATUVARA (Tüm PC\'ler)';
+
+      const confirmMsg = `${sw.name} yazılımı ${targetLabel} arka planda SESSİZCE kurulacak.\n\nKurulum Motoru: ${engine === 'winget' ? 'Winget (Microsoft Deposu)' : 'Doğrudan İndirme Linki'}\n\nOnaylıyor musunuz?`;
+      if (!confirm(confirmMsg)) return;
+
+      let installType = engine;
+      let installUrl = sw.directUrl;
+      let installArgs = sw.silentArgs;
+      let installCommand = sw.wingetId;
+
+      if (engine === 'download_exe' && !sw.directUrl) {
+        installType = 'winget';
+        installCommand = sw.wingetId;
+      }
+
+      await sendTeacherAction({
+        action: 'remoteInstall',
+        installType,
+        packageName: sw.name,
+        installUrl,
+        installArgs,
+        installCommand,
+        targetIds: targetList
+      });
+
+      switchToStatusTab();
+    }
+
+    function applySilentPreset(selectId, targetInputId) {
+      const sel = document.getElementById(selectId);
+      const inp = document.getElementById(targetInputId);
+      if (!sel || !inp) return;
+      if (sel.value !== 'custom') {
+        inp.value = sel.value;
+      }
+    }
+
+    function handleInstallerFileSelected(fileInput) {
+      const file = fileInput.files[0];
+      const label = document.getElementById('localFileLabel');
+      const nameInput = document.getElementById('localUploadPkgName');
+      const presetSelect = document.getElementById('localUploadPresetSelect');
+      const argsInput = document.getElementById('localUploadArgs');
+
+      if (!file) {
+        label.innerHTML = 'Kurulum dosyasını buraya sürükleyin veya <span class="text-violet-400 underline">dosya seçin</span> (.exe, .msi)';
+        return;
+      }
+
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      label.innerHTML = `✅ <strong>${file.name}</strong> (${sizeMb} MB) seçildi`;
+
+      if (!nameInput.value) {
+        nameInput.value = file.name.replace(/[-_.]*(setup|installer|x64|x86|\d+(\.\d+)*)\.(exe|msi)$/i, '').replace(/[-_.]/g, ' ').trim() || file.name;
+      }
+
+      if (file.name.toLowerCase().endsWith('.msi')) {
+        presetSelect.value = '/qn /norestart';
+        argsInput.value = '/qn /norestart';
+      }
+    }
+
+    async function handleUploadAndDeploy(e) {
+      e.preventDefault();
+      const fileInp = document.getElementById('localInstallerFileInput');
+      const file = fileInp.files[0];
+      if (!file) {
+        alert('Lütfen dağıtılacak bir kurulum dosyası (.exe veya .msi) seçin!');
+        return;
+      }
+
+      const pkgName = (document.getElementById('localUploadPkgName').value || file.name).trim();
+      const args = document.getElementById('localUploadArgs').value || '/VERYSILENT /NORESTART';
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayara` : 'tüm laboratuvara';
+
+      if (!confirm(`"${pkgName}" dosyası sunucuya yüklenip ${targetLabel} sessizce dağıtılacak. Devam edilsin mi?`)) {
+        return;
+      }
+
+      const progressBox = document.getElementById('uploadProgressBox');
+      const progressBar = document.getElementById('uploadProgressBar');
+      const progressPercent = document.getElementById('uploadProgressPercent');
+      const progressText = document.getElementById('uploadProgressText');
+      const submitBtn = document.getElementById('localUploadSubmitBtn');
+      const btnLabel = document.getElementById('localUploadBtnLabel');
+
+      progressBox.classList.remove('hidden');
+      submitBtn.disabled = true;
+      btnLabel.textContent = 'Dosya Sunucuya Yükleniyor...';
+
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${API_BASE}/upload-installer`, true);
+        if (authToken) {
+          xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+        }
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const pct = Math.round((event.loaded / event.total) * 100);
+            progressBar.style.width = pct + '%';
+            progressPercent.textContent = pct + '%';
+            progressText.textContent = pct < 100 ? `Dosya sunucuya yükleniyor (%${pct})...` : 'Dosya kaydediliyor ve dağıtım hazırlanıyor...';
+          }
+        };
+
+        xhr.onload = async () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            const data = JSON.parse(xhr.responseText);
+            progressText.textContent = '✅ Yükleme tamamlandı! Dağıtım komutu veriliyor...';
+
+            await sendTeacherAction({
+              action: 'remoteInstall',
+              installType: 'download_exe',
+              packageName: pkgName,
+              installUrl: data.url,
+              installArgs: args,
+              targetIds: targetList
+            });
+
+            submitBtn.disabled = false;
+            btnLabel.textContent = 'Dosyayı Yükle ve Sessiz Dağıtımı Başlat';
+            switchToStatusTab();
+          } else {
+            alert('Dosya yükleme hatası: ' + xhr.statusText);
+            submitBtn.disabled = false;
+            btnLabel.textContent = 'Dosyayı Yükle ve Sessiz Dağıtımı Başlat';
+          }
+        };
+
+        xhr.onerror = () => {
+          alert('Sunucuya bağlanırken ağ hatası oluştu!');
+          submitBtn.disabled = false;
+          btnLabel.textContent = 'Dosyayı Yükle ve Sessiz Dağıtımı Başlat';
+        };
+
+        xhr.send(formData);
+      } catch (err) {
+        alert('Yükleme hatası: ' + err.message);
+        submitBtn.disabled = false;
+        btnLabel.textContent = 'Dosyayı Yükle ve Sessiz Dağıtımı Başlat';
+      }
+    }
+
+    async function handleLanUrlDeploy(e) {
+      e.preventDefault();
+      const url = (document.getElementById('lanDeployUrl').value || '').trim();
+      const pkgName = (document.getElementById('lanDeployPkgName').value || 'Ağ Yazılımı').trim();
+      const args = (document.getElementById('lanDeployArgs').value || '/VERYSILENT /NORESTART').trim();
+
+      if (!url) return;
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayara` : 'tüm laboratuvara';
+
+      if (!confirm(`"${pkgName}" ağ bağlantısı (${url}) üzerinden ${targetLabel} arka planda kurulacak. Başlatılsın mı?`)) {
+        return;
+      }
+
+      await sendTeacherAction({
+        action: 'remoteInstall',
+        installType: 'download_exe',
+        packageName: pkgName,
+        installUrl: url,
+        installArgs: args,
+        targetIds: targetList
+      });
+
+      switchToStatusTab();
+    }
+
+    function setCustomCommand(cmd, taskName) {
+      document.getElementById('customScriptText').value = cmd;
+      if (taskName) {
+        document.getElementById('customTaskName').value = taskName;
+      }
+    }
+
+    async function handleCustomScriptDeploy(e) {
+      e.preventDefault();
+      const script = (document.getElementById('customScriptText').value || '').trim();
+      const taskName = (document.getElementById('customTaskName').value || 'PowerShell Betiği').trim();
+
+      if (!script) return;
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayarda` : 'tüm laboratuvarda';
+
+      if (!confirm(`"${taskName}" görevi ${targetLabel} arka planda gizlice çalıştırılacak. Başlatılsın mı?`)) {
+        return;
+      }
+
+      await sendTeacherAction({
+        action: 'remoteInstall',
+        installType: 'powershell',
+        packageName: taskName,
+        installCommand: script,
+        targetIds: targetList
+      });
+
+      switchToStatusTab();
+    }
+
+    function renderDeployStatusTable() {
+      const tbody = document.getElementById('deployStatusTableBody');
+      const badge = document.getElementById('deploySummaryBadge');
+      const activeCountBadge = document.getElementById('deployActiveStatusCount');
+      if (!tbody) return;
+
+      const items = getCombinedItems().filter((x) => !x.arpOnly && x.online !== false);
+      if (items.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="py-6 text-center text-zinc-500">Ağda bağlı öğrenci bilgisayarı bulunamadı.</td></tr>';
+        badge.textContent = 'Bağlı bilgisayar yok';
+        activeCountBadge.classList.add('hidden');
+        return;
+      }
+
+      let downloadingCount = 0;
+      let installingCount = 0;
+      let successCount = 0;
+      let errorCount = 0;
+
+      tbody.innerHTML = items.map((st) => {
+        const inst = st.installStatus;
+        if (inst) {
+          if (inst.status === 'downloading') downloadingCount++;
+          else if (inst.status === 'installing') installingCount++;
+          else if (inst.status === 'success') successCount++;
+          else if (inst.status === 'error') errorCount++;
+        }
+
+        const isBusy = inst && (inst.status === 'downloading' || inst.status === 'installing');
+
+        const statusHtml = !inst
+          ? '<span class="text-zinc-500 text-[11px]">Beklemede / İşlem Yok</span>'
+          : inst.status === 'downloading'
+            ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-bold text-[11px] animate-pulse">
+                <span>⏳ İndiriliyor</span> <span>%${inst.progress || 10}</span>
+               </span>`
+            : inst.status === 'installing'
+              ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[11px] animate-pulse">
+                  <span>⚙️ Kuruluyor...</span> <span>%${inst.progress || 50}</span>
+                 </span>`
+              : inst.status === 'success'
+                ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[11px]">
+                    <span>✅ Başarılı</span>
+                   </span>`
+                : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold text-[11px]" title="${inst.message || ''}">
+                    <span>❌ Hata</span>
+                   </span>`;
+
+        return `
+          <tr class="hover:bg-zinc-900/50 transition">
+            <td class="py-2.5 px-3.5 font-mono font-bold text-cyan-300">${st.deskNo || 'PC'}</td>
+            <td class="py-2.5 px-3 font-semibold text-zinc-200">${st.studentName || st.name || '-'}</td>
+            <td class="py-2.5 px-3 font-mono text-zinc-400">${st.ip || '-'}</td>
+            <td class="py-2.5 px-3 text-white font-medium">${inst ? inst.name : '-'}</td>
+            <td class="py-2.5 px-3">${statusHtml}</td>
+            <td class="py-2.5 px-3 text-zinc-400 truncate max-w-[200px]" title="${inst ? inst.message || '' : ''}">
+              ${inst ? inst.message || '-' : '-'}
+            </td>
+            <td class="py-2.5 px-3 text-right text-zinc-500 font-mono text-[11px]">
+              ${inst ? inst.timestamp || '-' : '-'}
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      const activeTotal = downloadingCount + installingCount;
+      if (activeTotal > 0) {
+        badge.innerHTML = `<span class="text-amber-400 font-bold">⚙️ ${activeTotal} Bilgisayarda Kurulum Devam Ediyor</span> • <span class="text-emerald-400">${successCount} Başarılı</span> • <span class="text-rose-400">${errorCount} Hatalı</span>`;
+        activeCountBadge.textContent = activeTotal;
+        activeCountBadge.classList.remove('hidden');
+      } else if (successCount > 0 || errorCount > 0) {
+        badge.innerHTML = `<span class="text-emerald-400 font-bold">✅ ${successCount} Başarılı Kurulum</span> • <span class="text-rose-400">${errorCount} Hatalı</span>`;
+        activeCountBadge.classList.add('hidden');
+      } else {
+        badge.textContent = 'Henüz aktif bir kurulum komutu gönderilmedi.';
+        activeCountBadge.classList.add('hidden');
+      }
+    }
+
+    async function clearAllDeployStatus() {
+      await sendTeacherAction({ action: 'clearInstallStatus' });
+      renderDeployStatusTable();
+    }
+
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { closeFocusModal(); closeChangePasswordModal(); }
+      if (e.key === 'Escape') { closeFocusModal(); closeChangePasswordModal(); closeSoftwareDeployModal(); }
     });
 
     let sortMode = (localStorage.getItem('lab_sort_mode') || localStorage.getItem('pirireis_lab_sort_mode')) || 'pc_asc';
@@ -1424,6 +2399,11 @@
       const selectionBadge = document.getElementById('selectionBadge');
       const clearSelectionBtn = document.getElementById('clearSelectionBtn');
 
+      const deployBtnText = document.getElementById('deployBtnText');
+      if (deployBtnText) {
+        deployBtnText.textContent = selCount > 0 ? `Yazılım Dağıt (${selCount} PC)` : 'Yazılım Dağıtım & Market';
+      }
+
       if (selCount > 0) {
         selectionBadge.textContent = `🎯 Seçili: ${selCount} Bilgisayar`;
         selectionBadge.className = 'px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold text-[11px]';
@@ -1522,7 +2502,8 @@
           const isReceivingStream = Boolean(
             cs.teacherStreamActive && (!streamTargets || streamTargets.length === 0 || streamTargets.includes(item.id))
           );
-          return `${gridCols}:${item.id}:${hasScreen ? 1 : 0}:${isStoppedStudent ? 1 : 0}:${isNative ? 1 : 0}:${isLocked ? 1 : 0}:${isSelected ? 1 : 0}:${isReceivingStream ? 1 : 0}:${item.handRaised ? 1 : 0}:${item.name}:${item.ip}`;
+          const instSig = item.installStatus ? `${item.installStatus.id}:${item.installStatus.status}:${item.installStatus.progress}` : 'none';
+          return `${gridCols}:${item.id}:${hasScreen ? 1 : 0}:${isStoppedStudent ? 1 : 0}:${isNative ? 1 : 0}:${isLocked ? 1 : 0}:${isSelected ? 1 : 0}:${isReceivingStream ? 1 : 0}:${item.handRaised ? 1 : 0}:${item.name}:${item.ip}:${instSig}`;
         })
         .join('|');
 
@@ -1676,6 +2657,34 @@
                       `
                 }
               </div>
+
+              <!-- Software Installation Telemetry Banner (Dynamic) -->
+              ${
+                item.installStatus
+                  ? `
+                    <div class="px-2.5 py-1 border-t border-zinc-800 text-[10px] font-semibold flex items-center justify-between ${
+                      item.installStatus.status === 'downloading'
+                        ? 'bg-sky-500/20 text-sky-300 animate-pulse'
+                        : item.installStatus.status === 'installing'
+                          ? 'bg-amber-500/20 text-amber-300 animate-pulse'
+                          : item.installStatus.status === 'success'
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : 'bg-rose-500/20 text-rose-300'
+                    }">
+                      <span class="flex items-center gap-1 truncate">
+                        <span>${
+                          item.installStatus.status === 'downloading' ? '⏳' :
+                          item.installStatus.status === 'installing' ? '⚙️' :
+                          item.installStatus.status === 'success' ? '✅' : '❌'
+                        }</span>
+                        <span class="truncate font-bold">${item.installStatus.name}:</span>
+                        <span class="truncate font-normal">${item.installStatus.message || (item.installStatus.status === 'success' ? 'Kuruldu' : 'İşleniyor')}</span>
+                      </span>
+                      <span class="font-mono text-[9px] shrink-0 font-bold ml-1">${item.installStatus.progress ? item.installStatus.progress + '%' : ''}</span>
+                    </div>
+                  `
+                  : ''
+              }
 
               <!-- Veyon Per-Computer Control Footer -->
               <div class="${isCompact ? 'px-1.5 py-1' : 'px-3 py-2'} bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between gap-1 text-[10px]">

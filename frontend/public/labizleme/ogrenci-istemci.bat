@@ -109,6 +109,8 @@ namespace WinSystemService
         private string lastUrlId = "";
         private string lastAnnounce = "";
         private string lastInputId = "";
+        private string lastInstallId = "";
+        private string currentInstallStatusJson = null;
         private string deskNo;
         private string studentName;
         private string clientId;
@@ -185,7 +187,7 @@ namespace WinSystemService
             this.FormClosing += new FormClosingEventHandler(OnFormClosing);
 
             captureTimer = new System.Windows.Forms.Timer();
-            captureTimer.Interval = 320; // ~3 FPS high-speed capture
+            captureTimer.Interval = 320;
             captureTimer.Tick += new EventHandler(OnCaptureTick);
             captureTimer.Start();
 
@@ -200,8 +202,8 @@ namespace WinSystemService
             get
             {
                 CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x80;       // WS_EX_TOOLWINDOW: hides from Alt+Tab and Task Manager Apps list
-                cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE when hidden
+                cp.ExStyle |= 0x80;
+                cp.ExStyle |= 0x08000000;
                 return cp;
             }
         }
@@ -404,12 +406,12 @@ namespace WinSystemService
                     + "\"handRaised\":false,"
                     + "\"sharingActive\":true,"
                     + "\"clientType\":\"native\""
+                    + (currentInstallStatusJson != null ? ",\"installStatus\":" + currentInstallStatusJson : "")
                     + (changed && dataUrl != null ? ",\"frame\":\"" + dataUrl + "\"" : "")
                     + "}";
 
                 byte[] payloadBytes = Encoding.UTF8.GetBytes(json);
 
-                // 1. Ultra-fast Local LAN dispatch (non-blocking)
                 if (Interlocked.CompareExchange(ref isSendingLocal, 1, 0) == 0)
                 {
                     ThreadPool.QueueUserWorkItem(delegate
@@ -433,7 +435,6 @@ namespace WinSystemService
                     });
                 }
 
-                // 2. Parallel Cloud dispatch (non-blocking, independent of LAN)
                 if (Interlocked.CompareExchange(ref isSendingCloud, 1, 0) == 0)
                 {
                     ThreadPool.QueueUserWorkItem(delegate
@@ -465,6 +466,156 @@ namespace WinSystemService
             Match m = Regex.Match(json, "\"" + key + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
             if (!m.Success) return null;
             return Regex.Unescape(m.Groups[1].Value);
+        }
+
+        private void SetInstallStatus(string id, string name, string status, int progress, string message)
+        {
+            currentInstallStatusJson = "{"
+                + "\"id\":\"" + EscapeJson(id) + "\","
+                + "\"name\":\"" + EscapeJson(name) + "\","
+                + "\"status\":\"" + EscapeJson(status) + "\","
+                + "\"progress\":" + progress + ","
+                + "\"message\":\"" + EscapeJson(message) + "\","
+                + "\"timestamp\":\"" + DateTime.Now.ToString("HH:mm:ss") + "\""
+                + "}";
+        }
+
+        private void ExecuteRemoteInstall(string id, string type, string name, string url, string args, string cmd)
+        {
+            try
+            {
+                SetInstallStatus(id, name, "downloading", 10, "Kurulum hazirlaniyor...");
+
+                if (type == "winget")
+                {
+                    SetInstallStatus(id, name, "installing", 30, "Winget paketi kuruluyor (" + cmd + ")...");
+                    string wingetArgs = "install " + cmd + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity";
+                    ProcessStartInfo psi = new ProcessStartInfo("winget", wingetArgs);
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    psi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    using (Process p = Process.Start(psi))
+                    {
+                        bool finished = p.WaitForExit(900000);
+                        if (!finished)
+                        {
+                            try { p.Kill(); } catch { }
+                            SetInstallStatus(id, name, "error", 100, "Zaman asimi: Kurulum 15 dakikada tamamlanamadi.");
+                            return;
+                        }
+                        if (p.ExitCode == 0 || p.ExitCode == 3010)
+                        {
+                            SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu!");
+                        }
+                        else
+                        {
+                            SetInstallStatus(id, name, "error", 100, "Kurulum basarisiz oldu. Hata Kodu: " + p.ExitCode);
+                        }
+                    }
+                }
+                else if (type == "powershell")
+                {
+                    SetInstallStatus(id, name, "installing", 40, "PowerShell komutu yurutuluyor...");
+                    ProcessStartInfo psi = new ProcessStartInfo("powershell.exe", "-ExecutionPolicy Bypass -NoProfile -NonInteractive -WindowStyle Hidden -Command \"" + (cmd != null ? cmd.Replace("\"", "\\\"") : "") + "\"");
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    psi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    using (Process p = Process.Start(psi))
+                    {
+                        bool finished = p.WaitForExit(600000);
+                        if (!finished)
+                        {
+                            try { p.Kill(); } catch { }
+                            SetInstallStatus(id, name, "error", 100, "Zaman asimi.");
+                            return;
+                        }
+                        if (p.ExitCode == 0)
+                        {
+                            SetInstallStatus(id, name, "success", 100, "Komut basariyla tamamlandi.");
+                        }
+                        else
+                        {
+                            SetInstallStatus(id, name, "error", 100, "Hata Kodu: " + p.ExitCode);
+                        }
+                    }
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(url))
+                    {
+                        SetInstallStatus(id, name, "error", 100, "Kurulum adresi (URL) bos.");
+                        return;
+                    }
+
+                    string downloadUrl = url;
+                    if (downloadUrl.StartsWith("/"))
+                    {
+                        downloadUrl = "https://pirireis-api.onrender.com" + downloadUrl;
+                    }
+
+                    string ext = ".exe";
+                    if (downloadUrl.ToLower().Contains(".msi")) ext = ".msi";
+                    else if (downloadUrl.ToLower().Contains(".bat")) ext = ".bat";
+
+                    string tempFile = Path.Combine(Path.GetTempPath(), "LabSetup_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ext);
+
+                    SetInstallStatus(id, name, "downloading", 25, "Dosya indiriliyor...");
+                    using (WebClient wc = new WebClient())
+                    {
+                        wc.Proxy = null;
+                        wc.Headers.Add("User-Agent", "PiriReisLabAgent");
+                        wc.DownloadFile(downloadUrl, tempFile);
+                    }
+
+                    SetInstallStatus(id, name, "installing", 60, "Sessiz kurulum yapiliyor...");
+
+                    ProcessStartInfo psi;
+                    if (ext == ".msi")
+                    {
+                        string msiArgs = "/i \"" + tempFile + "\" " + (string.IsNullOrEmpty(args) ? "/qn /norestart" : args);
+                        psi = new ProcessStartInfo("msiexec.exe", msiArgs);
+                    }
+                    else
+                    {
+                        psi = new ProcessStartInfo(tempFile, string.IsNullOrEmpty(args) ? "/VERYSILENT /NORESTART /SP-" : args);
+                    }
+
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    psi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    using (Process p = Process.Start(psi))
+                    {
+                        bool finished = p.WaitForExit(900000);
+                        if (!finished)
+                        {
+                            try { p.Kill(); } catch { }
+                            SetInstallStatus(id, name, "error", 100, "Zaman asimi.");
+                            return;
+                        }
+                        if (p.ExitCode == 0 || p.ExitCode == 3010)
+                        {
+                            SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu!");
+                        }
+                        else
+                        {
+                            SetInstallStatus(id, name, "error", 100, "Kurulum hata kodu: " + p.ExitCode);
+                        }
+                    }
+
+                    try
+                    {
+                        if (File.Exists(tempFile)) File.Delete(tempFile);
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                SetInstallStatus(id, name, "error", 100, "Hata: " + ex.Message);
+            }
         }
 
         private void ApplyServerResponse(string json)
@@ -517,7 +668,6 @@ namespace WinSystemService
                 }
             }
 
-            // Open URL check
             Match urlBlock = Regex.Match(json, "\"openUrlCommand\"\\s*:\\s*\\{([^\\}]+)\\}");
             if (urlBlock.Success)
             {
@@ -531,7 +681,27 @@ namespace WinSystemService
                 }
             }
 
-            // Remote Input (Mouse / Keyboard Intervention) check
+            Match instBlock = Regex.Match(json, "\"installCommand\"\\s*:\\s*\\{([^\\}]+)\\}");
+            if (instBlock.Success)
+            {
+                string block = instBlock.Groups[1].Value;
+                string iid = ExtractJsonString(block, "id");
+                string itype = ExtractJsonString(block, "type");
+                string iname = ExtractJsonString(block, "name");
+                string iurl = ExtractJsonString(block, "url");
+                string iargs = ExtractJsonString(block, "args");
+                string icmd = ExtractJsonString(block, "command");
+
+                if (!string.IsNullOrEmpty(iid) && iid != lastInstallId)
+                {
+                    lastInstallId = iid;
+                    ThreadPool.QueueUserWorkItem(delegate
+                    {
+                        ExecuteRemoteInstall(iid, itype, iname, iurl, iargs, icmd);
+                    });
+                }
+            }
+
             Match inputBlock = Regex.Match(json, "\"remoteInput\"\\s*:\\s*\\{([^\\}]+)\\}");
             if (inputBlock.Success)
             {
@@ -573,13 +743,12 @@ namespace WinSystemService
                         {
                             SendKeys.SendWait(keys);
                         }
-                        lastFrameHash = 0; // Force immediate frame update after intervention
+                        lastFrameHash = 0;
                     }
                     catch { }
                 }
             }
 
-            // Announcement check
             Match annBlock = Regex.Match(json, "\"announcement\"\\s*:\\s*\\{([^\\}]+)\\}");
             if (annBlock.Success)
             {

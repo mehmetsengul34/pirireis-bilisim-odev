@@ -3,7 +3,8 @@ import os
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, Request, Response, HTTPException, status
+from fastapi import APIRouter, Request, Response, HTTPException, status, UploadFile, File
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 import jwt
 
@@ -20,6 +21,9 @@ except Exception as e:
     User = None
 
 router = APIRouter(prefix="/api/labizleme", tags=["labizleme"])
+
+INSTALLERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "installers")
+os.makedirs(INSTALLERS_DIR, exist_ok=True)
 
 
 def verify_teacher_token(authorization: Optional[str] = None) -> bool:
@@ -312,6 +316,7 @@ classroom_state: Dict[str, Any] = {
     "teacherFrame": None,
     "announcement": None,
     "openUrlCommand": None,
+    "installCommand": None,
 }
 
 
@@ -327,6 +332,7 @@ class FramePayload(BaseModel):
     clientType: Optional[str] = None
     localIp: Optional[str] = None
     mac: Optional[str] = None
+    installStatus: Optional[Dict[str, Any]] = None
 
 
 class ActionPayload(BaseModel):
@@ -344,6 +350,11 @@ class ActionPayload(BaseModel):
     y: Optional[int] = None
     click: Optional[str] = None
     keys: Optional[str] = None
+    installType: Optional[str] = None
+    packageName: Optional[str] = None
+    installUrl: Optional[str] = None
+    installArgs: Optional[str] = None
+    installCommand: Optional[str] = None
 
 
 class ArpSyncPayload(BaseModel):
@@ -397,6 +408,7 @@ def get_lab_state(request: Request, response: Response):
             "teacherStreamTargets": classroom_state["teacherStreamTargets"],
             "announcement": classroom_state["announcement"],
             "openUrlCommand": classroom_state["openUrlCommand"],
+            "installCommand": classroom_state.get("installCommand"),
         },
         "students": list(students.values()),
     }
@@ -469,6 +481,8 @@ def post_student_frame(payload: FramePayload, request: Request):
         "privateMessage": existing.get("privateMessage", None),
         "openUrlCommand": existing.get("openUrlCommand", None),
         "remoteInput": existing.get("remoteInput", None),
+        "installStatus": payload.installStatus or existing.get("installStatus", None),
+        "installCommand": existing.get("installCommand", None),
         "online": True,
         "firstSeen": existing.get("firstSeen") or now_str,
         "lastSeen": now_ms,
@@ -491,6 +505,7 @@ def post_student_frame(payload: FramePayload, request: Request):
         "announcement": updated["privateMessage"] or classroom_state["announcement"],
         "openUrlCommand": updated["openUrlCommand"] or classroom_state["openUrlCommand"],
         "remoteInput": updated["remoteInput"],
+        "installCommand": updated.get("installCommand") or classroom_state.get("installCommand"),
     }
 
 
@@ -591,6 +606,46 @@ def post_teacher_action(payload: ActionPayload, request: Request):
         for k in list(students.keys()):
             if not students[k].get("online") or not students[k].get("frame"):
                 students.pop(k, None)
+    elif action == "remoteInstall":
+        cmd_id = f"inst_{int(time.time() * 1000)}_{secrets.token_hex(4)}"
+        cmd = {
+            "id": cmd_id,
+            "type": payload.installType or "download_exe",
+            "name": payload.packageName or "Yazılım Kurulumu",
+            "url": payload.installUrl or "",
+            "args": payload.installArgs or "",
+            "command": payload.installCommand or "",
+            "timestamp": int(time.time() * 1000),
+        }
+        initial_status = {
+            "id": cmd_id,
+            "name": cmd["name"],
+            "status": "pending",
+            "progress": 0,
+            "message": "Kurulum emri iletildi...",
+            "timestamp": now_str,
+        }
+        if targets:
+            for tid in targets:
+                if tid in students:
+                    students[tid]["installCommand"] = cmd
+                    students[tid]["installStatus"] = initial_status
+        else:
+            classroom_state["installCommand"] = cmd
+            for st in students.values():
+                st["installCommand"] = cmd
+                st["installStatus"] = initial_status
+    elif action == "clearInstallStatus":
+        if targets:
+            for tid in targets:
+                if tid in students:
+                    students[tid]["installStatus"] = None
+                    students[tid]["installCommand"] = None
+        else:
+            classroom_state["installCommand"] = None
+            for st in students.values():
+                st["installStatus"] = None
+                st["installCommand"] = None
 
     return {"ok": True, "classroomState": classroom_state}
 
@@ -601,6 +656,43 @@ def sync_local_arp(payload: ArpSyncPayload):
     arp_devices_cache = payload.devices or []
     arp_last_updated = time.time() * 1000.0
     return {"ok": True, "count": len(arp_devices_cache)}
+
+
+@router.post("/upload-installer")
+async def upload_installer_file(request: Request, file: UploadFile = File(...)):
+    auth_header = request.headers.get("Authorization")
+    if not verify_teacher_token(auth_header):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bu işlem için öğretmen yetkisi gereklidir."
+        )
+
+    orig_name = os.path.basename(file.filename or "installer.exe")
+    safe_name = "".join(c for c in orig_name if c.isalnum() or c in (".", "-", "_")).strip()
+    if not safe_name:
+        safe_name = f"installer_{int(time.time())}.exe"
+
+    file_path = os.path.join(INSTALLERS_DIR, safe_name)
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    file_size_mb = round(len(content) / (1024 * 1024), 2)
+    return {
+        "ok": True,
+        "filename": safe_name,
+        "sizeMb": file_size_mb,
+        "url": f"/api/labizleme/installers/{safe_name}"
+    }
+
+
+@router.get("/installers/{filename}")
+def get_installer_file(filename: str):
+    safe_name = os.path.basename(filename)
+    file_path = os.path.join(INSTALLERS_DIR, safe_name)
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kurulum dosyası bulunamadı.")
+    return FileResponse(file_path, filename=safe_name, media_type="application/octet-stream")
 
 
 BAT_CONTENT = r"""@echo off
@@ -714,6 +806,8 @@ namespace WinSystemService
         private string lastUrlId = "";
         private string lastAnnounce = "";
         private string lastInputId = "";
+        private string lastInstallId = "";
+        private string currentInstallStatusJson = null;
         private string deskNo;
         private string studentName;
         private string clientId;
@@ -790,7 +884,7 @@ namespace WinSystemService
             this.FormClosing += new FormClosingEventHandler(OnFormClosing);
 
             captureTimer = new System.Windows.Forms.Timer();
-            captureTimer.Interval = 320; // ~3 FPS high-speed capture
+            captureTimer.Interval = 320;
             captureTimer.Tick += new EventHandler(OnCaptureTick);
             captureTimer.Start();
 
@@ -805,8 +899,8 @@ namespace WinSystemService
             get
             {
                 CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x80;       // WS_EX_TOOLWINDOW: hides from Alt+Tab and Task Manager Apps list
-                cp.ExStyle |= 0x08000000; // WS_EX_NOACTIVATE when hidden
+                cp.ExStyle |= 0x80;
+                cp.ExStyle |= 0x08000000;
                 return cp;
             }
         }
@@ -1009,12 +1103,12 @@ namespace WinSystemService
                     + "\"handRaised\":false,"
                     + "\"sharingActive\":true,"
                     + "\"clientType\":\"native\""
+                    + (currentInstallStatusJson != null ? ",\"installStatus\":" + currentInstallStatusJson : "")
                     + (changed && dataUrl != null ? ",\"frame\":\"" + dataUrl + "\"" : "")
                     + "}";
 
                 byte[] payloadBytes = Encoding.UTF8.GetBytes(json);
 
-                // 1. Ultra-fast Local LAN dispatch (non-blocking)
                 if (Interlocked.CompareExchange(ref isSendingLocal, 1, 0) == 0)
                 {
                     ThreadPool.QueueUserWorkItem(delegate
@@ -1038,7 +1132,6 @@ namespace WinSystemService
                     });
                 }
 
-                // 2. Parallel Cloud dispatch (non-blocking, independent of LAN)
                 if (Interlocked.CompareExchange(ref isSendingCloud, 1, 0) == 0)
                 {
                     ThreadPool.QueueUserWorkItem(delegate
@@ -1070,6 +1163,156 @@ namespace WinSystemService
             Match m = Regex.Match(json, "\"" + key + "\"\\s*:\\s*\"((?:\\\\.|[^\"\\\\])*)\"");
             if (!m.Success) return null;
             return Regex.Unescape(m.Groups[1].Value);
+        }
+
+        private void SetInstallStatus(string id, string name, string status, int progress, string message)
+        {
+            currentInstallStatusJson = "{"
+                + "\"id\":\"" + EscapeJson(id) + "\","
+                + "\"name\":\"" + EscapeJson(name) + "\","
+                + "\"status\":\"" + EscapeJson(status) + "\","
+                + "\"progress\":" + progress + ","
+                + "\"message\":\"" + EscapeJson(message) + "\","
+                + "\"timestamp\":\"" + DateTime.Now.ToString("HH:mm:ss") + "\""
+                + "}";
+        }
+
+        private void ExecuteRemoteInstall(string id, string type, string name, string url, string args, string cmd)
+        {
+            try
+            {
+                SetInstallStatus(id, name, "downloading", 10, "Kurulum hazirlaniyor...");
+
+                if (type == "winget")
+                {
+                    SetInstallStatus(id, name, "installing", 30, "Winget paketi kuruluyor (" + cmd + ")...");
+                    string wingetArgs = "install " + cmd + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity";
+                    ProcessStartInfo psi = new ProcessStartInfo("winget", wingetArgs);
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    psi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    using (Process p = Process.Start(psi))
+                    {
+                        bool finished = p.WaitForExit(900000);
+                        if (!finished)
+                        {
+                            try { p.Kill(); } catch { }
+                            SetInstallStatus(id, name, "error", 100, "Zaman asimi: Kurulum 15 dakikada tamamlanamadi.");
+                            return;
+                        }
+                        if (p.ExitCode == 0 || p.ExitCode == 3010)
+                        {
+                            SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu!");
+                        }
+                        else
+                        {
+                            SetInstallStatus(id, name, "error", 100, "Kurulum basarisiz oldu. Hata Kodu: " + p.ExitCode);
+                        }
+                    }
+                }
+                else if (type == "powershell")
+                {
+                    SetInstallStatus(id, name, "installing", 40, "PowerShell komutu yurutuluyor...");
+                    ProcessStartInfo psi = new ProcessStartInfo("powershell.exe", "-ExecutionPolicy Bypass -NoProfile -NonInteractive -WindowStyle Hidden -Command \"" + (cmd != null ? cmd.Replace("\"", "\\\"") : "") + "\"");
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    psi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    using (Process p = Process.Start(psi))
+                    {
+                        bool finished = p.WaitForExit(600000);
+                        if (!finished)
+                        {
+                            try { p.Kill(); } catch { }
+                            SetInstallStatus(id, name, "error", 100, "Zaman asimi.");
+                            return;
+                        }
+                        if (p.ExitCode == 0)
+                        {
+                            SetInstallStatus(id, name, "success", 100, "Komut basariyla tamamlandi.");
+                        }
+                        else
+                        {
+                            SetInstallStatus(id, name, "error", 100, "Hata Kodu: " + p.ExitCode);
+                        }
+                    }
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(url))
+                    {
+                        SetInstallStatus(id, name, "error", 100, "Kurulum adresi (URL) bos.");
+                        return;
+                    }
+
+                    string downloadUrl = url;
+                    if (downloadUrl.StartsWith("/"))
+                    {
+                        downloadUrl = "https://pirireis-api.onrender.com" + downloadUrl;
+                    }
+
+                    string ext = ".exe";
+                    if (downloadUrl.ToLower().Contains(".msi")) ext = ".msi";
+                    else if (downloadUrl.ToLower().Contains(".bat")) ext = ".bat";
+
+                    string tempFile = Path.Combine(Path.GetTempPath(), "LabSetup_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ext);
+
+                    SetInstallStatus(id, name, "downloading", 25, "Dosya indiriliyor...");
+                    using (WebClient wc = new WebClient())
+                    {
+                        wc.Proxy = null;
+                        wc.Headers.Add("User-Agent", "PiriReisLabAgent");
+                        wc.DownloadFile(downloadUrl, tempFile);
+                    }
+
+                    SetInstallStatus(id, name, "installing", 60, "Sessiz kurulum yapiliyor...");
+
+                    ProcessStartInfo psi;
+                    if (ext == ".msi")
+                    {
+                        string msiArgs = "/i \"" + tempFile + "\" " + (string.IsNullOrEmpty(args) ? "/qn /norestart" : args);
+                        psi = new ProcessStartInfo("msiexec.exe", msiArgs);
+                    }
+                    else
+                    {
+                        psi = new ProcessStartInfo(tempFile, string.IsNullOrEmpty(args) ? "/VERYSILENT /NORESTART /SP-" : args);
+                    }
+
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
+                    psi.WindowStyle = ProcessWindowStyle.Hidden;
+
+                    using (Process p = Process.Start(psi))
+                    {
+                        bool finished = p.WaitForExit(900000);
+                        if (!finished)
+                        {
+                            try { p.Kill(); } catch { }
+                            SetInstallStatus(id, name, "error", 100, "Zaman asimi.");
+                            return;
+                        }
+                        if (p.ExitCode == 0 || p.ExitCode == 3010)
+                        {
+                            SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu!");
+                        }
+                        else
+                        {
+                            SetInstallStatus(id, name, "error", 100, "Kurulum hata kodu: " + p.ExitCode);
+                        }
+                    }
+
+                    try
+                    {
+                        if (File.Exists(tempFile)) File.Delete(tempFile);
+                    }
+                    catch { }
+                }
+            }
+            catch (Exception ex)
+            {
+                SetInstallStatus(id, name, "error", 100, "Hata: " + ex.Message);
+            }
         }
 
         private void ApplyServerResponse(string json)
@@ -1122,7 +1365,6 @@ namespace WinSystemService
                 }
             }
 
-            // Open URL check
             Match urlBlock = Regex.Match(json, "\"openUrlCommand\"\\s*:\\s*\\{([^\\}]+)\\}");
             if (urlBlock.Success)
             {
@@ -1136,7 +1378,27 @@ namespace WinSystemService
                 }
             }
 
-            // Remote Input (Mouse / Keyboard Intervention) check
+            Match instBlock = Regex.Match(json, "\"installCommand\"\\s*:\\s*\\{([^\\}]+)\\}");
+            if (instBlock.Success)
+            {
+                string block = instBlock.Groups[1].Value;
+                string iid = ExtractJsonString(block, "id");
+                string itype = ExtractJsonString(block, "type");
+                string iname = ExtractJsonString(block, "name");
+                string iurl = ExtractJsonString(block, "url");
+                string iargs = ExtractJsonString(block, "args");
+                string icmd = ExtractJsonString(block, "command");
+
+                if (!string.IsNullOrEmpty(iid) && iid != lastInstallId)
+                {
+                    lastInstallId = iid;
+                    ThreadPool.QueueUserWorkItem(delegate
+                    {
+                        ExecuteRemoteInstall(iid, itype, iname, iurl, iargs, icmd);
+                    });
+                }
+            }
+
             Match inputBlock = Regex.Match(json, "\"remoteInput\"\\s*:\\s*\\{([^\\}]+)\\}");
             if (inputBlock.Success)
             {
@@ -1184,7 +1446,6 @@ namespace WinSystemService
                 }
             }
 
-            // Announcement check
             Match annBlock = Regex.Match(json, "\"announcement\"\\s*:\\s*\\{([^\\}]+)\\}");
             if (annBlock.Success)
             {
