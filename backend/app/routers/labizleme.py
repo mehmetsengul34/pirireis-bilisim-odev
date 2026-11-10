@@ -28,6 +28,8 @@ class FramePayload(BaseModel):
     frame: Optional[str] = None
     resolution: Optional[str] = None
     handRaised: Optional[bool] = None
+    sharingActive: Optional[bool] = None
+    clientType: Optional[str] = None
     localIp: Optional[str] = None
     mac: Optional[str] = None
 
@@ -58,9 +60,14 @@ def get_lab_state(request: Request, response: Response):
     stale_keys = []
     for key, st in list(students.items()):
         age = now - st.get("lastSeen", 0)
+        frame_age = now - st.get("lastFrameAt", 0)
+        if frame_age > 5000:
+            st["frame"] = None
+            st["sharingActive"] = False
         if age > 6000:
             st["online"] = False
             st["frame"] = None
+            st["sharingActive"] = False
         if age > 60000:
             stale_keys.append(key)
 
@@ -102,7 +109,32 @@ def post_student_frame(payload: FramePayload, request: Request):
     now_ms = time.time() * 1000.0
     now_str = time.strftime("%H:%M:%S")
     has_new_frame = isinstance(payload.frame, str) and len(payload.frame) > 20
+    is_native = payload.clientType == "native"
+
+    last_native_at = now_ms if (is_native and has_new_frame) else existing.get("lastNativeFrameAt", 0)
+    native_active = (now_ms - last_native_at) < 5000
     prev_frame_age = now_ms - existing.get("lastFrameAt", 0)
+
+    if has_new_frame:
+        active_frame = payload.frame
+        last_frame_at = now_ms
+        frame_time_str = now_str
+        sharing_active = True
+    elif native_active:
+        active_frame = existing.get("frame")
+        last_frame_at = existing.get("lastFrameAt", 0)
+        frame_time_str = existing.get("frameTimeStr", "")
+        sharing_active = True
+    elif payload.sharingActive is False:
+        active_frame = None
+        last_frame_at = existing.get("lastFrameAt", 0)
+        frame_time_str = existing.get("frameTimeStr", "")
+        sharing_active = False
+    else:
+        active_frame = existing.get("frame") if prev_frame_age < 4500 else None
+        last_frame_at = existing.get("lastFrameAt", 0)
+        frame_time_str = existing.get("frameTimeStr", "")
+        sharing_active = bool(active_frame is not None)
 
     updated = {
         "id": student_id,
@@ -111,9 +143,12 @@ def post_student_frame(payload: FramePayload, request: Request):
         "name": payload.name or f"{desk_no} ({student_name})",
         "ip": client_ip,
         "mac": payload.mac or existing.get("mac") or "",
-        "frame": payload.frame if has_new_frame else (existing.get("frame") if prev_frame_age < 5000 else None),
-        "lastFrameAt": now_ms if has_new_frame else existing.get("lastFrameAt", 0),
-        "frameTimeStr": now_str if has_new_frame else existing.get("frameTimeStr", ""),
+        "frame": active_frame,
+        "lastFrameAt": last_frame_at,
+        "lastNativeFrameAt": last_native_at,
+        "frameTimeStr": frame_time_str,
+        "sharingActive": sharing_active,
+        "clientType": "native" if native_active else (payload.clientType or existing.get("clientType") or "web"),
         "resolution": payload.resolution or existing.get("resolution") or "",
         "handRaised": bool(payload.handRaised) if payload.handRaised is not None else bool(existing.get("handRaised", False)),
         "locked": existing.get("locked", False),
@@ -126,6 +161,7 @@ def post_student_frame(payload: FramePayload, request: Request):
 
     return {
         "ok": True,
+        "nativeAgentActive": native_active,
         "locked": bool(classroom_state["lockAll"] or updated["locked"]),
         "lockMessage": classroom_state["lockMessage"],
         "teacherStreamActive": classroom_state["teacherStreamActive"],
@@ -191,23 +227,24 @@ def sync_local_arp(payload: ArpSyncPayload):
 
 BAT_CONTENT = r"""@echo off
 chcp 65001 >nul
-title Torbali Piri Reis Ticaret MTAL - Ogrenci Ekran Paylasim Kurulumu
+title Torbali Piri Reis Ticaret MTAL - LanSchool Ogrenci Servisi Kurulumu
 
 set "INSTALL_DIR=%LOCALAPPDATA%\PiriReisLabService"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
 set "CS_FILE=%INSTALL_DIR%\LabAgent.cs"
 set "EXE_FILE=%INSTALL_DIR%\PiriReisLabHost.exe"
-set "WORKER_FILE=%INSTALL_DIR%\WindowsAudioHost.exe"
+set "GUARD_FILE=%INSTALL_DIR%\PiriReisLabGuard.exe"
 set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 set "VBS_STARTUP=%STARTUP_DIR%\PiriReisLabAgent.vbs"
 
 :: Mevcut calisan eski surecleri durdur (guncelleme yapabilmek icin)
 taskkill /f /im PiriReisLabHost.exe >nul 2>&1
+taskkill /f /im PiriReisLabGuard.exe >nul 2>&1
 taskkill /f /im WindowsAudioHost.exe >nul 2>&1
 taskkill /f /im wscript.exe >nul 2>&1
 
-:: C# Kaynak Kodunu Cikar
+:: C# Kaynak Kodunu Cikar (45. satirdan itibaren)
 more +45 "%~f0" > "%CS_FILE%"
 
 :: Windows'un Dahili .NET Derleyicisi (csc.exe) ile Penceresiz WinExe Olarak Derle
@@ -216,29 +253,22 @@ if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.
 
 "%CSC_EXE%" /nologo /target:winexe /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
 
-:: Bilgisayar Her Acildiginda Otomatik Baslamasi Icin 3 Ayri Kalicilik Noktasi
+:: Bilgisayar Her Acildiginda Otomatik Baslamasi Icin Kalicilik Noktalari
 (
 echo Set WshShell = CreateObject^("WScript.Shell"^)
-echo WshShell.Run """%EXE_FILE%""", 0, False
+echo WshShell.Run chr^(34^) ^& "%EXE_FILE%" ^& chr^(34^), 0, False
 ) > "%VBS_STARTUP%"
 
 reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabService" /t REG_SZ /d "\"%EXE_FILE%\"" /f >nul 2>&1
 schtasks /create /tn "PiriReisLabAgent" /tr "\"%EXE_FILE%\"" /sc onlogon /f >nul 2>&1
 
-:: Servisi Hemen Arka Planda (Tamamen Gorunmez Olarak) Baslat
+:: Masaustunde eski kisayol varsa yeni arka plan servisine yonlendir
+set "SHORTCUT_PATH=%USERPROFILE%\Desktop\Lab Ekran Paylasimi.lnk"
+if exist "%SHORTCUT_PATH%" del /f /q "%SHORTCUT_PATH%" >nul 2>&1
+
+:: Servisi Hemen Arka Planda (LanSchool Modunda Gorunmez Olarak) Baslat
 start "" "%EXE_FILE%"
 exit /b 0
-
-
-
-
-
-
-
-
-
-
-
 
 using System;
 using System.IO;
@@ -260,9 +290,13 @@ namespace PiriReisLabService
     {
         private Label lockLabel;
         private PictureBox demoPic;
+        private NotifyIcon trayIcon;
+        private ToolStripMenuItem handMenuItem;
         private System.Windows.Forms.Timer captureTimer;
+        private System.Windows.Forms.Timer topMostTimer;
         private bool isLocked = false;
         private bool isDemoActive = false;
+        private bool handRaised = false;
         private string lastUrlId = "";
         private string lastAnnounce = "";
         private string deskNo;
@@ -297,7 +331,7 @@ namespace PiriReisLabService
             encParams = new EncoderParameters(1);
             encParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 60L);
 
-            this.Text = "Piri Reis Lab Service";
+            this.Text = "Piri Reis MTAL - LanSchool Ogrenci Servisi";
             this.FormBorderStyle = FormBorderStyle.None;
             this.WindowState = FormWindowState.Minimized;
             this.ShowInTaskbar = false;
@@ -322,12 +356,46 @@ namespace PiriReisLabService
             demoPic.Visible = false;
             this.Controls.Add(demoPic);
 
+            SetupTrayIcon();
+
             this.FormClosing += new FormClosingEventHandler(OnFormClosing);
 
             captureTimer = new System.Windows.Forms.Timer();
-            captureTimer.Interval = 1100;
+            captureTimer.Interval = 1000;
             captureTimer.Tick += new EventHandler(OnCaptureTick);
             captureTimer.Start();
+
+            topMostTimer = new System.Windows.Forms.Timer();
+            topMostTimer.Interval = 400;
+            topMostTimer.Tick += new EventHandler(OnTopMostTick);
+            topMostTimer.Start();
+        }
+
+        private void SetupTrayIcon()
+        {
+            try
+            {
+                ContextMenuStrip menu = new ContextMenuStrip();
+                ToolStripMenuItem statusItem = new ToolStripMenuItem("Torbali Piri Reis MTAL - Sinif Izleme Aktif (" + deskNo + ")");
+                statusItem.Enabled = false;
+                menu.Items.Add(statusItem);
+                menu.Items.Add(new ToolStripSeparator());
+
+                handMenuItem = new ToolStripMenuItem("Soz Iste / Yardim Iste");
+                handMenuItem.Click += delegate
+                {
+                    handRaised = !handRaised;
+                    handMenuItem.Text = handRaised ? "Soz Istegi Gonderildi (Iptal Et)" : "Soz Iste / Yardim Iste";
+                };
+                menu.Items.Add(handMenuItem);
+
+                trayIcon = new NotifyIcon();
+                trayIcon.Icon = SystemIcons.Shield;
+                trayIcon.Text = "Piri Reis MTAL - Sinif Izleme Servisi (" + deskNo + ")";
+                trayIcon.ContextMenuStrip = menu;
+                trayIcon.Visible = true;
+            }
+            catch { }
         }
 
         protected override CreateParams CreateParams
@@ -335,14 +403,37 @@ namespace PiriReisLabService
             get
             {
                 CreateParams cp = base.CreateParams;
-                cp.ExStyle |= 0x80; // WS_EX_TOOLWINDOW: hides from Alt+Tab and Task Manager Apps list
+                cp.ExStyle |= 0x80; // WS_EX_TOOLWINDOW
                 return cp;
+            }
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if ((keyData & Keys.Alt) == Keys.Alt || (keyData & Keys.Control) == Keys.Control || keyData == Keys.Escape)
+            {
+                if (isLocked || isDemoActive) return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private void OnTopMostTick(object sender, EventArgs e)
+        {
+            if (isLocked || isDemoActive)
+            {
+                if (this.WindowState != FormWindowState.Maximized)
+                {
+                    this.WindowState = FormWindowState.Maximized;
+                }
+                this.TopMost = true;
+                this.BringToFront();
+                this.Activate();
             }
         }
 
         private void OnFormClosing(object sender, FormClosingEventArgs e)
         {
-            if (e.CloseReason == CloseReason.UserClosing)
+            if (e.CloseReason != CloseReason.WindowsShutDown)
             {
                 e.Cancel = true;
             }
@@ -454,7 +545,9 @@ namespace PiriReisLabService
                     + "\"localIp\":\"" + EscapeJson(localIp) + "\","
                     + "\"mac\":\"" + EscapeJson(localMac) + "\","
                     + "\"resolution\":\"" + EscapeJson(resStr) + "\","
-                    + "\"handRaised\":false,"
+                    + "\"handRaised\":" + (handRaised ? "true" : "false") + ","
+                    + "\"sharingActive\":true,"
+                    + "\"clientType\":\"native\","
                     + "\"frame\":\"" + dataUrl + "\""
                     + "}";
 
@@ -618,14 +711,13 @@ namespace PiriReisLabService
                 return;
             }
 
-            // Mutual Watchdog Supervisor Loop: Runs completely without a window.
             bool createdNew;
             using (Mutex mutex = new Mutex(true, "Global\\PiriReisLabWatchdogMutex", out createdNew))
             {
                 if (!createdNew) return;
                 string exePath = Application.ExecutablePath;
                 string dir = Path.GetDirectoryName(exePath);
-                string workerExe = Path.Combine(dir, "WindowsAudioHost.exe");
+                string workerExe = Path.Combine(dir, "PiriReisLabGuard.exe");
                 try
                 {
                     if (!File.Exists(workerExe) || new FileInfo(workerExe).Length != new FileInfo(exePath).Length)

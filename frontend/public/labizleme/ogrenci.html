@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Torbalı Piri Reis Ticaret MTAL | Sınıf Servisi</title>
+  <title>Torbalı Piri Reis Ticaret MTAL | LanSchool Sınıf Servisi</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -18,7 +18,7 @@
     <span id="announceTime" class="font-mono text-xs opacity-80"></span>
   </div>
 
-  <!-- 2. Veyon-style Attention / Screen Lock Overlay -->
+  <!-- 2. Veyon/LanSchool Attention / Screen Lock Overlay -->
   <div id="lockOverlay" class="hidden fixed inset-0 z-50 bg-rose-950/95 backdrop-blur-lg flex flex-col items-center justify-center p-6 text-center">
     <div class="w-20 h-20 rounded-3xl bg-rose-500/20 border border-rose-400/30 flex items-center justify-center text-4xl mb-4 animate-pulse">
       🔒
@@ -29,7 +29,7 @@
     </p>
   </div>
 
-  <!-- 3. Veyon-style Teacher Screen Demo Broadcast Overlay -->
+  <!-- 3. Teacher Screen Demo Broadcast Overlay -->
   <div id="teacherDemoOverlay" class="hidden fixed inset-0 z-40 bg-black flex flex-col">
     <div class="px-5 py-2.5 bg-indigo-950 border-b border-indigo-800 flex items-center justify-between text-xs">
       <div class="flex items-center gap-2 font-bold text-indigo-200">
@@ -43,6 +43,30 @@
     </div>
   </div>
 
+  <!-- 4. Mandatory Screen Share Guard Overlay (When Student Stops Sharing in Browser) -->
+  <div id="shareGuardOverlay" onclick="handleGuardClick(event)" class="hidden fixed inset-0 z-45 bg-zinc-950/98 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center cursor-pointer">
+    <div class="max-w-lg w-full bg-zinc-900 border-2 border-rose-500/60 rounded-3xl p-8 shadow-2xl">
+      <div class="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-3xl mx-auto mb-4 animate-bounce">
+        🚨
+      </div>
+      <h2 class="text-2xl font-extrabold text-white">Ekran Paylaşımı Zorunludur!</h2>
+      <p id="guardReasonText" class="text-sm text-rose-200 mt-2.5 leading-relaxed">
+        Laboratuvar dersinde ekran paylaşımı kapatılamaz. Paylaşım durdurulduğu için öğretmen ekranına uyarı gönderildi.
+      </p>
+      <div class="mt-6 space-y-3">
+        <button type="button" onclick="handleGuardClick(event)" class="w-full py-3.5 px-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-extrabold text-sm shadow-lg transition">
+          🖥️ Tüm Ekranı Paylaşarak Derse Devam Et
+        </button>
+        <a id="guardBatLink" href="/labizleme/ogrenci-istemci.bat" download="ogrenci-istemci.bat" onclick="event.stopPropagation()" class="block w-full py-2.5 px-4 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 font-bold text-xs transition">
+          ⚙️ Kalıcı LanSchool Masaüstü Servisini İndir (.BAT — Kapatılamaz Mod)
+        </a>
+      </div>
+      <p class="text-[11px] text-zinc-400 mt-4">
+        Not: Açılan pencerede mutlaka <strong>"Tüm Ekran" (Entire Screen)</strong> sekmesini seçip Paylaş butonuna basınız.
+      </p>
+    </div>
+  </div>
+
   <!-- Main Student Control Card -->
   <div id="mainCard" class="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-xl">
     <div class="flex items-center justify-between pb-4 border-b border-zinc-800">
@@ -52,7 +76,7 @@
         </div>
         <div>
           <h1 class="text-sm font-bold text-white">Torbalı Piri Reis Ticaret MTAL</h1>
-          <p class="text-xs text-zinc-400">Laboratuvar Öğrenci Servisi (Otomatik)</p>
+          <p class="text-xs text-zinc-400">LanSchool Öğrenci Ekran Servisi</p>
         </div>
       </div>
       <button id="handBtn" onclick="toggleHand()" class="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition">
@@ -63,16 +87,25 @@
     <div class="mt-4 space-y-3.5">
       <div>
         <label class="block text-xs font-medium text-zinc-300 mb-1">Bilgisayar / Masa Numarası</label>
-        <input id="deskNo" type="text" value="PC-01" readonly class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400 focus:outline-none" />
+        <input id="deskNo" type="text" value="PC-01" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500" />
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-zinc-300 mb-1">Kullanıcı</label>
-        <input id="studentName" type="text" value="Öğrenci" readonly class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400 focus:outline-none" />
+        <label class="block text-xs font-medium text-zinc-300 mb-1">Öğrenci Adı Soyadı</label>
+        <input id="studentName" type="text" value="Öğrenci" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-cyan-500" />
       </div>
 
       <div id="statusBox" class="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-400">
-        Durum: <strong id="statusText" class="text-emerald-400">Arka Plan Servisi Çalışıyor</strong>
+        Durum: <strong id="statusText" class="text-amber-400">Bağlantı Kontrol Ediliyor...</strong>
+      </div>
+
+      <div class="pt-1 flex flex-col gap-2">
+        <button id="shareBtn" onclick="startSharing()" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">
+          🖥️ Ekran Paylaşımını Başlat
+        </button>
+        <a id="cardBatLink" href="/labizleme/ogrenci-istemci.bat" download="ogrenci-istemci.bat" class="w-full py-2 px-4 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-center text-xs font-semibold transition">
+          📥 LanSchool Masaüstü İstemcisini İndir (.BAT)
+        </a>
       </div>
     </div>
 
@@ -86,26 +119,43 @@
     const LOCAL_API = 'http://192.168.23.244:4000/api';
     const API_BASE = isLocalServer ? '/api' : CLOUD_API;
 
+    if (isLocalServer) {
+      document.getElementById('guardBatLink').href = '/ogrenci-istemci.bat';
+      document.getElementById('cardBatLink').href = '/ogrenci-istemci.bat';
+    }
+
     let stream = null;
     let intervalId = null;
     let handRaised = false;
     let lastExecutedUrlId = null;
     let isOverlayActive = false;
+    let nativeAgentActive = false;
+    let isStartingShare = false;
 
     const params = new URLSearchParams(window.location.search);
-    const urlPc = params.get('pc');
-    const urlUser = params.get('user');
+    const urlPc = params.get('pc') || localStorage.getItem('lab_pc');
+    const urlUser = params.get('user') || localStorage.getItem('lab_user');
     const urlIp = params.get('ip') || '';
     const urlMac = params.get('mac') || '';
-    const autoStart = params.get('autostart') === '1';
     const bgMode = params.get('bg') === '1';
 
     if (urlPc) document.getElementById('deskNo').value = urlPc;
     if (urlUser) document.getElementById('studentName').value = urlUser;
-    const clientId = urlPc ? ('pc-' + urlPc) : ('st-' + Math.random().toString(36).slice(2, 9));
+
+    document.getElementById('deskNo').addEventListener('change', (e) => {
+      localStorage.setItem('lab_pc', e.target.value.trim());
+    });
+    document.getElementById('studentName').addEventListener('change', (e) => {
+      localStorage.setItem('lab_user', e.target.value.trim());
+    });
+
+    function getClientId() {
+      const pcVal = document.getElementById('deskNo').value.trim() || 'PC-01';
+      return 'pc-' + pcVal;
+    }
 
     function hideWindowOffscreen() {
-      if (!bgMode || isOverlayActive) return;
+      if (!bgMode || isOverlayActive || (!stream && !nativeAgentActive)) return;
       try {
         window.resizeTo(160, 100);
         window.moveTo(-32000, -32000);
@@ -133,19 +183,66 @@
         e.stopPropagation();
         return false;
       }
+      if (!stream && !nativeAgentActive) {
+        startSharing();
+      }
     });
 
-    window.addEventListener('DOMContentLoaded', () => {
-      if (bgMode) {
-        setTimeout(hideWindowOffscreen, 200);
+    window.addEventListener('beforeunload', (e) => {
+      if (!nativeAgentActive) {
+        e.preventDefault();
+        e.returnValue = 'Laboratuvar ekran paylaşımı devam ediyor. Çıkmak istediğinize emin misiniz?';
+        return e.returnValue;
       }
-      if (autoStart) {
-        setTimeout(() => startSharing(), 250);
+    });
+
+    function updateShareGuardUi(customReason) {
+      const guard = document.getElementById('shareGuardOverlay');
+      const shareBtn = document.getElementById('shareBtn');
+      const statusText = document.getElementById('statusText');
+
+      if (nativeAgentActive) {
+        guard.classList.add('hidden');
+        shareBtn.classList.add('hidden');
+        statusText.textContent = 'LanSchool Masaüstü Servisi Aktif (Kapatılamaz Mod)';
+        statusText.className = 'text-emerald-400 font-bold';
+        return;
       }
-      sendHeartbeatOnly();
+
+      if (stream) {
+        guard.classList.add('hidden');
+        shareBtn.classList.add('hidden');
+        statusText.textContent = 'Öğretmen Bilgisayarına Canlı Bağlı';
+        statusText.className = 'text-emerald-400 font-bold';
+      } else {
+        if (customReason) {
+          document.getElementById('guardReasonText').textContent = customReason;
+        }
+        guard.classList.remove('hidden');
+        shareBtn.classList.remove('hidden');
+        statusText.textContent = '🚨 Paylaşım Durduruldu — Öğretmene Bildirildi!';
+        statusText.className = 'text-rose-400 font-bold';
+        showWindowFullscreen();
+      }
+    }
+
+    function handleGuardClick(e) {
+      if (e) e.stopPropagation();
+      startSharing();
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await sendHeartbeatOnly();
+      if (!nativeAgentActive) {
+        updateShareGuardUi();
+        setTimeout(() => startSharing(), 200);
+      }
       setInterval(() => {
-        if (!stream) sendHeartbeatOnly();
-      }, 2000);
+        if (!stream) {
+          sendHeartbeatOnly();
+          if (!nativeAgentActive) showWindowFullscreen();
+        }
+      }, 1500);
     });
 
     function toggleHand() {
@@ -162,42 +259,79 @@
     }
 
     async function startSharing() {
+      if (stream || nativeAgentActive || isStartingShare) return;
+      isStartingShare = true;
       try {
-        stream = await navigator.mediaDevices.getDisplayMedia({
-          video: { frameRate: 2 },
-          audio: false
+        const mediaStream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            frameRate: 2,
+            displaySurface: 'monitor'
+          },
+          audio: false,
+          selfBrowserSurface: 'exclude',
+          surfaceSwitching: 'exclude',
+          monitorTypeSurfaces: 'include'
         });
 
+        const videoTrack = mediaStream.getVideoTracks()[0];
+        const settings = videoTrack.getSettings ? videoTrack.getSettings() : {};
+
+        // Require full monitor share if browser reports displaySurface
+        if (settings.displaySurface && settings.displaySurface !== 'monitor') {
+          videoTrack.stop();
+          isStartingShare = false;
+          updateShareGuardUi('⚠️ Sadece tek bir pencere veya sekme paylaşamazsınız! Lütfen "Tüm Ekran" (Entire Screen) seçeneğini seçerek paylaşın.');
+          return;
+        }
+
+        stream = mediaStream;
         const video = document.getElementById('previewVideo');
         video.srcObject = stream;
 
-        document.getElementById('statusText').textContent = 'Öğretmen Bilgisayarına Canlı Bağlı';
-        document.getElementById('statusText').className = 'text-emerald-400';
+        updateShareGuardUi();
 
         if (bgMode && !isOverlayActive) {
           setTimeout(hideWindowOffscreen, 300);
         }
 
-        // If sharing stops for any reason, automatically restart immediately
-        stream.getVideoTracks()[0].addEventListener('ended', () => {
+        // If student clicks "Paylaşımı Durdur" in browser bar:
+        videoTrack.addEventListener('ended', () => {
           stream = null;
-          setTimeout(() => startSharing(), 300);
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+          sendHeartbeatOnly();
+          updateShareGuardUi('🚨 Ekran paylaşımını durdurdunuz! Laboratuvar dersinde ekran paylaşımı kapatılamaz. Devam etmek için ekrana tıklayın.');
+          setTimeout(() => startSharing(), 100);
         });
 
         if (intervalId) clearInterval(intervalId);
-        intervalId = setInterval(() => sendFrame(), 1200);
+        setTimeout(() => sendFrame(), 250);
+        intervalId = setInterval(() => sendFrame(), 1100);
       } catch (err) {
-        setTimeout(() => startSharing(), 1500);
+        updateShareGuardUi('🚨 Ekran paylaşımı başlatılmadı! Derse devam etmek için yeşil butona tıklayıp "Tüm Ekranı" paylaşmanız zorunludur.');
+      } finally {
+        isStartingShare = false;
       }
     }
 
     function applyServerCommands(data) {
       if (!data) return;
 
+      if (data.nativeAgentActive !== undefined) {
+        const prevNative = nativeAgentActive;
+        nativeAgentActive = Boolean(data.nativeAgentActive);
+        if (prevNative !== nativeAgentActive) {
+          updateShareGuardUi();
+        }
+      }
+
       const needFullscreen = Boolean(
         data.locked ||
         (data.teacherStreamActive && data.teacherFrame) ||
-        (data.announcement && data.announcement.message)
+        (data.announcement && data.announcement.message) ||
+        (!stream && !nativeAgentActive)
       );
 
       if (needFullscreen && !isOverlayActive) {
@@ -257,7 +391,6 @@
         cloudData = await res.json();
       } catch (e) {}
 
-      // Also mirror to local teacher server if running on cloud page
       if (!isLocalServer) {
         try {
           const localRes = await fetch(`${LOCAL_API}/frame`, {
@@ -275,13 +408,15 @@
       const deskNo = document.getElementById('deskNo').value.trim() || 'PC';
       const studentName = document.getElementById('studentName').value.trim() || 'Öğrenci';
       await postPayload({
-        id: clientId,
+        id: getClientId(),
         deskNo,
         studentName,
         name: `${deskNo} (${studentName})`,
         localIp: urlIp || undefined,
         mac: urlMac || undefined,
-        handRaised
+        handRaised,
+        sharingActive: Boolean(stream),
+        clientType: 'web'
       });
     }
 
@@ -292,7 +427,7 @@
       if (!video.videoWidth) return;
 
       const canvas = document.getElementById('captureCanvas');
-      const targetWidth = 800;
+      const targetWidth = 854;
       const scale = targetWidth / video.videoWidth;
       canvas.width = targetWidth;
       canvas.height = Math.round(video.videoHeight * scale);
@@ -302,7 +437,7 @@
       const dataUrl = canvas.toDataURL('image/jpeg', 0.65);
 
       await postPayload({
-        id: clientId,
+        id: getClientId(),
         deskNo,
         studentName,
         name: `${deskNo} (${studentName})`,
@@ -310,6 +445,8 @@
         mac: urlMac || undefined,
         resolution: `${video.videoWidth}x${video.videoHeight}`,
         handRaised,
+        sharingActive: true,
+        clientType: 'web',
         frame: dataUrl
       });
     }

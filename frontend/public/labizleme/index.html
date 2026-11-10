@@ -40,8 +40,8 @@
           <button onclick="copyStudentUrl()" class="px-2 py-0.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[11px] transition">
             Kopyala
           </button>
-          <a id="batDownloadLink" href="https://pirireis-api.onrender.com/api/labizleme/ogrenci-istemci.bat" download="ogrenci-istemci.bat" class="px-2.5 py-0.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded text-[11px] transition">
-            .BAT İndir
+          <a id="batDownloadLink" href="/labizleme/ogrenci-istemci.bat" download="ogrenci-istemci.bat" class="px-2.5 py-0.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded text-[11px] transition">
+            🛡️ LanSchool .BAT İndir
           </a>
         </div>
 
@@ -597,16 +597,28 @@
       grid.innerHTML = filtered
         .map((item) => {
           const hasScreen = Boolean((item.online !== false) && item.frame);
+          const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly);
+          const isNative = item.clientType === 'native';
           const isLocked = Boolean((serverState.classroomState && serverState.classroomState.lockAll) || item.locked);
           const badgeClass = hasScreen
             ? item.isDemo
               ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-            : 'bg-zinc-800 text-zinc-400 border-zinc-700';
-          const badgeText = hasScreen ? (item.isDemo ? 'Simülasyon' : `Canlı ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`) : 'Ağda Açık';
+              : isNative
+                ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+            : isStoppedStudent
+              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+              : 'bg-zinc-800 text-zinc-400 border-zinc-700';
+          const badgeText = hasScreen
+            ? item.isDemo
+              ? 'Simülasyon'
+              : `${isNative ? '🛡️ LanSchool' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
+            : isStoppedStudent
+              ? '🚨 Paylaşım Kapalı'
+              : 'Ağda Açık';
 
           return `
-            <div class="screen-card bg-zinc-900 border ${item.handRaised ? 'border-amber-400 ring-2 ring-amber-400/20' : 'border-zinc-800'} rounded-2xl overflow-hidden shadow-lg flex flex-col transition hover:border-cyan-500/50">
+            <div class="screen-card bg-zinc-900 border ${item.handRaised ? 'border-amber-400 ring-2 ring-amber-400/20' : isStoppedStudent ? 'border-rose-500/70 ring-1 ring-rose-500/30' : 'border-zinc-800'} rounded-2xl overflow-hidden shadow-lg flex flex-col transition hover:border-cyan-500/50">
               <!-- Card Header -->
               <div class="px-4 py-2.5 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2 min-w-0">
@@ -645,15 +657,25 @@
                         </span>
                       </div>
                     `
-                    : `
-                      <div class="text-center p-6">
-                        <div class="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 mx-auto mb-2 flex items-center justify-center text-zinc-500">
-                          🖥️
+                    : isStoppedStudent
+                      ? `
+                        <div class="text-center p-5 bg-rose-950/20 w-full h-full flex flex-col items-center justify-center">
+                          <div class="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/40 mx-auto mb-2 flex items-center justify-center text-lg">
+                            🚨
+                          </div>
+                          <p class="text-xs font-bold text-rose-300">Öğrenci Tarayıcı Paylaşımını Durdurdu!</p>
+                          <p class="text-[11px] text-zinc-400 mt-1 max-w-xs">Öğrenci ekranında zorunlu paylaşım uyarısı aktif. Kapatılamaz LanSchool modu için bu bilgisayarda <strong>.BAT İndir</strong> dosyasını çalıştırın.</p>
                         </div>
-                        <p class="text-xs font-medium text-zinc-400">Cihaz Ağda Aktif (${item.ip})</p>
-                        <p class="text-[11px] text-zinc-500 mt-1">Öğrenci istemcisi bağlandığında canlı ekran görüntüsü burada belirecektir.</p>
-                      </div>
-                    `
+                      `
+                      : `
+                        <div class="text-center p-6">
+                          <div class="w-10 h-10 rounded-full bg-zinc-900 border border-zinc-800 mx-auto mb-2 flex items-center justify-center text-zinc-500">
+                            🖥️
+                          </div>
+                          <p class="text-xs font-medium text-zinc-400">Cihaz Ağda Aktif (${item.ip})</p>
+                          <p class="text-[11px] text-zinc-500 mt-1">Öğrenci istemcisi (.BAT) çalıştırıldığında canlı ekran görüntüsü burada belirecektir.</p>
+                        </div>
+                      `
                 }
               </div>
 
