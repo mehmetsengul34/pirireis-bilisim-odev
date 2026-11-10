@@ -29,10 +29,18 @@ namespace PiriReisLabMaster
         [DllImport("user32.dll")]
         private static extern bool IsWindowVisible(IntPtr hWnd);
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        private const uint WM_SETICON = 0x0080;
+        private const int ICON_SMALL = 0;
+        private const int ICON_BIG = 1;
+
         private NotifyIcon trayIcon;
         private ContextMenuStrip trayMenu;
         private Process browserProcess;
         private System.Windows.Forms.Timer processWatchTimer;
+        private Icon appIcon = null;
         private string currentServerUrl;
         private const string CLOUD_URL = "https://ogretmenlerodasi.info/labizleme";
         private const string LOCAL_URL = "http://localhost:4000/labizleme";
@@ -75,17 +83,30 @@ namespace PiriReisLabMaster
             // Authenticate in background to cache fresh token
             ThreadPool.QueueUserWorkItem(delegate { EnsureAuthToken(false); });
 
-            CreateDesktopShortcut();
+            appIcon = GenerateAppIcon();
+            CreateDesktopShortcut(true);
             InitTray();
             LaunchAppWindow();
 
             processWatchTimer = new System.Windows.Forms.Timer();
-            processWatchTimer.Interval = 2000;
+            processWatchTimer.Interval = 1500;
             processWatchTimer.Tick += delegate
             {
                 if (browserProcess != null && browserProcess.HasExited)
                 {
                     browserProcess = null;
+                }
+                else if (browserProcess != null && appIcon != null)
+                {
+                    try
+                    {
+                        if (browserProcess.MainWindowHandle != IntPtr.Zero)
+                        {
+                            SendMessage(browserProcess.MainWindowHandle, WM_SETICON, (IntPtr)ICON_SMALL, appIcon.Handle);
+                            SendMessage(browserProcess.MainWindowHandle, WM_SETICON, (IntPtr)ICON_BIG, appIcon.Handle);
+                        }
+                    }
+                    catch { }
                 }
             };
             processWatchTimer.Start();
@@ -93,6 +114,12 @@ namespace PiriReisLabMaster
 
         private Icon GenerateAppIcon()
         {
+            try
+            {
+                Icon assoc = Icon.ExtractAssociatedIcon(Application.ExecutablePath);
+                if (assoc != null) return assoc;
+            }
+            catch { }
             try
             {
                 using (Bitmap bmp = new Bitmap(32, 32))
@@ -216,7 +243,7 @@ namespace PiriReisLabMaster
             trayMenu.Items.Add("❌ Cikis", null, delegate { ExitApp(); });
 
             trayIcon = new NotifyIcon();
-            trayIcon.Icon = GenerateAppIcon();
+            trayIcon.Icon = appIcon ?? GenerateAppIcon();
             trayIcon.Text = "Piri Reis Laboratuvar Yonetimi";
             trayIcon.ContextMenuStrip = trayMenu;
             trayIcon.Visible = true;
@@ -279,10 +306,19 @@ namespace PiriReisLabMaster
                         StringBuilder sb = new StringBuilder(256);
                         GetWindowText(hWnd, sb, 256);
                         string title = sb.ToString();
-                        if (title.Contains("Piri Reis") || title.Contains("Lab Master") || title.Contains("Torbalı") || title.Contains("ogretmenlerodasi.info"))
+                        if (title.Contains("Piri Reis") || title.Contains("Lab Master") || title.Contains("Torbalı") || title.Contains("ogretmenlerodasi.info") || title.Contains("Laboratuvar"))
                         {
                             ShowWindow(hWnd, 3); // 3 = SW_MAXIMIZE (Tam Ekran)
                             SetForegroundWindow(hWnd);
+                            if (appIcon != null)
+                            {
+                                try
+                                {
+                                    SendMessage(hWnd, WM_SETICON, (IntPtr)ICON_SMALL, appIcon.Handle);
+                                    SendMessage(hWnd, WM_SETICON, (IntPtr)ICON_BIG, appIcon.Handle);
+                                }
+                                catch { }
+                            }
                         }
                     }
                     return true;
@@ -443,16 +479,31 @@ namespace PiriReisLabMaster
             {
                 string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
                 string lnkPath = Path.Combine(desktop, "Piri Reis Laboratuvar Yonetimi.lnk");
-                if (File.Exists(lnkPath) && !overwrite) return;
 
-                string exePath = Application.ExecutablePath;
+                string appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PiriReisLabMaster");
+                if (!Directory.Exists(appData)) Directory.CreateDirectory(appData);
+                string installedExe = Path.Combine(appData, "PiriReisLabMaster.exe");
+                string currentExe = Application.ExecutablePath;
+
+                if (!string.Equals(currentExe, installedExe, StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        File.Copy(currentExe, installedExe, true);
+                    }
+                    catch { }
+                }
+
+                string targetExe = File.Exists(installedExe) ? installedExe : currentExe;
+
                 Type shellType = Type.GetTypeFromProgID("WScript.Shell");
                 if (shellType != null)
                 {
                     dynamic shell = Activator.CreateInstance(shellType);
                     dynamic shortcut = shell.CreateShortcut(lnkPath);
-                    shortcut.TargetPath = exePath;
-                    shortcut.WorkingDirectory = Path.GetDirectoryName(exePath);
+                    shortcut.TargetPath = targetExe;
+                    shortcut.WorkingDirectory = Path.GetDirectoryName(targetExe);
+                    shortcut.IconLocation = targetExe + ",0";
                     shortcut.Description = "Piri Reis Bilisim Laboratuvari Yonetim ve Izleme Masasi";
                     shortcut.Save();
                 }
