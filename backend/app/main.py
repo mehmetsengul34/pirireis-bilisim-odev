@@ -148,9 +148,10 @@ def startup_seed_data():
         # Check / Create pirireis admin teacher
         pirireis_teacher = db.query(User).filter(User.username == "pirireis").first()
         if not pirireis_teacher:
+            default_seed_pass = os.getenv("LAB_TEACHER_PASS", "20262027")
             pirireis_teacher = User(
                 username="pirireis",
-                password_hash=hash_password("20262027"),
+                password_hash=hash_password(default_seed_pass),
                 full_name="Piri Reis Bilişim Yöneticisi",
                 role="teacher"
             )
@@ -158,8 +159,9 @@ def startup_seed_data():
             db.commit()
             db.refresh(pirireis_teacher)
         else:
-            # Guarantee master password is set to 20262027
-            pirireis_teacher.password_hash = hash_password("20262027")
+            # Preserve existing user password upon restart; only assign if missing
+            if not pirireis_teacher.password_hash:
+                pirireis_teacher.password_hash = hash_password(os.getenv("LAB_TEACHER_PASS", "20262027"))
             pirireis_teacher.role = "teacher"
             db.commit()
 

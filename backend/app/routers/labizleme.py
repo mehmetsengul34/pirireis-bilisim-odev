@@ -8,13 +8,14 @@ from pydantic import BaseModel
 import jwt
 
 try:
-    from app.auth import SECRET_KEY, ALGORITHM, verify_password
+    from app.auth import SECRET_KEY, ALGORITHM, verify_password, hash_password
     from app.database import SessionLocal
     from app.models import User
 except Exception as e:
     SECRET_KEY = os.getenv("SECRET_KEY", "piri-reis-mtal-bilisim-guvenli-anahtar-2026")
     ALGORITHM = "HS256"
     verify_password = None
+    hash_password = None
     SessionLocal = None
     User = None
 
@@ -35,6 +36,51 @@ def verify_teacher_token(authorization: Optional[str] = None) -> bool:
     except Exception:
         return False
 
+
+# Runtime master password hash fallback (updated when password changed without DB or for instant synchronization)
+RUNTIME_MASTER_PASS_HASH: Optional[str] = None
+password_change_failures: Dict[str, List[float]] = {}
+
+
+def check_password_rate_limit(client_ip: str, max_attempts: int = 5, window_seconds: float = 600.0):
+    now = time.time()
+    attempts = [t for t in password_change_failures.get(client_ip, []) if now - t < window_seconds]
+    password_change_failures[client_ip] = attempts
+    if len(attempts) >= max_attempts:
+        remaining = int((attempts[0] + window_seconds - now) / 60) + 1
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Çok fazla hatalı deneme yapıldı. Güvenlik nedeniyle lütfen {remaining} dakika sonra tekrar deneyin."
+        )
+
+
+def record_password_failure(client_ip: str):
+    now = time.time()
+    if client_ip not in password_change_failures:
+        password_change_failures[client_ip] = []
+    password_change_failures[client_ip].append(now)
+
+
+def validate_password_strength(password: str) -> Optional[str]:
+    if len(password) < 8:
+        return "Yeni şifre en az 8 karakter uzunluğunda olmalıdır."
+    if len(password) > 128:
+        return "Yeni şifre güvenlik nedeniyle en fazla 128 karakter olabilir."
+    if not any(c.isupper() for c in password):
+        return "Yeni şifre en az bir büyük harf (A-Z) içermelidir."
+    if not any(c.islower() for c in password):
+        return "Yeni şifre en az bir küçük harf (a-z) içermelidir."
+    if not any(c.isdigit() for c in password):
+        return "Yeni şifre en az bir rakam (0-9) içermelidir."
+    if not any(not c.isalnum() for c in password):
+        return "Yeni şifre en az bir özel karakter (@, #, $, !, %, *, ?, ., vb.) içermelidir."
+    return None
+
+
+class ChangePasswordPayload(BaseModel):
+    currentPassword: str
+    newPassword: str
+    confirmPassword: str
 
 class TeacherLoginPayload(BaseModel):
     username: str
@@ -71,12 +117,17 @@ def lab_teacher_login(payload: TeacherLoginPayload):
         except Exception as db_err:
             print(f"[labizleme login db error]: {db_err}")
 
-    # 2. Master teacher fallback
+    # 2. Master teacher fallback / Environment variables check
     master_user = os.getenv("LAB_TEACHER_USER", "pirireis").lower()
     master_pass = os.getenv("LAB_TEACHER_PASS", "20262027")
 
-    if not authenticated:
-        if secrets.compare_digest(username, master_user) and secrets.compare_digest(password, master_pass):
+    if not authenticated and secrets.compare_digest(username, master_user):
+        if RUNTIME_MASTER_PASS_HASH and verify_password:
+            if verify_password(password, RUNTIME_MASTER_PASS_HASH):
+                authenticated = True
+                display_name = "Master Öğretmen"
+                user_id = "master"
+        elif secrets.compare_digest(password, master_pass):
             authenticated = True
             display_name = "Master Öğretmen"
             user_id = "master"
@@ -103,6 +154,136 @@ def lab_teacher_login(payload: TeacherLoginPayload):
         "token": token,
         "fullName": display_name,
         "expiresIn": 86400 * 7
+    }
+
+
+@router.post("/change-password")
+def lab_change_password(payload: ChangePasswordPayload, request: Request):
+    global RUNTIME_MASTER_PASS_HASH
+
+    # 1. Bearer Token Verification
+    auth_header = request.headers.get("Authorization")
+    if not verify_teacher_token(auth_header):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bu işlem için geçerli bir öğretmen oturumu gereklidir."
+        )
+
+    parts = auth_header.split()
+    token = parts[1]
+    try:
+        token_payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = str(token_payload.get("sub", "teacher"))
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Geçersiz veya süresi dolmuş oturum."
+        )
+
+    # 2. Rate Limiting Protection
+    forwarded = request.headers.get("x-forwarded-for", "")
+    client_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "unknown")
+    check_password_rate_limit(client_ip)
+
+    current_pass = (payload.currentPassword or "").strip()
+    new_pass = (payload.newPassword or "").strip()
+    confirm_pass = (payload.confirmPassword or "").strip()
+
+    if not current_pass or not new_pass or not confirm_pass:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Lütfen tüm şifre alanlarını eksiksiz doldurun."
+        )
+
+    if new_pass != confirm_pass:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Yeni şifreler birbiriyle eşleşmiyor."
+        )
+
+    if current_pass == new_pass:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Yeni şifreniz mevcut şifrenizden farklı olmalıdır."
+        )
+
+    strength_error = validate_password_strength(new_pass)
+    if strength_error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=strength_error
+        )
+
+    # 3. Verify Current Password and Update
+    password_verified = False
+    display_name = "Öğretmen"
+    new_hash = hash_password(new_pass) if hash_password else None
+
+    # Check Database User first
+    if SessionLocal and User and verify_password:
+        try:
+            db = SessionLocal()
+            try:
+                user = None
+                if user_id.isdigit():
+                    user = db.query(User).filter(User.id == int(user_id)).first()
+                if not user:
+                    user = db.query(User).filter(User.username == "pirireis").first()
+
+                if user and user.role in ("teacher", "admin"):
+                    if verify_password(current_pass, user.password_hash):
+                        password_verified = True
+                        if new_hash:
+                            user.password_hash = new_hash
+                            db.commit()
+                            db.refresh(user)
+                        display_name = user.full_name or user.username
+                        user_id = str(user.id)
+            finally:
+                db.close()
+        except Exception as db_err:
+            print(f"[labizleme change-password db error]: {db_err}")
+
+    # Fallback to runtime / master pass check
+    if not password_verified:
+        master_pass = os.getenv("LAB_TEACHER_PASS", "20262027")
+        if RUNTIME_MASTER_PASS_HASH and verify_password:
+            if verify_password(current_pass, RUNTIME_MASTER_PASS_HASH):
+                password_verified = True
+        elif secrets.compare_digest(current_pass, master_pass):
+            password_verified = True
+
+        if password_verified:
+            display_name = "Master Öğretmen"
+            user_id = "master"
+
+    if not password_verified:
+        record_password_failure(client_ip)
+        time.sleep(0.4)  # Anti-timing attack
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mevcut şifreniz hatalı!"
+        )
+
+    # Keep runtime fallback in sync
+    if new_hash:
+        RUNTIME_MASTER_PASS_HASH = new_hash
+
+    # 4. Token Rotation (Issue new JWT token)
+    exp = datetime.now(timezone.utc) + timedelta(days=7)
+    token_data = {
+        "sub": user_id,
+        "role": "teacher",
+        "name": display_name,
+        "exp": exp,
+        "scope": "labizleme",
+    }
+    new_token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+
+    return {
+        "success": True,
+        "token": new_token,
+        "message": "Şifreniz başarıyla güncellendi ve güvenli şekilde kaydedildi."
     }
 
 
