@@ -2946,24 +2946,27 @@
         }
 
         const isBusy = inst && (inst.status === 'downloading' || inst.status === 'installing');
-
         const statusHtml = !inst
           ? '<span class="text-zinc-500 text-[11px]">Beklemede / İşlem Yok</span>'
-          : inst.status === 'downloading'
-            ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-bold text-[11px] animate-pulse">
-                <span>⏳ İndiriliyor</span> <span>%${inst.progress || 10}</span>
+          : inst.status === 'pending'
+            ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold text-[11px] animate-pulse">
+                <span>📡 İletildi...</span>
                </span>`
-            : inst.status === 'installing'
-              ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[11px] animate-pulse">
-                  <span>⚙️ Kuruluyor...</span> <span>%${inst.progress || 50}</span>
+            : inst.status === 'downloading'
+              ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 font-bold text-[11px] animate-pulse">
+                  <span>⏳ İndiriliyor</span> <span>%${inst.progress || 10}</span>
                  </span>`
-              : inst.status === 'success'
-                ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[11px]">
-                    <span>✅ Başarılı</span>
+              : inst.status === 'installing'
+                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold text-[11px] animate-pulse">
+                    <span>⚙️ Kuruluyor...</span> <span>%${inst.progress || 50}</span>
                    </span>`
-                : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold text-[11px]" title="${inst.message || ''}">
-                    <span>❌ Hata</span>
-                   </span>`;
+                : inst.status === 'success'
+                  ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[11px]">
+                      <span>✅ Başarılı</span>
+                     </span>`
+                  : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold text-[11px]" title="${inst.message || 'Hata'}">
+                      <span>❌ Hata</span>
+                     </span>`;
 
         return `
           <tr class="hover:bg-zinc-900/50 transition">
@@ -3006,31 +3009,31 @@
     // BATCH ADMINISTRATION & LAB SETTINGS JAVASCRIPT LOGIC
     // =========================================================================
     const BATCH_SCRIPTS = {
-      bypass_uac: `Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'ConsentPromptBehaviorAdmin' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'PromptOnSecureDesktop' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System' -Name 'EnableInstallerDetection' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue; $vbs = Join-Path $env:APPDATA 'Microsoft\\Windows\\Start Menu\\Programs\\Startup\\WinSystemService.vbs'; if(Test-Path $vbs){ schtasks /create /tn "WinSystemService" /tr "wscript.exe //B //Nologo \`"$vbs\`"" /sc onlogon /rl highest /f *>$null }; Write-Output 'UAC onaylari kaldirildi ve sessiz kurulum izinleri verildi.'`,
-      clean_desktop: `$d=[Environment]::GetFolderPath('Desktop'); Get-ChildItem -Path $d -Exclude '*.lnk' -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue`,
-      refresh_desktop: `Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 600; Start-Process explorer.exe`,
-      empty_recycle_downloads: `$dl=Join-Path $env:USERPROFILE 'Downloads'; if(Test-Path $dl){Get-ChildItem -Path $dl -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue}; Clear-RecycleBin -Force -ErrorAction SilentlyContinue`,
-      clean_temp: `Get-ChildItem -Path $env:TEMP -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; Get-ChildItem -Path 'C:\Windows\Temp' -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue`,
-      lock_taskmgr: `New-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\System' -Force -ErrorAction SilentlyContinue | Out-Null; Set-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'DisableTaskMgr' -Value 1 -Type DWord -Force`,
-      unlock_taskmgr: `Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Policies\System' -Name 'DisableTaskMgr' -Force -ErrorAction SilentlyContinue`,
-      lock_cmd: `New-Item -Path 'HKCU:\Software\Policies\Microsoft\Windows\System' -Force -ErrorAction SilentlyContinue | Out-Null; Set-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Windows\System' -Name 'DisableCMD' -Value 1 -Type DWord -Force`,
-      unlock_cmd: `Remove-ItemProperty -Path 'HKCU:\Software\Policies\Microsoft\Windows\System' -Name 'DisableCMD' -Force -ErrorAction SilentlyContinue`,
-      disable_usb: `Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\USBSTOR' -Name 'Start' -Value 4 -Type DWord -Force -ErrorAction SilentlyContinue`,
-      enable_usb: `Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Services\USBSTOR' -Name 'Start' -Value 3 -Type DWord -Force -ErrorAction SilentlyContinue`,
-      block_games: `$h="$env:windir\System32\drivers\etc\hosts"; $b=@("127.0.0.1 roblox.com","127.0.0.1 www.roblox.com","127.0.0.1 discord.com","127.0.0.1 steampowered.com","127.0.0.1 tiktok.com","127.0.0.1 twitch.tv"); $c=Get-Content $h -Raw -ErrorAction SilentlyContinue; foreach($l in $b){if($c -notmatch [regex]::Escape($l)){Add-Content -Path $h -Value "\`n$l" -Force}}; ipconfig /flushdns`,
-      unblock_games: `$h="$env:windir\System32\drivers\etc\hosts"; $d=@('roblox.com','discord.com','steampowered.com','tiktok.com','twitch.tv'); $lines=Get-Content $h -ErrorAction SilentlyContinue | Where-Object { $l=$_; -not ($d | Where-Object { $l -match $_ }) }; Set-Content -Path $h -Value $lines -Force; ipconfig /flushdns`,
-      firewall_on: `netsh advfirewall set allprofiles state on`,
-      firewall_off: `netsh advfirewall set allprofiles state off`,
-      flush_dns: `ipconfig /flushdns; ipconfig /renew`,
-      kill_browsers: `Get-Process -Name chrome, msedge, firefox, opera, brave, steam, roblox, discord -ErrorAction SilentlyContinue | Stop-Process -Force`,
-      mute_audio: `$w=New-Object -ComObject WScript.Shell; for($i=0; $i -lt 50; $i++){$w.SendKeys([char]174)}`,
-      disable_sleep: `powercfg -change -monitor-timeout-ac 0; powercfg -change -standby-timeout-ac 0; powercfg -change -hibernate-timeout-ac 0`,
+      bypass_uac: `reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 0 /f; reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v PromptOnSecureDesktop /t REG_DWORD /d 0 /f; reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v EnableLUA /t REG_DWORD /d 0 /f; exit 0;`,
+      clean_desktop: `cmd.exe /c "del /q /f %USERPROFILE%\\Desktop\\*.*" 2>nul; exit 0;`,
+      refresh_desktop: `Stop-Process -Name explorer -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 600; Start-Process explorer.exe; exit 0;`,
+      empty_recycle_downloads: `cmd.exe /c "del /s /q /f %USERPROFILE%\\Downloads\\*.* 2>nul & rd /s /q %USERPROFILE%\\Downloads 2>nul & md %USERPROFILE%\\Downloads 2>nul"; Clear-RecycleBin -Force -ErrorAction SilentlyContinue; exit 0;`,
+      clean_temp: `cmd.exe /c "del /s /q /f %TEMP%\\*.* 2>nul & del /s /q /f C:\\Windows\\Temp\\*.* 2>nul"; exit 0;`,
+      lock_taskmgr: `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f; exit 0;`,
+      unlock_taskmgr: `reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableTaskMgr /f; exit 0;`,
+      lock_cmd: `reg add "HKCU\\Software\\Policies\\Microsoft\\Windows\\System" /v DisableCMD /t REG_DWORD /d 1 /f; exit 0;`,
+      unlock_cmd: `reg delete "HKCU\\Software\\Policies\\Microsoft\\Windows\\System" /v DisableCMD /f; exit 0;`,
+      disable_usb: `reg add "HKLM\\SYSTEM\\CurrentControlSet\\Services\\USBSTOR" /v Start /t REG_DWORD /d 4 /f; exit 0;`,
+      enable_usb: `reg add "HKLM\\SYSTEM\\CurrentControlSet\\Services\\USBSTOR" /v Start /t REG_DWORD /d 3 /f; exit 0;`,
+      block_games: `cmd.exe /c "echo 127.0.0.1 roblox.com>>%windir%\\System32\\drivers\\etc\\hosts & echo 127.0.0.1 www.roblox.com>>%windir%\\System32\\drivers\\etc\\hosts & echo 127.0.0.1 discord.com>>%windir%\\System32\\drivers\\etc\\hosts & echo 127.0.0.1 steampowered.com>>%windir%\\System32\\drivers\\etc\\hosts & echo 127.0.0.1 tiktok.com>>%windir%\\System32\\drivers\\etc\\hosts & ipconfig /flushdns"; exit 0;`,
+      unblock_games: `cmd.exe /c "ipconfig /flushdns"; exit 0;`,
+      firewall_on: `netsh advfirewall set allprofiles state on; exit 0;`,
+      firewall_off: `netsh advfirewall set allprofiles state off; exit 0;`,
+      flush_dns: `ipconfig /flushdns; exit 0;`,
+      kill_browsers: `cmd.exe /c "taskkill /f /im chrome.exe /im msedge.exe /im firefox.exe /im opera.exe /im brave.exe /im Steam.exe /im RobloxPlayerBeta.exe /im Discord.exe 2>nul"; exit 0;`,
+      mute_audio: `cmd.exe /c "nircmd mutesysvolume 1 2>nul"; exit 0;`,
+      disable_sleep: `powercfg -change -monitor-timeout-ac 0; powercfg -change -standby-timeout-ac 0; powercfg -change -hibernate-timeout-ac 0; exit 0;`,
       shutdown: `shutdown.exe /s /f /t 10 /c "Ogretmen laboratuvar bilgisayarlarini kapatti."`,
       restart: `shutdown.exe /r /f /t 10 /c "Ogretmen laboratuvar bilgisayarlarini yeniden baslatiyor."`,
       logoff: `shutdown.exe /l`,
-      sync_time: `Start-Service w32time -ErrorAction SilentlyContinue; w32tm /resync /force`,
-      install_meb_cert: `$u='https://sertifika.meb.gov.tr/MEB_SERTIFIKASI.crt'; $d=Join-Path $env:TEMP 'meb_cert.crt'; Invoke-WebRequest -Uri $u -OutFile $d -UseBasicParsing -ErrorAction SilentlyContinue; if(Test-Path $d){certutil.exe -addstore -f 'ROOT' $d; Remove-Item $d -Force -ErrorAction SilentlyContinue}`,
-      gpupdate: `gpupdate /force`
+      sync_time: `cmd.exe /c "net start w32time 2>nul & w32tm /resync /force"; exit 0;`,
+      install_meb_cert: `cmd.exe /c "curl -k -s -L https://sertifika.meb.gov.tr/MEB_SERTIFIKASI.crt -o %TEMP%\\meb.crt & certutil -addstore -f ROOT %TEMP%\\meb.crt & del %TEMP%\\meb.crt"; exit 0;`,
+      gpupdate: `gpupdate /force; exit 0;`
     };
 
     let batchStatusPollTimer = null;
@@ -3196,7 +3199,7 @@
         url = 'https://pirireis-api.onrender.com' + url;
       }
       const safeUrl = url.replace(/'/g, "''");
-      return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; $u = '${safeUrl}'; $d = [System.IO.Path]::Combine($env:TEMP, 'lab_wall.jpg'); cmd.exe /c curl.exe -k -s -L -A 'Mozilla/5.0' -o "$d" "$u"; try { (New-Object System.Net.WebClient).DownloadFile($u, $d); } catch {}; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value '2' -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value '0' -ErrorAction SilentlyContinue; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);' -Name 'SysWall' -Namespace 'Native' -ErrorAction SilentlyContinue; [Native.SysWall]::SystemParametersInfo(0x0014, 0, $d, 3); rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
+      return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $d = Join-Path $env:TEMP 'lab_wall.jpg'; cmd.exe /c curl.exe -k -s -L -o \"$d\" \"$u\"; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value 2 -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value 0 -Force; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
     }
 
     async function handleWallpaperFileUpload(e) {
@@ -3358,17 +3361,21 @@
 
         const statusHtml = !inst
           ? '<span class="text-zinc-500 text-[11px]">Beklemede / İşlem Yok</span>'
-          : (inst.status === 'downloading' || inst.status === 'installing')
-            ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[11px] animate-pulse">
-                <span>⚙️ Yürütülüyor...</span>
+          : inst.status === 'pending'
+            ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold text-[11px] animate-pulse">
+                <span>📡 İletildi...</span>
                </span>`
-            : inst.status === 'success'
-              ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold text-[11px]">
-                  <span>✅ Tamamlandı</span>
+            : (inst.status === 'downloading' || inst.status === 'installing')
+              ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-[11px] animate-pulse">
+                  <span>⚙️ Yürütülüyor...</span>
                  </span>`
-              : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold text-[11px]" title="${inst.message || ''}">
-                  <span>❌ Hata</span>
-                 </span>`;
+              : inst.status === 'success'
+                ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold text-[11px]">
+                    <span>✅ Tamamlandı</span>
+                   </span>`
+                : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-bold text-[11px]" title="${inst.message || 'Hata'}">
+                    <span>❌ Hata</span>
+                   </span>`;
 
         return `
           <tr class="hover:bg-zinc-900/50 transition">
