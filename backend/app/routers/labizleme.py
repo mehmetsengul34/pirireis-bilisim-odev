@@ -533,6 +533,8 @@ def post_teacher_action(payload: ActionPayload, request: Request):
     action = payload.action
     now_str = time.strftime("%H:%M:%S")
     targets = payload.targetIds if payload.targetIds and len(payload.targetIds) > 0 else None
+    if not targets and payload.studentId:
+        targets = [payload.studentId]
 
     if action == "toggleLockAll":
         classroom_state["lockAll"] = bool(payload.lock)
@@ -640,9 +642,15 @@ def post_teacher_action(payload: ActionPayload, request: Request):
         }
         if targets:
             for tid in targets:
-                if tid in students:
-                    students[tid]["installCommand"] = cmd
-                    students[tid]["installStatus"] = initial_status
+                target_student = students.get(tid)
+                if not target_student:
+                    for s_val in students.values():
+                        if s_val.get("id") == tid or s_val.get("ip") == tid or s_val.get("deskNo") == tid or s_val.get("mac") == tid or s_val.get("name") == tid:
+                            target_student = s_val
+                            break
+                if target_student:
+                    target_student["installCommand"] = cmd
+                    target_student["installStatus"] = initial_status
         else:
             classroom_state["installCommand"] = cmd
             for st in students.values():

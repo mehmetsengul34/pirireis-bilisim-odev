@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Torbalı Piri Reis Ticaret MTAL | Laboratuvar Yönetim & Ekran İzleme Merkezi</title>
   <link rel="icon" type="image/x-icon" href="/labizleme/labmaster.ico" />
   <link rel="shortcut icon" type="image/x-icon" href="/labizleme/labmaster.ico" />
@@ -3131,8 +3134,14 @@
 
     async function setWallpaperForStudent(studentId, event) {
       if (event) event.stopPropagation();
-      const studentObj = studentsData.get(studentId);
-      const sName = studentObj ? (studentObj.name || studentObj.deskNo || studentId) : studentId;
+      let sName = studentId;
+      try {
+        const allItems = typeof getCombinedItems === 'function' ? getCombinedItems() : (serverState?.students || []);
+        const found = allItems.find((s) => s.id === studentId || s.ip === studentId);
+        if (found) sName = found.name || found.deskNo || found.ip || studentId;
+      } catch (err) {
+        console.warn('Student lookup error:', err);
+      }
       const defaultUrl = (document.getElementById('batchWallpaperUrl')?.value || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1920&q=80').trim();
       const customUrl = prompt(`"${sName}" bilgisayarı için uygulanacak duvar kağıdı bağlantısını (URL) girin:`, defaultUrl);
       if (!customUrl || !customUrl.trim()) return;
@@ -3143,6 +3152,7 @@
         installType: 'powershell',
         packageName: 'Masaüstü Duvar Kağıdı Değiştirme',
         installCommand: script,
+        studentId: studentId,
         targetIds: [studentId]
       });
       alert(`"${sName}" bilgisayarına duvar kağıdı değiştirme emri iletildi.`);
