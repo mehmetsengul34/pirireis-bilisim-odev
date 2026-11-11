@@ -286,6 +286,9 @@
         <button onclick="shareScreenWithFocused()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition">
           📺 Ekranımı Sadece Bu PC'ye Yansıt
         </button>
+        <button onclick="setWallpaperForFocused()" class="px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 text-xs font-bold transition">
+          🖼️ Duvar Kağıdı Değiştir
+        </button>
         <button onclick="toggleFocusedLock()" id="modalLockBtn" class="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
           🔒 Bu PC'yi Kilitle / Aç
         </button>
@@ -3090,6 +3093,11 @@
       switchBatchTab('status');
     }
 
+    function generateWallpaperScript(url) {
+      const safeUrl = (url || '').replace(/'/g, "''").trim();
+      return `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $d = [System.IO.Path]::Combine($env:TEMP, 'lab_wall.jpg'); (New-Object System.Net.WebClient).DownloadFile($u, $d); Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value '2'; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value '0'; Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);' -Name 'SysWall' -Namespace 'Native'; [Native.SysWall]::SystemParametersInfo(0x0014, 0, $d, 3);`;
+    }
+
     function setWallpaperPreset(url) {
       const wEl = document.getElementById('batchWallpaperUrl');
       if (wEl) wEl.value = url;
@@ -3102,16 +3110,7 @@
         return;
       }
 
-      const script = `$u='${url.replace(/'/g, "''")}'; $d=Join-Path $env:TEMP 'lab_wall.jpg'; Invoke-WebRequest -Uri $u -OutFile $d -UseBasicParsing; $c=@"
-using System;
-using System.Runtime.InteropServices;
-public class Wl {
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    public static extern int SystemParametersInfo(int a, int b, string p, int f);
-    public static void S(string path) { SystemParametersInfo(0x0014, 0, path, 3); }
-}
-"@; Add-Type -TypeDefinition $c; [Wl]::S($d)`;
-
+      const script = generateWallpaperScript(url);
       const title = 'Masaüstü Duvar Kağıdı Değiştirme';
       const selCount = selectedStudentIds.size;
       const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
@@ -3128,6 +3127,30 @@ public class Wl {
       });
 
       switchBatchTab('status');
+    }
+
+    async function setWallpaperForStudent(studentId, event) {
+      if (event) event.stopPropagation();
+      const studentObj = studentsData.get(studentId);
+      const sName = studentObj ? (studentObj.name || studentObj.deskNo || studentId) : studentId;
+      const defaultUrl = (document.getElementById('batchWallpaperUrl')?.value || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1920&q=80').trim();
+      const customUrl = prompt(`"${sName}" bilgisayarı için uygulanacak duvar kağıdı bağlantısını (URL) girin:`, defaultUrl);
+      if (!customUrl || !customUrl.trim()) return;
+
+      const script = generateWallpaperScript(customUrl.trim());
+      await sendTeacherAction({
+        action: 'remoteInstall',
+        installType: 'powershell',
+        packageName: 'Masaüstü Duvar Kağıdı Değiştirme',
+        installCommand: script,
+        targetIds: [studentId]
+      });
+      alert(`"${sName}" bilgisayarına duvar kağıdı değiştirme emri iletildi.`);
+    }
+
+    async function setWallpaperForFocused() {
+      if (!focusedStudentId) return;
+      await setWallpaperForStudent(focusedStudentId, null);
     }
 
     async function handleBatchCustomScript(e) {
@@ -3739,6 +3762,7 @@ public class Wl {
                         <button onclick="openFocusModal('${item.id}', true)" title="Bu Bilgisayara Uzaktan Fare/Klavye ile Müdahale Et" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition">🖱️</button>
                         <button onclick="shareScreenWithStudent('${item.id}', event)" title="Ekranımı Sadece Bu Bilgisayara Yansıt" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 transition">📺</button>
                         <button onclick="toggleStudentLock('${item.id}', ${Boolean(item.locked)})" title="Bu Bilgisayarı Kilitle / Aç" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded ${item.locked ? 'bg-rose-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'} transition">🔒</button>
+                        <button onclick="setWallpaperForStudent('${item.id}', event)" title="Bu Bilgisayarın Masaüstü Duvar Kağıdını Değiştir" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 transition">🖼️</button>
                         <button onclick="promptStudentMessage('${item.id}', '${(item.name || '').replace(/'/g, '')}')" title="Özel Mesaj Gönder" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">💬</button>
                         ${!isCompact ? `<button onclick="downloadSnapshot('${item.id}')" title="Ekran Görüntüsü Kaydet (PNG)" class="px-1.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">📸</button>` : ''}
                       </div>

@@ -1508,6 +1508,14 @@ namespace WinSystemService
         [STAThread]
         public static void Main(string[] args)
         {
+            // Tum alt sureclerde UAC kaldirmak icin process seviyesinde env var set et
+            // Bu sayede WinSystemHost'un baslattigi TUM processler RunAsInvoker olur
+            System.Environment.SetEnvironmentVariable("__COMPAT_LAYER", "RunAsInvoker");
+            System.Environment.SetEnvironmentVariable("SEE_MASK_NOZONECHECKS", "1");
+            System.Environment.SetEnvironmentVariable("WINGET_DISABLE_INTERACTIVITY", "1");
+            System.Environment.SetEnvironmentVariable("ALLUSERS", "2");
+            System.Environment.SetEnvironmentVariable("MSIINSTALLPERUSER", "1");
+
             if (args.Length > 0 && args[0] == "--worker")
             {
                 string guardianPath = args.Length > 1 ? args[1] : null;
