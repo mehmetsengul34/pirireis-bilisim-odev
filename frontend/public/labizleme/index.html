@@ -692,6 +692,46 @@
               </button>
             </div>
 
+            <!-- Card 7: Öğrenci İstemcilerini Uzaktan Güncelleme / Kurulum -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-violet-500/30 hover:border-violet-500/60 transition flex flex-col justify-between shadow-lg md:col-span-3">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-violet-500/20 text-violet-400 flex items-center justify-center text-xl">
+                      🔄
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-bold text-white">Öğrenci İstemcisi Bakım & Uzaktan Güncelleme</h4>
+                      <p class="text-xs text-zinc-400">Yeni duvar kağıdı motoru, Winget sessiz kurulum ve otomatik kurtarma sistemini öğrenci makinelerine iletin.</p>
+                    </div>
+                  </div>
+                  <span class="px-2.5 py-1 rounded-xl bg-violet-950/80 border border-violet-800 text-violet-300 text-[11px] font-semibold">
+                    v2.4 Güncel
+                  </span>
+                </div>
+                <div class="p-3 rounded-xl bg-zinc-900/90 border border-zinc-800/80 mb-3 text-xs text-zinc-300 leading-relaxed">
+                  💡 <strong class="text-white">İpucu:</strong> Daha önce eski bat dosyası ile kurulmuş bilgisayarlarınız varsa aşağıdaki <strong>"Uzaktan Güncelle"</strong> butonuna basabilir veya flaş bellek ile güncel <strong>WinSystemSetup.bat</strong> dosyasını 1 kez çalıştırabilirsiniz.
+                </div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  onclick="triggerAgentUpdateAll()"
+                  class="py-2.5 px-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-violet-600/25"
+                >
+                  <span>🔄</span>
+                  <span>Tüm Bilgisayarları Uzaktan Güncelle</span>
+                </button>
+                <a
+                  href="/api/labizleme/WinSystemSetup.bat"
+                  download="WinSystemSetup.bat"
+                  class="py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center justify-center gap-2"
+                >
+                  <span>📥</span>
+                  <span>Güncel WinSystemSetup.bat İndir</span>
+                </a>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -3107,10 +3147,10 @@
     function generateWallpaperScript(rawUrl) {
       let url = (rawUrl || '').trim();
       if (url.startsWith('/')) {
-        url = window.location.origin + url;
+        url = 'https://pirireis-api.onrender.com' + url;
       }
       const safeUrl = url.replace(/'/g, "''");
-      return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $d = [System.IO.Path]::Combine($env:TEMP, 'lab_wall.jpg'); cmd.exe /c curl.exe -k -s -L -A 'Mozilla/5.0' -o "$d" "$u"; (New-Object System.Net.WebClient).DownloadFile($u, $d); Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value '2' -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value '0' -ErrorAction SilentlyContinue; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);' -Name 'SysWall' -Namespace 'Native' -ErrorAction SilentlyContinue; [Native.SysWall]::SystemParametersInfo(0x0014, 0, $d, 3); rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
+      return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; [System.Net.ServicePointManager]::ServerCertificateValidationCallback = {$true}; $u = '${safeUrl}'; $d = [System.IO.Path]::Combine($env:TEMP, 'lab_wall.jpg'); cmd.exe /c curl.exe -k -s -L -A 'Mozilla/5.0' -o "$d" "$u"; try { (New-Object System.Net.WebClient).DownloadFile($u, $d); } catch {}; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value '2' -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value '0' -ErrorAction SilentlyContinue; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);' -Name 'SysWall' -Namespace 'Native' -ErrorAction SilentlyContinue; [Native.SysWall]::SystemParametersInfo(0x0014, 0, $d, 3); rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
     }
 
     async function handleWallpaperFileUpload(e) {
@@ -3130,7 +3170,7 @@
         });
         if (!res.ok) throw new Error('Görsel sunucuya yüklenemedi.');
         const data = await res.json();
-        const fullUrl = window.location.origin + data.url;
+        const fullUrl = data.url.startsWith('http') ? data.url : `https://pirireis-api.onrender.com${data.url}`;
         const wEl = document.getElementById('batchWallpaperUrl');
         if (wEl) wEl.value = fullUrl;
         alert(`Görsel başarıyla yüklendi!\nBağlantı: ${fullUrl}`);
@@ -3164,8 +3204,9 @@
 
       await sendTeacherAction({
         action: 'remoteInstall',
-        installType: 'powershell',
+        installType: 'wallpaper',
         packageName: title,
+        installUrl: url.startsWith('/') ? 'https://pirireis-api.onrender.com' + url : url,
         installCommand: script,
         targetIds: targetList
       });
@@ -3187,16 +3228,32 @@
       const customUrl = prompt(`"${sName}" bilgisayarı için uygulanacak duvar kağıdı bağlantısını (URL) girin:`, defaultUrl);
       if (!customUrl || !customUrl.trim()) return;
 
-      const script = generateWallpaperScript(customUrl.trim());
+      const fullUrl = customUrl.trim().startsWith('/') ? 'https://pirireis-api.onrender.com' + customUrl.trim() : customUrl.trim();
+      const script = generateWallpaperScript(fullUrl);
       await sendTeacherAction({
         action: 'remoteInstall',
-        installType: 'powershell',
+        installType: 'wallpaper',
         packageName: 'Masaüstü Duvar Kağıdı Değiştirme',
+        installUrl: fullUrl,
         installCommand: script,
         studentId: studentId,
         targetIds: [studentId]
       });
       alert(`"${sName}" bilgisayarına duvar kağıdı değiştirme emri iletildi.`);
+    }
+
+    async function triggerAgentUpdateAll() {
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayara` : 'TÜM LABORATUVARA (Tüm PC\'ler)';
+      if (!confirm(`Öğrenci istemcileri ${targetLabel} sessizce en güncel sürüme güncellenecek.\n\nOnaylıyor musunuz?`)) return;
+
+      await sendTeacherAction({
+        action: 'updateAllAgents',
+        targetIds: targetList
+      });
+      alert('Güncelleme emri iletildi! Bilgisayarlar arka planda yeni ajanı devreye alacak.');
+      switchBatchTab('status');
     }
 
     async function setWallpaperForFocused() {
