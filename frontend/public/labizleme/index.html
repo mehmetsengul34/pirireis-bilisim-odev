@@ -655,11 +655,19 @@
             <!-- Card 6: Ortak Duvar Kağıdı (Wallpaper) Ayarla -->
             <div class="p-4 rounded-2xl bg-zinc-950/80 border border-zinc-800/80 hover:border-emerald-500/40 transition flex flex-col justify-between shadow-lg md:col-span-3">
               <div>
-                <div class="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center text-xl mb-2.5">
-                  🖼️
+                <div class="flex items-center justify-between mb-2.5">
+                  <div class="w-10 h-10 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center text-xl">
+                    🖼️
+                  </div>
+                  <div>
+                    <input type="file" id="wallpaperFileInput" accept="image/jpeg,image/png,image/jpg" class="hidden" onchange="handleWallpaperFileUpload(event)" />
+                    <button type="button" id="wallpaperUploadBtn" onclick="document.getElementById('wallpaperFileInput').click()" class="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-700 hover:border-rose-500/50 text-zinc-200 text-xs font-semibold flex items-center gap-1.5 transition">
+                      📁 Bilgisayardan Görsel Yükle
+                    </button>
+                  </div>
                 </div>
-                <h4 class="text-sm font-bold text-white mb-1">Ortak Masaüstü Duvar Kağıdı Ayarla</h4>
-                <p class="text-xs text-zinc-400 leading-relaxed mb-3">Tüm bilgisayarların masaüstü arka planını anında okul veya bilişim temalı bir görsel ile değiştirin.</p>
+                <h4 class="text-sm font-bold text-white mb-1">Masaüstü Duvar Kağıdı Ayarla</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-3">Tüm bilgisayarların veya seçili bilgisayarın arka planını değiştirin. Kendi bilgisayarınızdan dosya yükleyebilir veya hazır bağlantı kullanabilirsiniz.</p>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
                   <input
                     type="url"
@@ -3096,9 +3104,42 @@
       switchBatchTab('status');
     }
 
-    function generateWallpaperScript(url) {
-      const safeUrl = (url || '').replace(/'/g, "''").trim();
-      return `[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $d = [System.IO.Path]::Combine($env:TEMP, 'lab_wall.jpg'); (New-Object System.Net.WebClient).DownloadFile($u, $d); Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value '2'; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value '0'; Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);' -Name 'SysWall' -Namespace 'Native'; [Native.SysWall]::SystemParametersInfo(0x0014, 0, $d, 3);`;
+    function generateWallpaperScript(rawUrl) {
+      let url = (rawUrl || '').trim();
+      if (url.startsWith('/')) {
+        url = window.location.origin + url;
+      }
+      const safeUrl = url.replace(/'/g, "''");
+      return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $d = [System.IO.Path]::Combine($env:TEMP, 'lab_wall.jpg'); cmd.exe /c curl.exe -k -s -L -A 'Mozilla/5.0' -o "$d" "$u"; (New-Object System.Net.WebClient).DownloadFile($u, $d); Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value '2' -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value '0' -ErrorAction SilentlyContinue; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; Add-Type -MemberDefinition '[DllImport(\"user32.dll\")] public static extern bool SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);' -Name 'SysWall' -Namespace 'Native' -ErrorAction SilentlyContinue; [Native.SysWall]::SystemParametersInfo(0x0014, 0, $d, 3); rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
+    }
+
+    async function handleWallpaperFileUpload(e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('file', file);
+      const btn = document.getElementById('wallpaperUploadBtn');
+      try {
+        if (btn) btn.textContent = '⏳ Yükleniyor...';
+        const res = await fetch(`${API_BASE}/upload-installer`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: formData
+        });
+        if (!res.ok) throw new Error('Görsel sunucuya yüklenemedi.');
+        const data = await res.json();
+        const fullUrl = window.location.origin + data.url;
+        const wEl = document.getElementById('batchWallpaperUrl');
+        if (wEl) wEl.value = fullUrl;
+        alert(`Görsel başarıyla yüklendi!\nBağlantı: ${fullUrl}`);
+      } catch (err) {
+        alert('Görsel yüklenirken hata oluştu: ' + err.message);
+      } finally {
+        if (btn) btn.textContent = '📁 Bilgisayardan Görsel Yükle';
+        e.target.value = '';
+      }
     }
 
     function setWallpaperPreset(url) {
