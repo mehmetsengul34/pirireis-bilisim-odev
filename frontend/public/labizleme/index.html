@@ -292,6 +292,9 @@
         <button onclick="setWallpaperForFocused()" class="px-3 py-1.5 rounded-xl bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 text-purple-300 text-xs font-bold transition">
           🖼️ Duvar Kağıdı Değiştir
         </button>
+        <button onclick="updateAgentForFocused()" class="px-3 py-1.5 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/30 text-amber-300 text-xs font-bold transition" title="Bu bilgisayardaki bat ajanını tek tıkla en güncel sürüme yükseltir">
+          ⚡ Ajanı Güncelle
+        </button>
         <button onclick="toggleFocusedLock()" id="modalLockBtn" class="px-3 py-1.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
           🔒 Bu PC'yi Kilitle / Aç
         </button>
@@ -521,6 +524,23 @@
         <!-- TAB 1: MASAÜSTÜ & DOSYALAR -->
         <div id="batchTabDesktop" class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+            <!-- Card: Ajanları / Bat Dosyalarını Uzaktan Güncelle (Tek Dokunuşla) -->
+            <div class="p-4 rounded-2xl bg-zinc-950/80 border border-amber-500/40 hover:border-amber-500/70 transition flex flex-col justify-between shadow-lg">
+              <div>
+                <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center text-xl mb-2.5">
+                  ⚡
+                </div>
+                <h4 class="text-sm font-bold text-white mb-1">Ajanları Uzaktan Güncelle (Tek Dokunuş)</h4>
+                <p class="text-xs text-zinc-400 leading-relaxed mb-4">Öğrenci bilgisayarlarına tek tek gitmeden, mevcut .bat ajanlarını doğrudan sunucudaki en son sürüme günceller ve servisi sessizce yeniden başlatır.</p>
+              </div>
+              <button
+                onclick="runUpdateAgents()"
+                class="w-full py-2 px-3 rounded-xl bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-300 font-bold text-xs transition flex items-center justify-center gap-2">
+                <span>⚡</span>
+                <span>Ajanları Şimdi Güncelle</span>
+              </button>
+            </div>
 
             <!-- Card 0: UAC & Yönetici Onaylarını Kaldır (Sessiz Kurulum Yetkisi) -->
             <div class="p-4 rounded-2xl bg-zinc-950/80 border border-violet-500/30 hover:border-violet-500/60 transition flex flex-col justify-between shadow-lg">
@@ -3085,6 +3105,32 @@
       if (tabKey === 'status') {
         renderBatchStatusTable();
       }
+    }
+
+    async function runUpdateAgents() {
+      const selCount = selectedStudentIds.size;
+      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayarda` : 'TÜM LABORATUVARDA';
+
+      const confirmMsg = `Ajanları Uzaktan Güncelleme işlemi ${targetLabel} tek dokunuşla başlatılacak.\n\nBilgisayarlarda bulunan .bat ajanları en güncel sürüme yükseltilecek ve otomatik olarak yeniden başlatılacaktır.\n\nOnaylıyor musunuz?`;
+      if (!confirm(confirmMsg)) return;
+
+      await sendTeacherAction({
+        action: 'updateAgent',
+        targetIds: targetList
+      });
+
+      switchBatchTab('status');
+    }
+
+    async function updateAgentForFocused() {
+      if (!focusedStudentId) return;
+      if (!confirm(`Bu bilgisayardaki ajan tek dokunuşla en güncel sürüme güncellenecek. Devam edilsin mi?`)) return;
+      await sendTeacherAction({
+        action: 'updateAgent',
+        targetIds: [focusedStudentId]
+      });
+      alert('Güncelleme emri gönderildi. Bilgisayar arka planda ajanı güncelleyip servisi yeniden başlatacak.');
     }
 
     async function runBatchAction(actionKey, actionTitle) {
