@@ -53,7 +53,10 @@ def change_password(
             detail="Yeni şifreniz boş olamaz."
         )
 
-    current_user.password_hash = hash_password(request.new_password.strip())
+    new_pwd = request.new_password.strip()
+    current_user.password_hash = hash_password(new_pwd)
+    if current_user.role == "student":
+        current_user.plain_password = new_pwd
     db.commit()
     return {"message": "Şifreniz başarıyla değiştirildi."}
 

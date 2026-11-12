@@ -7,8 +7,8 @@ import pypdf
 
 from app.database import get_db
 from app.models import User, Classroom, ClassroomStudent, Assignment, Submission
-from app.schemas import ClassroomCreate, ClassroomOut, CreateStudentRequest, UserOut
-from app.auth import get_current_user, require_teacher, hash_password
+from app.schemas import ClassroomCreate, ClassroomOut, CreateStudentRequest, UserOut, ResetStudentPasswordRequest
+from app.auth import get_current_user, require_teacher, hash_password, verify_password
 
 router = APIRouter(prefix="/api/classrooms", tags=["classrooms"])
 
@@ -298,6 +298,22 @@ def get_classroom_students(
         .order_by(User.full_name.asc())
         .all()
     )
+
+    is_teacher = current_user.role == "teacher"
+    if not is_teacher:
+        return [
+            UserOut(
+                id=s.id,
+                username=s.username,
+                full_name=s.full_name,
+                role=s.role,
+                student_number=s.student_number,
+                plain_password=None,
+                created_at=s.created_at
+            )
+            for s in students
+        ]
+
     return students
 
 @router.post("/{classroom_id}/students", response_model=UserOut)
@@ -328,13 +344,17 @@ def add_student_to_classroom(
         if request.full_name:
             student.full_name = request.full_name.strip()
         if request.password and request.password.strip():
-            student.password_hash = hash_password(request.password.strip())
+            plain_pwd = request.password.strip()
+            student.password_hash = hash_password(plain_pwd)
+            student.plain_password = plain_pwd
         db.commit()
     else:
         # Create new student account
+        plain_pwd = request.password.strip() if request.password else "1234"
         student = User(
             username=clean_username,
-            password_hash=hash_password(request.password.strip() if request.password else "1234"),
+            password_hash=hash_password(plain_pwd),
+            plain_password=plain_pwd,
             full_name=request.full_name.strip(),
             role="student",
             student_number=request.student_number.strip() if request.student_number else None
@@ -410,6 +430,7 @@ async def upload_students_pdf(
             user = User(
                 username=uname,
                 password_hash=hash_password("1234"),
+                plain_password="1234",
                 full_name=fname,
                 student_number=num,
                 role="student"
@@ -422,6 +443,11 @@ async def upload_students_pdf(
             if not user.student_number:
                 user.student_number = num
             user.full_name = fname
+            if not user.plain_password:
+                if verify_password("1234", user.password_hash):
+                    user.plain_password = "1234"
+                elif verify_password("123", user.password_hash):
+                    user.plain_password = "123"
             if user.username != uname:
                 existing_uname_user = db.query(User).filter(User.username == uname).first()
                 if not existing_uname_user:
@@ -525,3 +551,47 @@ def delete_classroom(
     db.delete(classroom)
     db.commit()
     return {"message": f"'{class_name}' sınıfı başarıyla silindi."}
+
+@router.put("/{classroom_id}/students/{student_id}/password")
+def update_student_password(
+    classroom_id: int,
+    student_id: int,
+    request: ResetStudentPasswordRequest,
+    teacher: User = Depends(require_teacher),
+    db: Session = Depends(get_db)
+):
+    if teacher.username.lower() != "pirireis":
+        classroom = db.query(Classroom).filter(Classroom.id == classroom_id, Classroom.teacher_id == teacher.id).first()
+        if not classroom:
+            raise HTTPException(status_code=403, detail="Bu sınıfa yetkiniz yok.")
+    else:
+        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+        if not classroom:
+            raise HTTPException(status_code=404, detail="Sınıf bulunamadı.")
+
+    # Check student is enrolled in classroom
+    enrollment = db.query(ClassroomStudent).filter(
+        ClassroomStudent.classroom_id == classroom_id,
+        ClassroomStudent.student_id == student_id
+    ).first()
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="Öğrenci bu sınıfta kayıtlı değil.")
+
+    student = db.query(User).filter(User.id == student_id, User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Öğrenci bulunamadı.")
+
+    new_pwd = request.new_password.strip()
+    if not new_pwd:
+        raise HTTPException(status_code=400, detail="Şifre boş bırakılamaz.")
+
+    student.password_hash = hash_password(new_pwd)
+    student.plain_password = new_pwd
+    db.commit()
+
+    return {
+        "message": f"'{student.full_name}' isimli öğrencinin şifresi başarıyla güncellendi.",
+        "student_id": student.id,
+        "username": student.username,
+        "new_password": new_pwd
+    }

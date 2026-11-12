@@ -3,7 +3,8 @@ import {
   Users, BookOpen, Plus, CheckCircle2, Clock, FileText, Download, 
   Send, UserPlus, Trash2, Award, ChevronRight, X,
   Crown, ShieldCheck, Upload, FileUp, Copy, Check,
-  Database, Save, RefreshCw, AlertTriangle, Server, HardDrive, Sparkles, Terminal
+  Database, Save, RefreshCw, AlertTriangle, Server, HardDrive, Sparkles, Terminal,
+  Key, Eye, EyeOff
 } from 'lucide-react';
 import { 
   classroomService, assignmentService, submissionService, 
@@ -51,6 +52,12 @@ export default function TeacherDashboard({ user }) {
   const [studentNumber, setStudentNumber] = useState('');
   const [classStudents, setClassStudents] = useState([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [showPasswords, setShowPasswords] = useState({});
+  const [copiedStudentId, setCopiedStudentId] = useState(null);
+  const [copiedAllClass, setCopiedAllClass] = useState(false);
+  const [editingPasswordStudent, setEditingPasswordStudent] = useState(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('1234');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   // PDF Upload States
   const [pdfFile, setPdfFile] = useState(null);
@@ -312,6 +319,43 @@ export default function TeacherDashboard({ user }) {
     navigator.clipboard.writeText(text);
     setCopiedCredentials(true);
     setTimeout(() => setCopiedCredentials(false), 2500);
+  };
+
+  // Copy credentials of a single student
+  const handleCopyStudentCreds = (st) => {
+    const pwd = st.plain_password || '1234';
+    const text = `Torbalı Piri Reis MTAL Bilişim Portalı\nÖğrenci: ${st.full_name}\nKullanıcı Adı: ${st.username}\nŞifre: ${pwd}`;
+    navigator.clipboard.writeText(text);
+    setCopiedStudentId(st.id);
+    setTimeout(() => setCopiedStudentId(null), 2000);
+  };
+
+  // Copy all students' credentials
+  const handleCopyAllClassStudents = () => {
+    if (!classStudents || classStudents.length === 0) return;
+    const text = classStudents.map(s => 
+      `No: ${s.student_number || '-'} | Ad Soyad: ${s.full_name} | Kullanıcı Adı: ${s.username} | Şifre: ${s.plain_password || '1234'}`
+    ).join('\n');
+    navigator.clipboard.writeText(text);
+    setCopiedAllClass(true);
+    setTimeout(() => setCopiedAllClass(false), 2500);
+  };
+
+  // Submit reset password for student
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingPasswordStudent || !newPasswordInput.trim()) return;
+    setSavingPassword(true);
+    try {
+      await classroomService.resetStudentPassword(selectedClassId, editingPasswordStudent.id, newPasswordInput.trim());
+      setClassStudents(prev => prev.map(s => s.id === editingPasswordStudent.id ? { ...s, plain_password: newPasswordInput.trim() } : s));
+      setShowPasswords(prev => ({ ...prev, [editingPasswordStudent.id]: true }));
+      setEditingPasswordStudent(null);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Şifre güncellenirken hata oluştu.');
+    } finally {
+      setSavingPassword(false);
+    }
   };
 
   // Handle Remove Student from Class
@@ -1387,9 +1431,23 @@ export default function TeacherDashboard({ user }) {
 
               {/* Right Column: Student List */}
               <div className="flex flex-col">
-                <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 mb-3 flex items-center justify-between">
-                  <span>Kayıtlı Öğrenciler ({classStudents.length})</span>
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-school-600 dark:text-school-400" />
+                    <span>Kayıtlı Öğrenciler ({classStudents.length})</span>
+                  </h3>
+                  {classStudents.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleCopyAllClassStudents}
+                      className="text-[11px] font-medium text-school-600 dark:text-school-400 hover:text-school-700 dark:hover:text-school-300 flex items-center gap-1 bg-school-50 dark:bg-school-950/40 px-2 py-1 rounded-lg border border-school-200/60 dark:border-school-800/60 transition"
+                      title="Tüm sınıfın giriş bilgilerini ve şifrelerini panoya kopyala"
+                    >
+                      {copiedAllClass ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedAllClass ? 'Kopyalandı!' : 'Tüm Şifreleri Kopyala'}</span>
+                    </button>
+                  )}
+                </div>
 
                 {loadingStudents ? (
                   <div className="text-center py-8 text-xs text-zinc-400 dark:text-zinc-500">Öğrenciler yükleniyor...</div>
@@ -1399,32 +1457,158 @@ export default function TeacherDashboard({ user }) {
                     PDF yükleyerek veya soldaki formdan ekleyebilirsiniz.
                   </div>
                 ) : (
-                  <div className="space-y-1.5 overflow-y-auto max-h-80 pr-1">
+                  <div className="space-y-2 overflow-y-auto max-h-96 pr-1">
                     {classStudents.map((st) => (
                       <div
                         key={st.id}
-                        className="p-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-center justify-between"
+                        className="p-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-800 rounded-xl flex items-center justify-between gap-2 hover:border-zinc-300 dark:hover:border-zinc-700 transition"
                       >
-                        <div>
-                          <div className="text-xs font-medium text-zinc-900 dark:text-zinc-100">{st.full_name}</div>
-                          <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                            Kullanıcı: <span className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{st.username}</span>
-                            {st.student_number && ` • No: ${st.student_number}`}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{st.full_name}</span>
+                            {st.student_number && (
+                              <span className="text-[10px] bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300 px-1.5 py-0.5 rounded font-mono font-medium">
+                                No: {st.student_number}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                            <span>
+                              Kullanıcı: <span className="font-mono text-zinc-800 dark:text-zinc-200 font-semibold">{st.username}</span>
+                            </span>
+                            {st.plain_password ? (
+                              <span className="inline-flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 px-1.5 py-0.5 rounded border border-amber-200/60 dark:border-amber-800/60 font-medium">
+                                <Key className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-normal">Şifre:</span>
+                                <span className="font-mono font-bold text-amber-700 dark:text-amber-300">
+                                  {showPasswords[st.id] === false ? '••••••' : st.plain_password}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPasswords(prev => ({ ...prev, [st.id]: prev[st.id] === false ? true : false }))}
+                                  className="text-amber-600 hover:text-amber-800 dark:text-amber-400 ml-0.5"
+                                  title={showPasswords[st.id] === false ? "Şifreyi Göster" : "Şifreyi Gizle"}
+                                >
+                                  {showPasswords[st.id] === false ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                                </button>
+                              </span>
+                            ) : (
+                              <span 
+                                className="inline-flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 text-orange-900 dark:text-orange-200 px-1.5 py-0.5 rounded border border-orange-200/60 dark:border-orange-800/60 text-[10px] font-medium" 
+                                title="Öğrenci daha önce özel şifre belirlemiş. Sıfırlamak için yandaki sarı anahtar ikonuna tıklayabilirsiniz."
+                              >
+                                <Key className="w-3 h-3 text-orange-600 dark:text-orange-400" />
+                                <span>Şifre:</span>
+                                <span className="font-semibold text-orange-700 dark:text-orange-300">Özel Şifre</span>
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleRemoveStudent(st.id)}
-                          title="Sınıftan Çıkar"
-                          className="p-1 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyStudentCreds(st)}
+                            title="Giriş Bilgilerini Kopyala"
+                            className="p-1.5 text-zinc-400 hover:text-school-600 hover:bg-school-50 dark:hover:bg-school-950/40 rounded-lg transition"
+                          >
+                            {copiedStudentId === st.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingPasswordStudent(st);
+                              setNewPasswordInput(st.plain_password || '1234');
+                            }}
+                            title="Şifreyi Değiştir / Sıfırla"
+                            className="p-1.5 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition"
+                          >
+                            <Key className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStudent(st.id)}
+                            title="Sınıftan Çıkar"
+                            className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Reset Student Password Modal */}
+      {editingPasswordStudent && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-zinc-900/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 w-full max-w-sm shadow-2xl relative">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-xl">
+                  <Key className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Öğrenci Şifresini Sıfırla</h3>
+                  <p className="text-[11px] text-zinc-500 truncate max-w-[200px]">{editingPasswordStudent.full_name}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingPasswordStudent(null)}
+                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleResetPasswordSubmit} className="mt-4 space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Yeni Şifre</label>
+                  <button
+                    type="button"
+                    onClick={() => setNewPasswordInput('1234')}
+                    className="text-[11px] text-school-600 dark:text-school-400 hover:underline font-semibold"
+                  >
+                    '1234' Varsayılan Yap
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  placeholder="Yeni şifre belirleyin"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 font-mono focus:outline-none focus:ring-2 focus:ring-school-500"
+                />
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
+                  Kullanıcı Adı: <span className="font-mono font-semibold">{editingPasswordStudent.username}</span>
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingPasswordStudent(null)}
+                  className="flex-1 py-2 text-xs font-medium rounded-xl border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPassword || !newPasswordInput.trim()}
+                  className="flex-1 py-2 text-xs font-medium rounded-xl bg-amber-500 hover:bg-amber-600 text-white transition shadow-sm disabled:opacity-50 flex items-center justify-center gap-1.5"
+                >
+                  {savingPassword ? 'Kaydediliyor...' : 'Şifreyi Kaydet'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

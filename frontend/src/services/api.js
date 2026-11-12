@@ -125,6 +125,12 @@ export const classroomService = {
     const response = await api.delete(`/classrooms/${classroomId}/students/${studentId}`);
     return response.data;
   },
+  resetStudentPassword: async (classroomId, studentId, newPassword) => {
+    const response = await api.put(`/classrooms/${classroomId}/students/${studentId}/password`, {
+      new_password: newPassword
+    });
+    return response.data;
+  },
   delete: async (classroomId) => {
     const response = await api.delete(`/classrooms/${classroomId}`);
     return response.data;

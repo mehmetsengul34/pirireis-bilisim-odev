@@ -72,9 +72,18 @@ def ensure_schema_compatibility():
                     if "item_discrimination_d" not in eq_cols:
                         conn.execute(text("ALTER TABLE exam_questions ADD COLUMN item_discrimination_d FLOAT"))
 
+                # users tablosu plain_password kontrolü
+                u_cols_result = conn.execute(text("PRAGMA table_info(users)"))
+                u_cols = [row[1] for row in u_cols_result.fetchall()]
+                if u_cols and "plain_password" not in u_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN plain_password TEXT"))
+
                 conn.commit()
 
             elif engine.dialect.name == "postgresql":
+                # users tablosu
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS plain_password VARCHAR(255)"))
+
                 # question_bank tablosu
                 conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS quality_score INTEGER DEFAULT 92"))
                 conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS quality_review TEXT"))
@@ -184,6 +193,7 @@ def startup_seed_data():
                 student = User(
                     username="ogrenci",
                     password_hash=hash_password("123"),
+                    plain_password="123",
                     full_name="Ali Yılmaz",
                     student_number="1024",
                     role="student"
@@ -212,6 +222,7 @@ def startup_seed_data():
                 )
                 db.add(sample_assignment)
                 db.commit()
+
 
             # Varsayılan Bilişim Dersi ve Yıllık Plan Başlatıcı
             sample_b_course = db.query(BilisimCourse).first()

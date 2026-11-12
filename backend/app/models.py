@@ -12,6 +12,7 @@ class User(Base):
     full_name = Column(String(100), nullable=False)
     role = Column(String(20), nullable=False)  # "teacher" or "student"
     student_number = Column(String(30), nullable=True)
+    plain_password = Column(String(255), nullable=True)  # Öğretmenin öğrenci şifresini görebilmesi için açık/ilk şifre
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
