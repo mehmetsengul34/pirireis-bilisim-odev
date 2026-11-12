@@ -134,11 +134,11 @@ def lab_teacher_login(payload: TeacherLoginPayload):
         except Exception as db_err:
             print(f"[labizleme login db error]: {db_err}")
 
-    # 2. Master teacher fallback / Environment variables check
-    master_user = os.getenv("LAB_TEACHER_USER", "pirireis").lower()
-    master_pass = os.getenv("LAB_TEACHER_PASS", "20262027")
+    # 2. Master teacher fallback / Environment variables check (no hardcoded credentials)
+    master_user = (os.getenv("LAB_TEACHER_USER") or "").strip().lower()
+    master_pass = os.getenv("LAB_TEACHER_PASS")
 
-    if not authenticated and secrets.compare_digest(username, master_user):
+    if not authenticated and master_user and master_pass and secrets.compare_digest(username, master_user):
         if RUNTIME_MASTER_PASS_HASH and verify_password:
             if verify_password(password, RUNTIME_MASTER_PASS_HASH):
                 authenticated = True

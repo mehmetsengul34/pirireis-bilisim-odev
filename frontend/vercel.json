@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/labizleme/:path*",
-      "destination": "https://pirireis-api.onrender.com/api/labizleme/:path*"
+      "destination": "https://pirireis-bilisim-odev-1.onrender.com/api/labizleme/:path*"
     },
     {
       "source": "/labizleme",

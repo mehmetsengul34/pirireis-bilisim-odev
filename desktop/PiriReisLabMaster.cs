@@ -377,7 +377,7 @@ namespace PiriReisLabMaster
             {
                 string loginUrl = (currentServerUrl.Contains("localhost") || currentServerUrl.Contains(":4000"))
                     ? "http://localhost:4000/api/labizleme/login"
-                    : "https://pirireis-api.onrender.com/api/labizleme/login";
+                    : "https://pirireis-bilisim-odev-1.onrender.com/api/labizleme/login";
 
                 HttpWebRequest lReq = (HttpWebRequest)WebRequest.Create(loginUrl);
                 lReq.Method = "POST";
@@ -416,7 +416,7 @@ namespace PiriReisLabMaster
 
                         string apiUrl = (currentServerUrl.Contains("localhost") || currentServerUrl.Contains(":4000"))
                             ? "http://localhost:4000/api/labizleme/action"
-                            : "https://pirireis-api.onrender.com/api/labizleme/action";
+                            : "https://pirireis-bilisim-odev-1.onrender.com/api/labizleme/action";
 
                         HttpWebRequest req = (HttpWebRequest)WebRequest.Create(apiUrl);
                         req.Method = "POST";
