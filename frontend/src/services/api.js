@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const apiBase = import.meta.env.VITE_API_URL || '';
+const apiBase = import.meta.env.VITE_API_URL || 'https://pirireis-bilisim-odev-1.onrender.com';
 
 const api = axios.create({
   baseURL: apiBase ? `${apiBase.replace(/\/$/, '')}/api` : '/api',
