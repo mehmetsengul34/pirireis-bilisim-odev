@@ -1,5 +1,6 @@
 import os
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -115,42 +116,6 @@ def ensure_schema_compatibility():
 
 ensure_schema_compatibility()
 
-app = FastAPI(
-    title="Torbalı Piri Reis MTAL - Bilişim Teknolojileri & YKS Test LMS",
-    description="Ödev, YKS Test ve Sınav Yönetim Sistemi API",
-    version="1.1.0"
-)
-
-# CORS Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Ensure uploads directory exists and mount static files
-UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
-os.makedirs(os.path.join(UPLOADS_DIR, "assignments"), exist_ok=True)
-os.makedirs(os.path.join(UPLOADS_DIR, "submissions"), exist_ok=True)
-os.makedirs(os.path.join(UPLOADS_DIR, "curriculum"), exist_ok=True)
-os.makedirs(os.path.join(UPLOADS_DIR, "modules"), exist_ok=True)
-os.makedirs(os.path.join(UPLOADS_DIR, "presentations"), exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
-
-# Include Routers
-app.include_router(auth.router)
-app.include_router(classrooms.router)
-app.include_router(assignments.router)
-app.include_router(submissions.router)
-app.include_router(exams.router)
-app.include_router(notifications.router)
-app.include_router(system.router)
-app.include_router(bilisim.router)
-app.include_router(labizleme.router)
-
-@app.on_event("startup")
 def startup_seed_data():
     db = SessionLocal()
     try:
@@ -223,7 +188,6 @@ def startup_seed_data():
                 db.add(sample_assignment)
                 db.commit()
 
-
             # Varsayılan Bilişim Dersi ve Yıllık Plan Başlatıcı
             sample_b_course = db.query(BilisimCourse).first()
             if not sample_b_course:
@@ -271,12 +235,6 @@ def startup_seed_data():
         except Exception as sync_err:
             print(f"[UYARI] Başlangıç soru bankası eşitleme uyarısı: {sync_err}")
 
-        # Otonom Arka Plan Ajan Döngüsünü Başlat
-        try:
-            asyncio.create_task(autonomous_agent_background_loop())
-        except Exception as loop_err:
-            print(f"[UYARI] Ajan arka plan döngüsü başlatılamadı: {loop_err}")
-
     finally:
         db.close()
 
@@ -299,6 +257,67 @@ async def autonomous_agent_background_loop():
 
         # Her 6 saatte bir (21600 sn) periyodik tekrar
         await asyncio.sleep(21600)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. Başlangıç tohumlama ve veritabanı eşitleme
+    try:
+        startup_seed_data()
+    except Exception as e:
+        print(f"[Startup] Tohumlama uyarısı: {e}")
+
+    # 2. Otonom arka plan ajan döngüsü (Event loop içinde başlatılır)
+    agent_task = None
+    try:
+        agent_task = asyncio.create_task(autonomous_agent_background_loop())
+    except Exception as loop_err:
+        print(f"[UYARI] Ajan arka plan döngüsü başlatılamadı: {loop_err}")
+
+    yield
+
+    # 3. Kapanışta arka plan görevlerini nazikçe sonlandır
+    if agent_task and not agent_task.done():
+        agent_task.cancel()
+        try:
+            await agent_task
+        except asyncio.CancelledError:
+            pass
+
+app = FastAPI(
+    title="Torbalı Piri Reis MTAL - Bilişim Teknolojileri & YKS Test LMS",
+    description="Ödev, YKS Test ve Sınav Yönetim Sistemi API",
+    version="1.1.0",
+    lifespan=lifespan
+)
+
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Ensure uploads directory exists and mount static files
+UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+os.makedirs(os.path.join(UPLOADS_DIR, "assignments"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "submissions"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "curriculum"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "modules"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "presentations"), exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
+# Include Routers
+app.include_router(auth.router)
+app.include_router(classrooms.router)
+app.include_router(assignments.router)
+app.include_router(submissions.router)
+app.include_router(exams.router)
+app.include_router(notifications.router)
+app.include_router(system.router)
+app.include_router(bilisim.router)
+app.include_router(labizleme.router)
 
 
 @app.get("/api/health")
