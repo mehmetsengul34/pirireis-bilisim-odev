@@ -55,3 +55,6 @@ Thumbs.db
 .idea/
 .agents/
 skills-lock.json
+
+.vercel
+.env*
