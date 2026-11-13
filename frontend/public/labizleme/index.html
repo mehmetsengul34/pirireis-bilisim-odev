@@ -1628,6 +1628,7 @@
       if (isAuthenticated && authToken) {
         gate.classList.add('hidden');
         dash.classList.remove('hidden');
+        try { renderGrid(); } catch (e) { console.error(e); }
       } else {
         gate.classList.remove('hidden');
         dash.classList.add('hidden');
@@ -1870,6 +1871,42 @@
         <rect x="0" y="422" width="800" height="28" fill="#18181b"/>
         <text x="16" y="440" fill="#a1a1aa" font-family="sans-serif" font-size="11">Torbalı Piri Reis Ticaret MTAL • ${desk}</text>
         <text x="784" y="440" fill="#a1a1aa" font-family="monospace" font-size="11" text-anchor="end">${new Date().toLocaleTimeString('tr-TR')}</text>
+      </svg>`;
+      return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    function makeOfflinePlaceholderSvg(deskNo) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450" width="800" height="450">
+        <defs>
+          <linearGradient id="bgGrad_${deskNo.replace(/[^a-zA-Z0-9]/g, '_')}" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#09090b"/>
+            <stop offset="100%" stop-color="#18181b"/>
+          </linearGradient>
+        </defs>
+        <rect width="800" height="450" fill="url(#bgGrad_${deskNo.replace(/[^a-zA-Z0-9]/g, '_')})"/>
+        <!-- Background Grid -->
+        <g stroke="#27272a" stroke-width="1" opacity="0.2">
+          <line x1="0" y1="90" x2="800" y2="90"/>
+          <line x1="0" y1="180" x2="800" y2="180"/>
+          <line x1="0" y1="270" x2="800" y2="270"/>
+          <line x1="0" y1="360" x2="800" y2="360"/>
+          <line x1="160" y1="0" x2="160" y2="450"/>
+          <line x1="320" y1="0" x2="320" y2="450"/>
+          <line x1="480" y1="0" x2="480" y2="450"/>
+          <line x1="640" y1="0" x2="640" y2="450"/>
+        </g>
+        <!-- Center Monitor Standby Graphic -->
+        <g transform="translate(400, 185)" text-anchor="middle">
+          <circle cx="0" cy="-12" r="54" fill="#18181b" stroke="#3f3f46" stroke-width="2.5"/>
+          <path d="M 0 -36 L 0 -12 M -16 -24 A 22 22 0 1 0 16 -24" fill="none" stroke="#71717a" stroke-width="4.5" stroke-linecap="round"/>
+          <text y="76" fill="#f4f4f5" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="900" letter-spacing="1.5">${deskNo}</text>
+          <rect x="-90" y="94" width="180" height="28" rx="14" fill="#27272a" stroke="#3f3f46" stroke-width="1"/>
+          <text y="113" fill="#f87171" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="bold" letter-spacing="0.5">● PC KAPALI</text>
+          <text y="148" fill="#71717a" font-family="system-ui, -apple-system, sans-serif" font-size="12">İstemci açıldığında canlı ekran otomatik buraya bağlanır</text>
+        </g>
+        <rect x="0" y="416" width="800" height="34" fill="#09090b" opacity="0.9"/>
+        <text x="24" y="438" fill="#71717a" font-family="sans-serif" font-size="12" font-weight="600">Torbalı Piri Reis MTAL • Laboratuvar</text>
+        <text x="776" y="438" fill="#71717a" font-family="monospace" font-size="11" text-anchor="end">SİSTEM BEKLEMEDE</text>
       </svg>`;
       return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
     }
@@ -3551,6 +3588,37 @@
         items.push(...getDemoStudents());
       }
 
+      // 19 Sabit Laboratuvar Masası Şablonu (Bilgisayarlar kapalı olsa bile yerlerini korur)
+      if (!demoMode) {
+        const occupiedNumbers = new Set();
+        for (const it of items) {
+          const num = extractPcNumber(it);
+          if (num !== null) occupiedNumbers.add(num);
+        }
+        for (let i = 1; i <= 19; i++) {
+          if (!occupiedNumbers.has(i)) {
+            const numStr = String(i).padStart(2, '0');
+            const desk = `PC-${numStr}`;
+            const customDesk = customMap[`template-pc-${numStr}`] || desk;
+            items.push({
+              id: `template-pc-${numStr}`,
+              deskNo: customDesk,
+              studentName: 'Kapalı / Beklemede',
+              name: `${customDesk} (Kapalı)`,
+              ip: '-',
+              mac: '-',
+              online: false,
+              isPlaceholder: true,
+              locked: false,
+              handRaised: false,
+              firstSeen: '-',
+              resolution: '1920x1080',
+              frame: makeOfflinePlaceholderSvg(customDesk)
+            });
+          }
+        }
+      }
+
       const seenIps = new Set(items.map((i) => i.ip));
       for (const arp of serverState.arpDevices || []) {
         if (!seenIps.has(arp.ip)) {
@@ -3715,13 +3783,16 @@
 
       const layoutSig = filtered
         .map((item) => {
-          const hasScreen = Boolean((item.online !== false) && item.frame);
-          const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly);
+          const isPlaceholder = Boolean(item.isPlaceholder);
+          const hasScreen = Boolean(((item.online !== false) || isPlaceholder) && item.frame);
+          const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly && !isPlaceholder);
           const isNative = item.clientType === 'native';
           const isLocked = Boolean(cs.lockAll || item.locked);
           const isSelected = selectedStudentIds.has(item.id);
           const isReceivingStream = Boolean(
-            cs.teacherStreamActive && (!streamTargets || streamTargets.length === 0 || streamTargets.includes(item.id))
+            !item.arpOnly && !isPlaceholder &&
+            cs.teacherStreamActive &&
+            (!streamTargets || streamTargets.length === 0 || streamTargets.includes(item.id))
           );
           const instSig = item.installStatus ? `${item.installStatus.id}:${item.installStatus.status}:${item.installStatus.progress}` : 'none';
           return `${gridCols}:${item.id}:${hasScreen ? 1 : 0}:${isStoppedStudent ? 1 : 0}:${isNative ? 1 : 0}:${isLocked ? 1 : 0}:${isSelected ? 1 : 0}:${isReceivingStream ? 1 : 0}:${item.handRaised ? 1 : 0}:${item.name}:${item.ip}:${instSig}`;
@@ -3734,18 +3805,21 @@
         // Fast in-place update without rebuilding DOM (Zero Flicker)
         for (const item of filtered) {
           const safeId = String(item.id).replace(/[^a-zA-Z0-9_-]/g, '_');
-          const hasScreen = Boolean((item.online !== false) && item.frame);
-          const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly);
+          const isPlaceholder = Boolean(item.isPlaceholder);
+          const hasScreen = Boolean(((item.online !== false) || isPlaceholder) && item.frame);
+          const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly && !isPlaceholder);
           const isNative = item.clientType === 'native';
-          const badgeText = hasScreen
-            ? item.isDemo
-              ? 'Simülasyon'
-              : isCompact
-                ? (isNative ? '🛡️ Aktif' : 'Canlı')
-                : `${isNative ? '🛡️ Aktif' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
-            : isStoppedStudent
-              ? '🚨 Kapalı'
-              : 'Ağda Açık';
+          const badgeText = isPlaceholder
+            ? '💤 Beklemede'
+            : hasScreen
+              ? item.isDemo
+                ? 'Simülasyon'
+                : isCompact
+                  ? (isNative ? '🛡️ Aktif' : 'Canlı')
+                  : `${isNative ? '🛡️ Aktif' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
+              : isStoppedStudent
+                ? '🚨 Kapalı'
+                : 'Ağda Açık';
 
           const imgEl = document.getElementById('screen-img-' + safeId);
           if (imgEl && item.frame && imgEl.getAttribute('src') !== item.frame) {
@@ -3765,36 +3839,41 @@
       grid.innerHTML = filtered
         .map((item) => {
           const safeId = String(item.id).replace(/[^a-zA-Z0-9_-]/g, '_');
-          const hasScreen = Boolean((item.online !== false) && item.frame);
-          const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly);
+          const isPlaceholder = Boolean(item.isPlaceholder);
+          const hasScreen = Boolean(((item.online !== false) || isPlaceholder) && item.frame);
+          const isStoppedStudent = Boolean(!hasScreen && !item.arpOnly && !isPlaceholder);
           const isNative = item.clientType === 'native';
           const isLocked = Boolean(cs.lockAll || item.locked);
           const isSelected = selectedStudentIds.has(item.id);
           const isReceivingStream = Boolean(
-            !item.arpOnly &&
+            !item.arpOnly && !isPlaceholder &&
             cs.teacherStreamActive &&
             (!streamTargets || streamTargets.length === 0 || streamTargets.includes(item.id))
           );
 
-          const badgeClass = hasScreen
-            ? item.isDemo
-              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-              : isNative
-                ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
-                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-            : isStoppedStudent
-              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
-              : 'bg-zinc-800 text-zinc-400 border-zinc-700';
+          const badgeClass = isPlaceholder
+            ? 'bg-zinc-800 text-zinc-400 border-zinc-700/60'
+            : hasScreen
+              ? item.isDemo
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                : isNative
+                  ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30'
+                  : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+              : isStoppedStudent
+                ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 animate-pulse'
+                : 'bg-zinc-800 text-zinc-400 border-zinc-700';
 
-          const badgeText = hasScreen
-            ? item.isDemo
-              ? 'Simülasyon'
-              : isCompact
-                ? (isNative ? '🛡️ Aktif' : 'Canlı')
-                : `${isNative ? '🛡️ Aktif' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
-            : isStoppedStudent
-              ? '🚨 Kapalı'
-              : 'Ağda Açık';
+          const badgeText = isPlaceholder
+            ? '💤 Beklemede'
+            : hasScreen
+              ? item.isDemo
+                ? 'Simülasyon'
+                : isCompact
+                  ? (isNative ? '🛡️ Aktif' : 'Canlı')
+                  : `${isNative ? '🛡️ Aktif' : 'Canlı'} ${item.frameTimeStr ? '• ' + item.frameTimeStr : ''}`
+              : isStoppedStudent
+                ? '🚨 Kapalı'
+                : 'Ağda Açık';
 
           const borderClass = isSelected
             ? 'border-cyan-400 ring-2 ring-cyan-400'
@@ -3921,20 +4000,22 @@
 
               <!-- Veyon Per-Computer Control Footer -->
               <div class="${isCompact ? 'px-1.5 py-1' : 'px-3 py-2'} bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between gap-1 text-[10px]">
-                <span class="text-zinc-400 font-mono truncate">${item.ip || '-'}</span>
+                <span class="text-zinc-400 font-mono truncate">${isPlaceholder ? 'Açılış Bekleniyor' : (item.ip || '-')}</span>
                 ${
-                  !item.arpOnly
-                    ? `
-                      <div class="flex items-center gap-0.5 shrink-0">
-                        <button onclick="openFocusModal('${item.id}', true)" title="Bu Bilgisayara Uzaktan Fare/Klavye ile Müdahale Et" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition">🖱️</button>
-                        <button onclick="shareScreenWithStudent('${item.id}', event)" title="Ekranımı Sadece Bu Bilgisayara Yansıt" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 transition">📺</button>
-                        <button onclick="toggleStudentLock('${item.id}', ${Boolean(item.locked)})" title="Bu Bilgisayarı Kilitle / Aç" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded ${item.locked ? 'bg-rose-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'} transition">🔒</button>
-                        <button onclick="setWallpaperForStudent('${item.id}', event)" title="Bu Bilgisayarın Masaüstü Duvar Kağıdını Değiştir" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 transition">🖼️</button>
-                        <button onclick="promptStudentMessage('${item.id}', '${(item.name || '').replace(/'/g, '')}')" title="Özel Mesaj Gönder" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">💬</button>
-                        ${!isCompact ? `<button onclick="downloadSnapshot('${item.id}')" title="Ekran Görüntüsü Kaydet (PNG)" class="px-1.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">📸</button>` : ''}
-                      </div>
-                    `
-                    : `<span class="text-zinc-500 font-mono truncate">${isCompact ? '' : (item.mac || '')}</span>`
+                  isPlaceholder
+                    ? `<span class="px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 font-semibold text-[10px] border border-zinc-700/50">Masa Şablonu</span>`
+                    : !item.arpOnly
+                      ? `
+                        <div class="flex items-center gap-0.5 shrink-0">
+                          <button onclick="openFocusModal('${item.id}', true)" title="Bu Bilgisayara Uzaktan Fare/Klavye ile Müdahale Et" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 transition">🖱️</button>
+                          <button onclick="shareScreenWithStudent('${item.id}', event)" title="Ekranımı Sadece Bu Bilgisayara Yansıt" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 transition">📺</button>
+                          <button onclick="toggleStudentLock('${item.id}', ${Boolean(item.locked)})" title="Bu Bilgisayarı Kilitle / Aç" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded ${item.locked ? 'bg-rose-600 text-white' : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'} transition">🔒</button>
+                          <button onclick="setWallpaperForStudent('${item.id}', event)" title="Bu Bilgisayarın Masaüstü Duvar Kağıdını Değiştir" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 transition">🖼️</button>
+                          <button onclick="promptStudentMessage('${item.id}', '${(item.name || '').replace(/'/g, '')}')" title="Özel Mesaj Gönder" class="${isCompact ? 'px-1 py-0.5' : 'px-1.5 py-1'} rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">💬</button>
+                          ${!isCompact ? `<button onclick="downloadSnapshot('${item.id}')" title="Ekran Görüntüsü Kaydet (PNG)" class="px-1.5 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition">📸</button>` : ''}
+                        </div>
+                      `
+                      : `<span class="text-zinc-500 font-mono truncate">${isCompact ? '' : (item.mac || '')}</span>`
                 }
               </div>
             </div>
