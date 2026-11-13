@@ -5,6 +5,14 @@
       "destination": "https://pirireis-api-v3ku.onrender.com/api/labizleme/:path*"
     },
     {
+      "source": "/bilsemlab",
+      "destination": "/bilsemlab/index.html"
+    },
+    {
+      "source": "/bilsemlab/:path*",
+      "destination": "/bilsemlab/:path*"
+    },
+    {
       "source": "/labizleme",
       "destination": "/labizleme/index.html"
     },
