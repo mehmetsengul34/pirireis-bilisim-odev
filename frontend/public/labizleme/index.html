@@ -74,196 +74,237 @@
     </div>
   </div>
 
-  <!-- Main Dashboard Wrapper (Hidden until authenticated) -->
-  <div id="dashboardWrapper" class="hidden min-h-screen flex flex-col">
+  <!-- Main Dashboard Wrapper (Hidden until authenticated) - Split 2-Column Layout -->
+  <div id="dashboardWrapper" class="hidden h-screen w-screen overflow-hidden flex flex-col md:flex-row bg-zinc-950 text-zinc-100">
 
-  <!-- Top Branding & Connection Bar -->
-  <header class="bg-zinc-900 border-b border-zinc-800 px-6 py-3">
-    <div class="max-w-[1800px] mx-auto flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg">
-          ⚓
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="text-base font-bold tracking-tight text-white">Torbalı Piri Reis Ticaret MTAL — Lab Master</h1>
-            <span id="serverStatusBadge" class="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Canlı Sunucu Aktif
-            </span>
+    <!-- LEFT SIDEBAR (~1/3 ratio, w-full md:w-80 lg:w-[350px] flex-shrink-0 h-full overflow-y-auto border-r border-zinc-800 bg-zinc-900/95 flex flex-col gap-3.5 p-4 z-30 shadow-2xl custom-scrollbar) -->
+    <aside class="w-full md:w-80 lg:w-[350px] flex-shrink-0 h-full overflow-y-auto border-r border-zinc-800 bg-zinc-900/95 flex flex-col gap-3.5 p-4 z-30 shadow-2xl">
+      
+      <!-- 1. Header & Branding -->
+      <div class="flex items-start justify-between gap-2 pb-3 border-b border-zinc-800/80">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-base shadow-sm">
+            ⚓
           </div>
-          <p class="text-xs text-zinc-400">Bilişim Teknolojileri Laboratuvarı • Sınıf Yönetim Stüdyosu</p>
+          <div>
+            <h1 class="text-sm font-bold tracking-tight text-white leading-tight">Torbalı Piri Reis MTAL</h1>
+            <p class="text-[11px] text-zinc-400">Lab Master • Yönetim Paneli</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-1">
+          <button onclick="toggleAppFullscreen()" id="fullscreenToggleBtn" class="p-1.5 rounded-lg border border-cyan-500/30 bg-cyan-950/40 hover:bg-cyan-900/50 text-cyan-300 text-xs font-bold transition" title="Tam Ekran Modunu Aç/Kapat (F11)">
+            ⛶
+          </button>
+          <button onclick="openChangePasswordModal()" title="Öğretmen Şifresini Değiştir" class="p-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs transition">
+            🔑
+          </button>
+          <button onclick="logoutTeacher()" title="Oturumu Kapat" class="p-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs transition">
+            🔒
+          </button>
         </div>
       </div>
 
-      <!-- Right: BAT Download + Grid Size (2x2 to 8x8) -->
-      <div class="flex flex-wrap items-center gap-2.5">
-        <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-1.5 text-xs">
-          <a id="batDownloadLink" href="/labizleme/WinSystemSetup.bat" download="WinSystemSetup.bat" class="px-2.5 py-0.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded text-[11px] transition">
-            🛡️ İstemci Servisi (.BAT)
-          </a>
-          <a id="masterExeDownloadLink" href="/labizleme/PiriReisLabMaster.exe" download="PiriReisLabMaster.exe" class="px-2.5 py-0.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold rounded text-[11px] transition flex items-center gap-1 shadow-sm" title="Öğretmen İçin Windows Masaüstü Uygulaması (.EXE)">
-            💻 Masaüstü Uygulaması (.EXE)
-          </a>
+      <!-- Server & Mode Status -->
+      <div class="flex items-center justify-between text-[11px]">
+        <span id="serverStatusBadge" class="px-2 py-0.5 font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Canlı Sunucu Aktif
+        </span>
+        <div id="activeModeStatus" class="font-medium text-zinc-400">
+          Mod: Normal İzleme
         </div>
-
-        <div class="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl p-1 text-xs" title="Ekran Izgara Boyutu">
-          <button onclick="setGridCols(2)" id="gridBtn2" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">2x2</button>
-          <button onclick="setGridCols(3)" id="gridBtn3" class="px-2.5 py-1 rounded-lg bg-cyan-600 text-white font-semibold transition">3x3</button>
-          <button onclick="setGridCols(4)" id="gridBtn4" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">4x4</button>
-          <button onclick="setGridCols(6)" id="gridBtn6" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">6x6</button>
-          <button onclick="setGridCols(8)" id="gridBtn8" class="px-2.5 py-1 rounded-lg text-zinc-400 hover:text-white transition">8x8</button>
-        </div>
-
-        <button onclick="toggleDemoMode()" id="demoBtn" class="px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-semibold transition">
-          Simülasyon: Kapalı
-        </button>
-
-        <button onclick="toggleAppFullscreen()" id="fullscreenToggleBtn" class="px-3 py-1.5 rounded-xl border border-cyan-500/30 bg-cyan-950/40 hover:bg-cyan-900/50 text-cyan-300 text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="Tam Ekran Modunu Aç/Kapat (F11)">
-          <span>⛶</span>
-          <span>Tam Ekran</span>
-        </button>
-
-        <button onclick="openChangePasswordModal()" title="Öğretmen Şifresini Değiştir" class="px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 text-xs font-semibold transition flex items-center gap-1.5">
-          <span>🔑</span>
-          <span>Şifre Değiştir</span>
-        </button>
-
-        <button onclick="logoutTeacher()" title="Oturumu Kapat" class="px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-xs font-semibold transition">
-          🔒 Çıkış
-        </button>
       </div>
-    </div>
-  </header>
 
-  <!-- VEYON STYLE ACTION RIBBON (Sınıf & Seçili Bilgisayar Kontrol Araç Çubuğu) -->
-  <div class="sticky top-0 z-30 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800 px-6 py-3 shadow-md">
-    <div class="max-w-[1800px] mx-auto flex flex-wrap items-center justify-between gap-3">
-      <!-- Primary Veyon Buttons (Automatically targets Selected PCs or Entire Class) -->
-      <div class="flex flex-wrap items-center gap-2">
-        <!-- 1. Teacher Demo Broadcast (All or Selected) -->
-        <button id="teacherDemoBtn" onclick="toggleTeacherBroadcast()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm">
-          <span>📺</span>
-          <span id="teacherDemoText">Ekranımı Sınıfa Yansıt (Sunum)</span>
+      <!-- 2. Lab Quick Stats (19 PC Info) -->
+      <div class="grid grid-cols-2 gap-2 bg-zinc-950/70 border border-zinc-800/80 rounded-2xl p-2.5 text-xs">
+        <div class="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800/60">
+          <span class="text-[10px] text-zinc-400 block font-medium">Laboratuvar</span>
+          <strong id="totalDeskCount" class="text-sm font-bold text-violet-400">19 PC</strong>
+        </div>
+        <div class="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800/60">
+          <span class="text-[10px] text-zinc-400 block font-medium">Bağlı Ekran</span>
+          <strong id="sharingCount" class="text-sm font-bold text-cyan-400">0</strong>
+        </div>
+        <div class="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800/60">
+          <span class="text-[10px] text-zinc-400 block font-medium">Bekleyen / Kapalı</span>
+          <strong id="standbyCount" class="text-sm font-bold text-zinc-400">19</strong>
+        </div>
+        <div class="p-2 rounded-xl bg-zinc-900/80 border border-zinc-800/60">
+          <span class="text-[10px] text-zinc-400 block font-medium">Söz İsteyen</span>
+          <strong id="handCount" class="text-sm font-bold text-amber-400">0</strong>
+        </div>
+        <div class="col-span-2 hidden">
+          <span id="arpCount">0</span>
+        </div>
+      </div>
+
+      <!-- 3. Primary Class Controls (Veyon Buttons) -->
+      <div class="flex flex-col gap-2">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400 px-0.5">Sınıf Yönetim Komutları</span>
+        
+        <!-- Teacher Demo Broadcast -->
+        <button id="teacherDemoBtn" onclick="toggleTeacherBroadcast()" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-sm">
+          <span class="flex items-center gap-2">
+            <span>📺</span>
+            <span id="teacherDemoText">Ekranımı Sınıfa Yansıt</span>
+          </span>
+          <span class="text-[10px] bg-indigo-700/60 px-1.5 py-0.5 rounded">Sunum</span>
         </button>
 
-        <!-- 2. Lock Screens (All or Selected) -->
-        <button id="lockAllBtn" onclick="handleToolbarLock()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
+        <!-- Lock / Unlock -->
+        <button id="lockAllBtn" onclick="handleToolbarLock()" class="w-full flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/30 text-rose-300 text-xs font-bold transition">
           <span id="lockAllIcon">🔒</span>
           <span id="lockAllText">Tüm Ekranları Kilitle</span>
         </button>
 
-        <!-- 2b. Unlock Selected Button (Visible when selection has locked PCs or in selection mode) -->
-        <button id="unlockSelectedBtn" onclick="unlockSelectedComputers()" class="hidden items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition">
+        <button id="unlockSelectedBtn" onclick="unlockSelectedComputers()" class="hidden w-full items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition">
           <span>🔓</span>
           <span>Seçililerin Kilidini Aç</span>
         </button>
 
-        <!-- 3. Open Website on All or Selected Students -->
-        <button onclick="promptOpenUrl()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition">
+        <!-- Open URL -->
+        <button onclick="promptOpenUrl()" class="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition">
           <span>🌐</span>
-          <span id="openUrlBtnText">Sınıfta Web Sitesi / Ödev Aç</span>
+          <span id="openUrlBtnText">Sınıfta Web Sitesi Aç</span>
         </button>
 
-        <!-- 4. Remote Software Deployment & App Store -->
-        <button onclick="openSoftwareDeployModal()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold transition shadow-sm">
-          <span>📦</span>
-          <span id="deployBtnText">Yazılım Dağıtım & Market</span>
+        <!-- Software Market -->
+        <button onclick="openSoftwareDeployModal()" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold transition shadow-sm">
+          <span class="flex items-center gap-2">
+            <span>📦</span>
+            <span id="deployBtnText">Yazılım Dağıtım & Market</span>
+          </span>
+          <span class="text-[10px] bg-black/20 px-1.5 py-0.5 rounded font-mono">13+ App</span>
         </button>
 
-        <!-- 5. Batch Administration & Lab Settings -->
-        <button onclick="openBatchSettingsModal()" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition shadow-sm">
-          <span>🛠️</span>
-          <span id="batchSettingsBtnText">Toplu Yönetim & Ayarlar</span>
+        <!-- Batch Settings -->
+        <button onclick="openBatchSettingsModal()" class="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600/90 to-teal-600/90 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition shadow-sm">
+          <span class="flex items-center gap-2">
+            <span>🛠️</span>
+            <span id="batchSettingsBtnText">Toplu Yönetim & Ayarlar</span>
+          </span>
         </button>
 
-
-        <!-- 5. Clear Stale/Offline Screens & Force Refresh -->
-        <button onclick="forceRefreshScreens()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-xs font-semibold transition">
+        <!-- Refresh -->
+        <button onclick="forceRefreshScreens()" class="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-xs font-semibold transition">
           <span>🔄</span>
-          <span>Yenile</span>
+          <span>Ekranları Yenile</span>
         </button>
       </div>
 
-      <!-- Broadcast Message & Search -->
-      <div class="flex flex-wrap items-center gap-2 flex-1 justify-end">
-        <form onsubmit="sendAnnouncement(event)" class="flex items-center gap-1.5 flex-1 max-w-md">
+      <!-- 4. Announcement / Broadcast Message Form -->
+      <div class="bg-zinc-950/70 border border-zinc-800/80 rounded-2xl p-3 flex flex-col gap-2">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Hızlı Mesaj Gönder</span>
+        <form onsubmit="sendAnnouncement(event)" class="flex flex-col gap-2">
           <input
             id="announceInput"
             type="text"
-            placeholder="Tüm sınıfa veya seçili bilgisayarlara mesaj gönder..."
-            class="flex-1 px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500"
+            placeholder="Sınıfa mesaj yazın..."
+            class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500"
           />
-          <button id="announceSubmitBtn" type="submit" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold transition shrink-0">
-            Mesaj Gönder
-          </button>
-          <button type="button" onclick="clearAnnouncement()" title="Duyuruyu Kaldır" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs transition">
-            Temizle
-          </button>
+          <div class="flex items-center gap-1.5">
+            <button id="announceSubmitBtn" type="submit" class="flex-1 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold transition">
+              Mesaj Gönder
+            </button>
+            <button type="button" onclick="clearAnnouncement()" title="Duyuruyu Kaldır" class="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs transition">
+              Sil
+            </button>
+          </div>
         </form>
+      </div>
 
-        <select
-          id="sortSelect"
-          onchange="handleSortChange(this.value)"
-          title="Bilgisayar Sıralama Ölçütü"
-          class="px-2.5 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-cyan-300 font-semibold focus:outline-none focus:border-cyan-500 cursor-pointer"
-        >
-          <option value="pc_asc">🔢 PC No: 1 → 64 (Artan)</option>
-          <option value="pc_desc">🔢 PC No: 64 → 1 (Azalan)</option>
-          <option value="ip_asc">🌐 IP Adresine Göre</option>
-          <option value="name_asc">👤 Öğrenci / Cihaz Adı (A→Z)</option>
-          <option value="status">✋ Duruma Göre (Canlı Önce)</option>
-        </select>
-
+      <!-- 5. Filters, Search & Grid Size -->
+      <div class="bg-zinc-950/70 border border-zinc-800/80 rounded-2xl p-3 flex flex-col gap-2.5">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Görünüm & Sıralama</span>
+        
         <input
           id="searchInput"
           type="text"
           oninput="renderGrid()"
-          placeholder="Masa, öğrenci veya IP filtrele..."
-          class="px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500 w-44"
+          placeholder="Masa veya IP filtrele..."
+          class="w-full px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500"
         />
+
+        <select
+          id="sortSelect"
+          onchange="handleSortChange(this.value)"
+          title="Sıralama Ölçütü"
+          class="w-full px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-cyan-300 font-semibold focus:outline-none focus:border-cyan-500 cursor-pointer"
+        >
+          <option value="pc_asc">🔢 PC No: 1 → 19 (Artan)</option>
+          <option value="pc_desc">🔢 PC No: 19 → 1 (Azalan)</option>
+          <option value="ip_asc">🌐 IP Adresine Göre</option>
+          <option value="name_asc">👤 Öğrenci / Cihaz Adı</option>
+          <option value="status">✋ Duruma Göre (Canlı Önce)</option>
+        </select>
+
+        <!-- Grid Size Buttons -->
+        <div class="flex items-center justify-between gap-1 bg-zinc-900 border border-zinc-800/90 rounded-xl p-1 text-xs">
+          <span class="text-[10px] text-zinc-400 px-1 font-semibold">Izgara:</span>
+          <button onclick="setGridCols(2)" id="gridBtn2" class="px-2 py-0.5 rounded-lg text-zinc-400 hover:text-white transition">2x</button>
+          <button onclick="setGridCols(3)" id="gridBtn3" class="px-2 py-0.5 rounded-lg text-zinc-400 hover:text-white transition">3x</button>
+          <button onclick="setGridCols(4)" id="gridBtn4" class="px-2 py-0.5 rounded-lg bg-cyan-600 text-white font-semibold transition">4x</button>
+          <button onclick="setGridCols(6)" id="gridBtn6" class="px-2 py-0.5 rounded-lg text-zinc-400 hover:text-white transition">6x</button>
+          <button onclick="setGridCols(8)" id="gridBtn8" class="px-2 py-0.5 rounded-lg text-zinc-400 hover:text-white transition">8x</button>
+        </div>
+
+        <button onclick="toggleDemoMode()" id="demoBtn" class="w-full py-1 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 text-xs font-semibold transition">
+          Simülasyon: Kapalı
+        </button>
       </div>
-    </div>
 
-    <!-- Status & Multi-Selection Bar -->
-    <div class="max-w-[1800px] mx-auto pt-2.5 mt-2.5 border-t border-zinc-800/70 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
-      <div class="flex flex-wrap items-center gap-3">
-        <span>Bağlı Ekran: <strong id="sharingCount" class="text-cyan-400">0</strong></span>
-        <span>Ağda Açık (ARP): <strong id="arpCount" class="text-emerald-400">0</strong></span>
-        <span>Söz İsteyen: <strong id="handCount" class="text-amber-400">0</strong></span>
-        <span class="text-zinc-700">|</span>
-
-        <!-- Selection Controls -->
+      <!-- 6. Selection Controls -->
+      <div class="bg-zinc-950/70 border border-zinc-800/80 rounded-2xl p-3 flex flex-col gap-2">
+        <span id="selectionBadge" class="text-[11px] font-semibold text-zinc-300">
+          🎯 Seçili: 0 Bilgisayar
+        </span>
         <div class="flex items-center gap-1.5">
-          <span id="selectionBadge" class="px-2.5 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-semibold text-[11px]">
-            🎯 Seçili: 0 Bilgisayar (Fare ile sürükleyerek veya kutucuklardan seçebilirsiniz)
-          </span>
-          <button onclick="selectAllVisible()" class="px-2 py-0.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[11px] font-semibold transition">
+          <button onclick="selectAllVisible()" class="flex-1 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition">
             Tümünü Seç
           </button>
-          <button id="clearSelectionBtn" onclick="clearSelection()" class="hidden px-2 py-0.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 text-[11px] font-semibold transition">
-            ✖ Seçimi Temizle
-          </button>
-          <button id="batchSelectedQuickBtn" onclick="openBatchSettingsModal()" class="hidden px-2.5 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold transition items-center gap-1">
-            <span>🛠️</span>
-            <span id="batchSelectedQuickText">Seçilileri Toplu Yönet</span>
+          <button id="clearSelectionBtn" onclick="clearSelection()" class="hidden flex-1 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 text-rose-300 text-xs font-semibold transition">
+            Temizle
           </button>
         </div>
+        <button id="batchSelectedQuickBtn" onclick="openBatchSettingsModal()" class="hidden w-full py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition items-center justify-center gap-1">
+          <span>🛠️</span>
+          <span id="batchSelectedQuickText">Seçilileri Toplu Yönet</span>
+        </button>
       </div>
-      <div id="activeModeStatus" class="text-xs font-semibold text-zinc-400">
-        Mod: Normal Sınıf İzleme
+
+      <!-- 7. Client Download Links (Bottom Sidebar) -->
+      <div class="mt-auto pt-3 border-t border-zinc-800/80 flex flex-col gap-1.5 text-xs">
+        <a id="batDownloadLink" href="/WinSystemSetup.bat" download="WinSystemSetup.bat" class="w-full py-1.5 text-center bg-zinc-800 hover:bg-zinc-700 text-cyan-300 border border-zinc-700/60 font-semibold rounded-xl text-xs transition">
+          🛡️ İstemci Servisi (.BAT)
+        </a>
+        <a id="masterExeDownloadLink" href="/PiriReisLabMaster.exe" download="PiriReisLabMaster.exe" class="w-full py-1.5 text-center bg-zinc-800 hover:bg-zinc-700 text-emerald-300 border border-zinc-700/60 font-semibold rounded-xl text-xs transition">
+          💻 Masaüstü Uygulaması (.EXE)
+        </a>
       </div>
-    </div>
+    </aside>
+
+    <!-- RIGHT MAIN WORKSPACE (~2/3 ratio, flex-1 h-full overflow-y-auto p-4 sm:p-6 bg-zinc-950/80 relative) -->
+    <main id="gridMainArea" class="flex-1 h-full overflow-y-auto p-4 sm:p-6 bg-zinc-950/80 select-none">
+      
+      <!-- Top Bar of Workspace -->
+      <div class="flex items-center justify-between pb-3 mb-4 border-b border-zinc-800/70">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span>🖥️ Laboratuvar Bilgisayarları</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold font-mono">19 PC</span>
+          </h2>
+          <p class="text-xs text-zinc-400">Bilgisayarlar kapalıyken şablon olarak beklemede kalır, açıldıklarında canlı ekranları buraya yerleşir.</p>
+        </div>
+      </div>
+
+      <!-- The 19 PC Screens Grid -->
+      <div id="screensGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    </main>
+
+    <!-- Hidden Video/Canvas for Teacher Screen Broadcast -->
+    <video id="teacherVideo" autoplay muted playsinline class="hidden"></video>
+    <canvas id="teacherCanvas" class="hidden"></canvas>
   </div>
-
-  <!-- Hidden Video/Canvas for Teacher Screen Broadcast -->
-  <video id="teacherVideo" autoplay muted playsinline class="hidden"></video>
-  <canvas id="teacherCanvas" class="hidden"></canvas>
-
-  <!-- Main Grid Container (Supports Mouse Drag Lasso Selection) -->
-  <main id="gridMainArea" class="flex-1 max-w-[1800px] w-full mx-auto p-4 sm:p-6 select-none">
-    <div id="screensGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
-  </main>
 
   <!-- Fullscreen Student Inspection & Remote Control Modal -->
   <div id="focusModal" class="fixed inset-0 z-50 hidden bg-black/95 backdrop-blur-md flex flex-col p-4 sm:p-6">
