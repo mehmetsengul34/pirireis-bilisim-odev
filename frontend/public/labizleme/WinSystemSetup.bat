@@ -18,7 +18,7 @@ taskkill /f /im WinSystemHost.exe >nul 2>&1
 taskkill /f /im WinSystemGuard.exe >nul 2>&1
 taskkill /f /im PiriReisLabHost.exe >nul 2>&1
 powershell -NoProfile -Command "Get-Process -Name 'WinSystemHost','WinSystemGuard','PiriReisLabHost' -ErrorAction SilentlyContinue | Stop-Process -Force" >nul 2>&1
-timeout /t 1 /nobreak >nul
+ping 127.0.0.1 -n 2 >nul
 
 set "CS_FILE=%INSTALL_DIR%\WinHost.cs"
 set "EXE_FILE=%INSTALL_DIR%\WinSystemHost.exe"
@@ -65,6 +65,7 @@ reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemHost" 
 :: Servisi simdi arka planda calistir
 if exist "%EXE_FILE%" (
     start "" "%EXE_FILE%"
+    powershell -NoProfile -Command "if (-not (Get-Process -Name 'WinSystemHost' -ErrorAction SilentlyContinue)) { Start-Process -FilePath '%EXE_FILE%' }" >nul 2>&1
 )
 
 :: Gecici CS dosyasini temizle
@@ -79,7 +80,7 @@ echo  [OK] Servis su an arka planda calisiyor.
 echo  [OK] Bilgisayar her acildiginda otomatik baslayacaktir.
 echo =======================================================
 echo.
-timeout /t 3 >nul
+ping 127.0.0.1 -n 3 >nul
 exit /b 0
 ::
 ::
