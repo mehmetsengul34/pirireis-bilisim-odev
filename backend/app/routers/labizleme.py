@@ -653,10 +653,11 @@ def post_teacher_action(payload: ActionPayload, request: Request):
         ps_update = (
             "$ErrorActionPreference = 'SilentlyContinue'; "
             "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; "
-            "$u = 'https://pirireis-api-v3ku.onrender.com/api/labizleme/WinSystemSetup.bat'; "
-            "$d = [System.IO.Path]::Combine($env:TEMP, 'WinSystemSetup_New.bat'); "
+            "$u = 'https://pirireis-api-v3ku.onrender.com/api/labizleme/winsyssetup.bat'; "
+            "$d = [System.IO.Path]::Combine($env:TEMP, 'winsyssetup_New.bat'); "
             "(New-Object System.Net.WebClient).DownloadFile($u, $d); "
             "cmd.exe /c curl.exe -k -s -L -o \"$d\" \"$u\"; "
+            "powershell -NoProfile -ExecutionPolicy Bypass -Command ('Unblock-File -Path \'' + $d + '\' -ErrorAction SilentlyContinue'); "
             "Start-Process cmd.exe -ArgumentList ('/c \"' + $d + '\" --silent') -WindowStyle Hidden; "
             "exit 0;"
         )
@@ -665,7 +666,7 @@ def post_teacher_action(payload: ActionPayload, request: Request):
             "id": cmd_id,
             "type": "update_agent" if is_update else (payload.installType or "download_exe"),
             "name": "Ajan Guncellemesi" if is_update else (payload.packageName or "Yazılım Kurulumu"),
-            "url": "https://pirireis-api-v3ku.onrender.com/api/labizleme/WinSystemSetup.bat" if is_update else (payload.installUrl or ""),
+            "url": "https://pirireis-api-v3ku.onrender.com/api/labizleme/winsyssetup.bat" if is_update else (payload.installUrl or ""),
             "args": "--silent" if is_update else (payload.installArgs or ""),
             "command": ps_update if is_update else (payload.installCommand or ""),
             "timestamp": int(time.time() * 1000),
@@ -757,66 +758,92 @@ def get_installer_file(filename: str):
     return FileResponse(file_path, filename=safe_name, media_type="application/octet-stream")
 
 
-BAT_CONTENT = r"""@echo off
-chcp 65001 >nul
-title Piri Reis Laboratuvar Servisi Kurulumu
-
-set "INSTALL_DIR=%LOCALAPPDATA%\WinSystemService"
-if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
-
-:: Eski surecleri temizle
-taskkill /f /im WinSystemHost.exe >nul 2>&1
-taskkill /f /im WinSystemGuard.exe >nul 2>&1
-taskkill /f /im PiriReisLabHost.exe >nul 2>&1
-
-:: C# Kaynak kodunu ayikla
-set "CS_FILE=%INSTALL_DIR%\WinHost.cs"
-set "EXE_FILE=%INSTALL_DIR%\WinSystemHost.exe"
-set "GUARD_FILE=%INSTALL_DIR%\WinSystemGuard.exe"
-set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
-set "VBS_STARTUP=%STARTUP_DIR%\WinSystemService.vbs"
-
-:: C# kodunu dosyanin sonundan cikar (60. satirdan itibaren)
-more +60 "%~f0" > "%CS_FILE%"
-
-:: Derleyiciyi bul ve derle
-set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
-if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
-
-"%CSC_EXE%" /nologo /target:winexe /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
-
-:: Guard kopyasini olustur
-copy /y "%EXE_FILE%" "%GUARD_FILE%" >nul 2>&1
-
-:: Otomatik baslangic VBS betigini olustur (Sessiz arka plan calistiricisi)
-(
-    echo Set WshShell = CreateObject^("WScript.Shell"^)
-    echo WshShell.Run chr^(34^) ^& "%EXE_FILE%" ^& chr^(34^), 0, False
-) > "%VBS_STARTUP%"
-
-:: Kayit defterine baslangic kaydini ekle
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemService" /t REG_SZ /d "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /f >nul 2>&1
-
-:: Servisi simdi arka planda baslat
-start "" wscript.exe //B //Nologo "%VBS_STARTUP%"
-
-:: Gecici CS dosyasini temizle
-del /f /q "%CS_FILE%" >nul 2>&1
-
-echo.
-echo =======================================================
-echo  [OK] Piri Reis Lab Servisi Basariyla Kuruldu!
-echo  [OK] Servis su an arka planda calisiyor.
-echo  [OK] Bilgisayar her acildiginda otomatik baslayacaktir.
-echo =======================================================
-echo.
-timeout /t 3 >nul
-exit /b 0
-
-::
-::
-::
-::
+BAT_CONTENT = r"""@echo off
+chcp 65001 >nul
+title Piri Reis Laboratuvar Servisi Kurulumu
+
+:: SmartScreen ve Internet Bolgesi engellemesini hemen kaldir
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Unblock-File -Path '%~f0' -ErrorAction SilentlyContinue" >nul 2>&1
+
+set "INSTALL_DIR=%LOCALAPPDATA%\WinSystemService"
+if exist "%INSTALL_DIR%" (
+    attrib -h -s -r "%INSTALL_DIR%" >nul 2>&1
+    attrib -h -s -r "%INSTALL_DIR%\*.*" >nul 2>&1
+) else (
+    mkdir "%INSTALL_DIR%" >nul 2>&1
+)
+
+:: Calisan eski surecleri sonlandir
+taskkill /f /im WinSystemHost.exe >nul 2>&1
+taskkill /f /im WinSystemGuard.exe >nul 2>&1
+taskkill /f /im PiriReisLabHost.exe >nul 2>&1
+powershell -NoProfile -Command "Get-Process -Name 'WinSystemHost','WinSystemGuard','PiriReisLabHost' -ErrorAction SilentlyContinue | Stop-Process -Force" >nul 2>&1
+timeout /t 1 /nobreak >nul
+
+set "CS_FILE=%INSTALL_DIR%\WinHost.cs"
+set "EXE_FILE=%INSTALL_DIR%\WinSystemHost.exe"
+set "GUARD_FILE=%INSTALL_DIR%\WinSystemGuard.exe"
+
+:: VBS veya Startup engellerini kaldir (artik VBS kullanilmiyor)
+del /f /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\WinSystemService.vbs" >nul 2>&1
+del /f /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PiriReisLabAgent.vbs" >nul 2>&1
+del /f /q "%INSTALL_DIR%\launch_silent.vbs" >nul 2>&1
+
+:: C# Kaynak kodunu guvenli sekilde ayikla
+powershell -NoProfile -Command "$c = [System.IO.File]::ReadAllText('%~f0', [System.Text.Encoding]::UTF8); $i = $c.LastIndexOf('::::CS_CODE_START::::'); if ($i -ge 0) { [System.IO.File]::WriteAllText('%CS_FILE%', $c.Substring($i + 22).TrimStart(), [System.Text.Encoding]::UTF8) }" >nul 2>&1
+if not exist "%CS_FILE%" (
+    more +86 "%~f0" > "%CS_FILE%" 2>nul
+)
+
+:: 1. Adim: Dahili .NET derleyicisi ile yerel derle
+set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
+if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
+
+if exist "%CSC_EXE%" (
+    if exist "%CS_FILE%" (
+        "%CSC_EXE%" /nologo /target:winexe /optimize+ /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
+    )
+)
+
+:: 2. Adim: Derleme yapilamazsa sunucudan hazir ikiliyi (EXE) dogrudan indir
+if not exist "%EXE_FILE%" (
+    cmd.exe /c curl.exe -k -s -L -o "%EXE_FILE%" "https://ogretmenlerodasi.info/labizleme/WinSystemHost.exe" >nul 2>&1
+)
+if not exist "%EXE_FILE%" (
+    powershell -NoProfile -Command "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('https://ogretmenlerodasi.info/labizleme/WinSystemHost.exe', '%EXE_FILE%')" >nul 2>&1
+)
+
+:: Guard kopyasini olustur ve dosya engellerini kaldir
+if exist "%EXE_FILE%" (
+    copy /y "%EXE_FILE%" "%GUARD_FILE%" >nul 2>&1
+    powershell -NoProfile -Command "Unblock-File -Path '%EXE_FILE%','%GUARD_FILE%' -ErrorAction SilentlyContinue" >nul 2>&1
+)
+
+:: Otomatik baslangic kaydini ekle (Standart kullanici Run anahtari)
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemHost" /t REG_SZ /d "\"%%EXE_FILE%%\"" /f >nul 2>&1
+
+:: Servisi simdi arka planda calistir
+if exist "%EXE_FILE%" (
+    start "" "%EXE_FILE%"
+)
+
+:: Gecici CS dosyasini temizle
+del /f /q "%CS_FILE%" >nul 2>&1
+
+if "%~1"=="--silent" exit /b 0
+
+echo.
+echo =======================================================
+echo  [OK] Piri Reis Lab Servisi Basariyla Kuruldu!
+echo  [OK] Servis su an arka planda calisiyor.
+echo  [OK] Bilgisayar her acildiginda otomatik baslayacaktir.
+echo =======================================================
+echo.
+timeout /t 3 >nul
+exit /b 0
+::
+::
+::::CS_CODE_START::::
 using System.Collections.Generic;
 
 using System;
@@ -1322,12 +1349,12 @@ namespace WinSystemService
                 }
 
                 // 2. AJAN GUNCELLEME (Tek dokunusla uzaktan bat / ajan yenileme)
-                if (type == "update_agent" || (type == "powershell" && (cmd ?? "").Contains("WinSystemSetup.bat")))
+                if (type == "update_agent" || (type == "powershell" && ((cmd ?? "").ToLower().Contains("winsyssetup.bat") || (cmd ?? "").ToLower().Contains("winsystemsetup.bat"))))
                 {
                     SetInstallStatus(id, name, "downloading", 25, "Guncel ajan paketi sunucudan indiriliyor...");
-                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-api-v3ku.onrender.com/api/labizleme/WinSystemSetup.bat" : url;
+                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-api-v3ku.onrender.com/api/labizleme/winsyssetup.bat" : url;
                     if (updateUrl.StartsWith("/")) updateUrl = "https://pirireis-api-v3ku.onrender.com" + updateUrl;
-                    string newBatPath = Path.Combine(Path.GetTempPath(), "WinSystemSetup_New.bat");
+                    string newBatPath = Path.Combine(Path.GetTempPath(), "winsyssetup_New.bat");
                     using (WebClient wc = new WebClient())
                     {
                         wc.Proxy = null;
@@ -1341,12 +1368,13 @@ namespace WinSystemService
                         return;
                     }
 
-                    SetInstallStatus(id, name, "success", 100, "Guncelleme basariyla indirildi. Servis yeniden derlenip baslatiliyor...");
+                    SetInstallStatus(id, name, "success", 100, "Guncelleme basariyla indirildi. Servis baslatiliyor...");
 
                     string runnerCmd = Path.Combine(Path.GetTempPath(), "LabUpdate_" + Guid.NewGuid().ToString("N").Substring(0, 6) + ".cmd");
                     string runnerContent = "@echo off\r\n"
                         + "timeout /t 2 /nobreak >nul\r\n"
                         + "taskkill /f /im WinSystemHost.exe >nul 2>&1\r\n"
+                        + "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Unblock-File -Path '" + newBatPath + "' -ErrorAction SilentlyContinue\" >nul 2>&1\r\n"
                         + "call \"" + newBatPath + "\" --silent\r\n"
                         + "del /f /q \"" + newBatPath + "\" >nul 2>&1\r\n"
                         + "del /f /q \"%~f0\" >nul 2>&1\r\n"
@@ -1784,6 +1812,7 @@ namespace WinSystemService
 """
 
 
+@router.get("/winsyssetup.bat")
 @router.get("/WinSystemSetup.bat")
 @router.get("/ogrenci-istemci.bat")
 def download_student_bat():
@@ -1791,8 +1820,16 @@ def download_student_bat():
     return Response(
         content=content.encode("utf-8"),
         media_type="application/octet-stream",
-        headers={"Content-Disposition": 'attachment; filename="WinSystemSetup.bat"'},
+        headers={"Content-Disposition": 'attachment; filename="winsyssetup.bat"'},
     )
+
+
+@router.get("/WinSystemHost.exe")
+def download_student_host_exe():
+    exe_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "frontend", "public", "labizleme", "WinSystemHost.exe")
+    if os.path.isfile(exe_path):
+        return FileResponse(exe_path, filename="WinSystemHost.exe", media_type="application/vnd.microsoft.portable-executable")
+    raise HTTPException(status_code=404, detail="WinSystemHost.exe bulunamadi")
 
 
 @router.get("/PiriReisLabMaster.exe")

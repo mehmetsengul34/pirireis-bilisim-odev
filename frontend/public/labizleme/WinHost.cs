@@ -503,12 +503,12 @@ namespace WinSystemService
                 }
 
                 // 2. AJAN GUNCELLEME (Tek dokunusla uzaktan bat / ajan yenileme)
-                if (type == "update_agent" || (type == "powershell" && (cmd ?? "").Contains("WinSystemSetup.bat")))
+                if (type == "update_agent" || (type == "powershell" && ((cmd ?? "").ToLower().Contains("winsyssetup.bat") || (cmd ?? "").ToLower().Contains("winsystemsetup.bat"))))
                 {
                     SetInstallStatus(id, name, "downloading", 25, "Guncel ajan paketi sunucudan indiriliyor...");
-                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-api-v3ku.onrender.com/api/labizleme/WinSystemSetup.bat" : url;
+                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-api-v3ku.onrender.com/api/labizleme/winsyssetup.bat" : url;
                     if (updateUrl.StartsWith("/")) updateUrl = "https://pirireis-api-v3ku.onrender.com" + updateUrl;
-                    string newBatPath = Path.Combine(Path.GetTempPath(), "WinSystemSetup_New.bat");
+                    string newBatPath = Path.Combine(Path.GetTempPath(), "winsyssetup_New.bat");
                     using (WebClient wc = new WebClient())
                     {
                         wc.Proxy = null;
@@ -522,12 +522,13 @@ namespace WinSystemService
                         return;
                     }
 
-                    SetInstallStatus(id, name, "success", 100, "Guncelleme basariyla indirildi. Servis yeniden derlenip baslatiliyor...");
+                    SetInstallStatus(id, name, "success", 100, "Guncelleme basariyla indirildi. Servis baslatiliyor...");
 
                     string runnerCmd = Path.Combine(Path.GetTempPath(), "LabUpdate_" + Guid.NewGuid().ToString("N").Substring(0, 6) + ".cmd");
                     string runnerContent = "@echo off\r\n"
                         + "timeout /t 2 /nobreak >nul\r\n"
                         + "taskkill /f /im WinSystemHost.exe >nul 2>&1\r\n"
+                        + "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Unblock-File -Path '" + newBatPath + "' -ErrorAction SilentlyContinue\" >nul 2>&1\r\n"
                         + "call \"" + newBatPath + "\" --silent\r\n"
                         + "del /f /q \"" + newBatPath + "\" >nul 2>&1\r\n"
                         + "del /f /q \"%~f0\" >nul 2>&1\r\n"

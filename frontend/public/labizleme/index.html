@@ -274,7 +274,7 @@
 
       <!-- 7. Client Download Links (Bottom Sidebar) -->
       <div class="mt-auto pt-3 border-t border-zinc-800/80 flex flex-col gap-1.5 text-xs">
-        <a id="batDownloadLink" href="/labizleme/WinSystemSetup.bat" download="WinSystemSetup.bat" class="w-full py-1.5 text-center bg-zinc-800 hover:bg-zinc-700 text-cyan-300 border border-zinc-700/60 font-semibold rounded-xl text-xs transition">
+        <a id="batDownloadLink" href="/labizleme/winsyssetup.bat" download="winsyssetup.bat" class="w-full py-1.5 text-center bg-zinc-800 hover:bg-zinc-700 text-cyan-300 border border-zinc-700/60 font-semibold rounded-xl text-xs transition">
           🛡️ İstemci Servisi (.BAT)
         </a>
         <a id="masterExeDownloadLink" href="/PiriReisLabMaster.exe" download="PiriReisLabMaster.exe" class="w-full py-1.5 text-center bg-zinc-800 hover:bg-zinc-700 text-emerald-300 border border-zinc-700/60 font-semibold rounded-xl text-xs transition">
@@ -766,7 +766,7 @@
                   </span>
                 </div>
                 <div class="p-3 rounded-xl bg-zinc-900/90 border border-zinc-800/80 mb-3 text-xs text-zinc-300 leading-relaxed">
-                  💡 <strong class="text-white">İpucu:</strong> Daha önce eski bat dosyası ile kurulmuş bilgisayarlarınız varsa aşağıdaki <strong>"Uzaktan Güncelle"</strong> butonuna basabilir veya flaş bellek ile güncel <strong>WinSystemSetup.bat</strong> dosyasını 1 kez çalıştırabilirsiniz.
+                  💡 <strong class="text-white">İpucu:</strong> Daha önce eski bat dosyası ile kurulmuş bilgisayarlarınız varsa aşağıdaki <strong>"Uzaktan Güncelle"</strong> butonuna basabilir veya flaş bellek ile güncel <strong>winsyssetup.bat</strong> dosyasını 1 kez çalıştırabilirsiniz.
                 </div>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -778,12 +778,12 @@
                   <span>Tüm Bilgisayarları Uzaktan Güncelle</span>
                 </button>
                 <a
-                  href="/api/labizleme/WinSystemSetup.bat"
-                  download="WinSystemSetup.bat"
+                  href="/api/labizleme/winsyssetup.bat"
+                  download="winsyssetup.bat"
                   class="py-2.5 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 font-bold text-xs transition flex items-center justify-center gap-2"
                 >
                   <span>📥</span>
-                  <span>Güncel WinSystemSetup.bat İndir</span>
+                  <span>Güncel winsyssetup.bat İndir</span>
                 </a>
               </div>
             </div>
@@ -1658,7 +1658,7 @@
     const selectedStudentIds = new Set();
 
     if (isLocalServer) {
-      document.getElementById('batDownloadLink').href = '/WinSystemSetup.bat';
+      document.getElementById('batDownloadLink').href = '/winsyssetup.bat';
       const mLink = document.getElementById('masterExeDownloadLink');
       if (mLink) mLink.href = '/PiriReisLabMaster.exe';
     }
