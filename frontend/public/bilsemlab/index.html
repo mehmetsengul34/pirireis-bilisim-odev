@@ -2223,10 +2223,17 @@
       const targetList = selectedStudentIds.size > 0 ? Array.from(selectedStudentIds) : null;
       const scopeLabel = targetList ? `seçili ${targetList.length} bilgisayarda` : 'tüm öğrenci bilgisayarlarında';
       const url = prompt(`${scopeLabel} açılacak web adresini girin:`, 'https://ogretmenlerodasi.info');
-      if (!url) return;
+      if (!url || !url.trim()) return;
+      const cleanUrl = url.trim();
+      const lower = cleanUrl.toLowerCase();
+      // Eger girilen adres bir gorsel ise web sayfasi olarak acma, sormadan direkt duvar kagidi yap!
+      if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.bmp') || lower.endsWith('.webp') || lower.includes('/uploads/') || lower.includes('wallpaper')) {
+        await runSetWallpaperDirect(cleanUrl, targetList);
+        return;
+      }
       await sendTeacherAction({
         action: 'openUrl',
-        url: url.trim(),
+        url: cleanUrl,
         targetIds: targetList
       });
       alert(`Bağlantı komutu ${scopeLabel} çalıştırıldı!`);
@@ -3292,6 +3299,25 @@
       return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $raw = Join-Path $env:TEMP 'lab_wall_raw.img'; $bmp = Join-Path $env:TEMP 'lab_wall.bmp'; (New-Object System.Net.WebClient).DownloadFile($u, $raw); Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile($raw); $img.Save($bmp, [System.Drawing.Imaging.ImageFormat]::Bmp); $img.Dispose(); Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $bmp -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value 2 -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value 0 -Force; $code = '[System.Runtime.InteropServices.DllImport(\"user32.dll\")] public static extern int SystemParametersInfo(int u, int p, string v, int f);'; Add-Type -MemberDefinition $code -Name WinApi -Namespace User32; [User32.WinApi]::SystemParametersInfo(20, 0, $bmp, 3); rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
     }
 
+    async function runSetWallpaperDirect(rawUrl, targetList = null) {
+      const url = (rawUrl || document.getElementById('batchWallpaperUrl')?.value || '').trim();
+      if (!url) return;
+      const fullUrl = url.startsWith('/') ? 'https://pirireis-api-v3ku.onrender.com' + url : url;
+      const script = generateWallpaperScript(fullUrl);
+      const title = 'Masaüstü Duvar Kağıdı';
+      const selCount = selectedStudentIds.size;
+      const finalTargets = targetList || (selCount > 0 ? Array.from(selectedStudentIds) : null);
+
+      await sendTeacherAction({
+        action: 'remoteInstall',
+        installType: 'wallpaper',
+        packageName: title,
+        installUrl: fullUrl,
+        installCommand: script,
+        targetIds: finalTargets
+      });
+    }
+
     async function handleWallpaperFileUpload(e) {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
@@ -3299,7 +3325,7 @@
       formData.append('file', file);
       const btn = document.getElementById('wallpaperUploadBtn');
       try {
-        if (btn) btn.textContent = '⏳ Yükleniyor...';
+        if (btn) btn.textContent = '⏳ Yüklenip Uygulanıyor...';
         const res = await fetch(`${API_BASE}/upload-installer`, {
           method: 'POST',
           headers: {
@@ -3312,18 +3338,24 @@
         const fullUrl = data.url.startsWith('http') ? data.url : `https://pirireis-api-v3ku.onrender.com${data.url}`;
         const wEl = document.getElementById('batchWallpaperUrl');
         if (wEl) wEl.value = fullUrl;
-        alert(`Görsel başarıyla yüklendi!\nBağlantı: ${fullUrl}`);
+        
+        // SORMADAN DİREKT OLARAK TÜM SEÇİLİ/LAB BİLGİSAYARLARIN DUVAR KAĞIDI YAP!
+        await runSetWallpaperDirect(fullUrl);
+        if (btn) btn.textContent = '✅ Arka Plan Ayarlandı!';
+        setTimeout(() => { if (btn) btn.textContent = '📁 Bilgisayardan Görsel Yükle'; }, 3000);
       } catch (err) {
         alert('Görsel yüklenirken hata oluştu: ' + err.message);
-      } finally {
         if (btn) btn.textContent = '📁 Bilgisayardan Görsel Yükle';
+      } finally {
         e.target.value = '';
       }
     }
 
-    function setWallpaperPreset(url) {
+    async function setWallpaperPreset(url) {
       const wEl = document.getElementById('batchWallpaperUrl');
       if (wEl) wEl.value = url;
+      // SORMADAN DİREKT OLARAK UYGULA!
+      await runSetWallpaperDirect(url);
     }
 
     async function runSetWallpaper() {
@@ -3332,24 +3364,8 @@
         alert('Lütfen geçerli bir görsel bağlantısı girin!');
         return;
       }
-
-      const script = generateWallpaperScript(url);
-      const title = 'Masaüstü Duvar Kağıdı Değiştirme';
-      const selCount = selectedStudentIds.size;
-      const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
-      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayarda` : 'tüm laboratuvarda';
-
-      if (!confirm(`Masaüstü duvar kağıdı ${targetLabel} güncellenecek. Devam edilsin mi?`)) return;
-
-      await sendTeacherAction({
-        action: 'remoteInstall',
-        installType: 'wallpaper',
-        packageName: title,
-        installUrl: url.startsWith('/') ? 'https://pirireis-api-v3ku.onrender.com' + url : url,
-        installCommand: script,
-        targetIds: targetList
-      });
-
+      // SORMADAN DİREKT GÖNDER!
+      await runSetWallpaperDirect(url);
       switchBatchTab('status');
     }
 
@@ -3360,31 +3376,16 @@
         const allItems = typeof getCombinedItems === 'function' ? getCombinedItems() : (serverState?.students || []);
         const found = allItems.find((s) => s.id === studentId || s.ip === studentId);
         if (found) sName = found.name || found.deskNo || found.ip || studentId;
-      } catch (err) {
-        console.warn('Student lookup error:', err);
-      }
+      } catch (err) { }
       const defaultUrl = (document.getElementById('batchWallpaperUrl')?.value || 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1920&q=80').trim();
-      const customUrl = prompt(`"${sName}" bilgisayarı için uygulanacak duvar kağıdı bağlantısını (URL) girin:`, defaultUrl);
-      if (!customUrl || !customUrl.trim()) return;
-
-      const fullUrl = customUrl.trim().startsWith('/') ? 'https://pirireis-api-v3ku.onrender.com' + customUrl.trim() : customUrl.trim();
-      const script = generateWallpaperScript(fullUrl);
-      await sendTeacherAction({
-        action: 'remoteInstall',
-        installType: 'wallpaper',
-        packageName: 'Masaüstü Duvar Kağıdı Değiştirme',
-        installUrl: fullUrl,
-        installCommand: script,
-        studentId: studentId,
-        targetIds: [studentId]
-      });
-      alert(`"${sName}" bilgisayarına duvar kağıdı değiştirme emri iletildi.`);
+      // SORMADAN DİREKT OLARAK BU BİLGİSAYARA UYGULA!
+      await runSetWallpaperDirect(defaultUrl, [studentId]);
     }
 
     async function triggerAgentUpdateAll() {
       const selCount = selectedStudentIds.size;
       const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
-      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayara` : 'TÜM LABORATUVARA (Tüm PC\'ler)';
+      const targetLabel = targetList ? `seçili ${targetList.length} bilgisayara` : 'TÜM LABORATUVARA (Tüm PC\x27ler)';
       if (!confirm(`Öğrenci istemcileri ${targetLabel} sessizce en güncel sürüme güncellenecek.\n\nOnaylıyor musunuz?`)) return;
 
       await sendTeacherAction({
