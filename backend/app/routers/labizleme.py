@@ -601,17 +601,43 @@ def post_teacher_action(payload: ActionPayload, request: Request):
                 else None
             )
     elif action == "openUrl":
-        cmd = (
-            {"id": str(int(time.time() * 1000)), "url": payload.url, "timestamp": int(time.time() * 1000)}
-            if payload.url
-            else None
-        )
-        if targets:
-            for tid in targets:
-                if tid in students:
-                    students[tid]["openUrlCommand"] = cmd
+        clean_url = (payload.url or "").strip()
+        lower_url = clean_url.lower()
+        is_image = any(lower_url.endswith(ext) for ext in [".jpg", ".jpeg", ".png", ".bmp", ".webp"]) or                    "/uploads/" in lower_url or "wallpaper" in lower_url or "images.unsplash.com" in lower_url
+
+        if is_image:
+            # Gorsel linki ise tarayicida acma, direkt duvar kagidi komutuna donustur!
+            cmd_id = f"inst_{int(time.time() * 1000)}_{secrets.token_hex(4)}"
+            cmd = {
+                "id": cmd_id,
+                "type": "wallpaper",
+                "name": "Masaüstü Duvar Kağıdı",
+                "url": clean_url,
+                "args": "",
+                "command": clean_url,
+                "timestamp": int(time.time() * 1000),
+            }
+            if targets:
+                for tid in targets:
+                    target_student = students.get(tid)
+                    if target_student:
+                        target_student["installCommand"] = cmd.copy()
+            else:
+                for st in students.values():
+                    if st.get("online"):
+                        st["installCommand"] = cmd.copy()
         else:
-            classroom_state["openUrlCommand"] = cmd
+            cmd = (
+                {"id": str(int(time.time() * 1000)), "url": payload.url, "timestamp": int(time.time() * 1000)}
+                if payload.url
+                else None
+            )
+            if targets:
+                for tid in targets:
+                    if tid in students:
+                        students[tid]["openUrlCommand"] = cmd
+            else:
+                classroom_state["openUrlCommand"] = cmd
     elif action == "teacherScreen":
         classroom_state["teacherStreamActive"] = bool(payload.active)
         classroom_state["teacherFrame"] = payload.frame if payload.active else None
@@ -760,91 +786,61 @@ def get_installer_file(filename: str):
 
 BAT_CONTENT = r"""@echo off
 chcp 65001 >nul
-title Piri Reis Laboratuvar Servisi Kurulumu
-
-:: SmartScreen ve Internet Bolgesi engellemesini hemen kaldir
-powershell -NoProfile -ExecutionPolicy Bypass -Command "Unblock-File -Path '%~f0' -ErrorAction SilentlyContinue" >nul 2>&1
+title Torbalı Bilsem Laboratuvar Servisi Kurulumu
 
 set "INSTALL_DIR=%LOCALAPPDATA%\WinSystemService"
-if exist "%INSTALL_DIR%" (
-    attrib -h -s -r "%INSTALL_DIR%" >nul 2>&1
-    attrib -h -s -r "%INSTALL_DIR%\*.*" >nul 2>&1
-) else (
-    mkdir "%INSTALL_DIR%" >nul 2>&1
-)
+if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 
-:: Calisan eski surecleri sonlandir
+set "PC_NAME=%~1"
+if not "%PC_NAME%"=="" goto :DO_INSTALL
+
+:: Rastgele 4 haneli bilgisayar numarasi uret (1000 - 9999 arasi)
+set /a RND_NUM=(%RANDOM% %% 9000) + 1000
+set "PC_NAME=Bilsem-PC%RND_NUM%"
+
+cls
+echo =======================================================
+echo         TORBALI BILSEM LABORATUVAR KURULUMU
+echo =======================================================
+echo  Otomatik Bilgisayar No : %PC_NAME%
+echo  Kurulum yapiliyor, lutfen bekleyin...
+echo =======================================================
+
+:DO_INSTALL
+echo %PC_NAME%> "%INSTALL_DIR%\pc_name.txt"
 taskkill /f /im WinSystemHost.exe >nul 2>&1
 taskkill /f /im WinSystemGuard.exe >nul 2>&1
+taskkill /f /im BilsemLabHost.exe >nul 2>&1
 taskkill /f /im PiriReisLabHost.exe >nul 2>&1
-powershell -NoProfile -Command "Get-Process -Name 'WinSystemHost','WinSystemGuard','PiriReisLabHost' -ErrorAction SilentlyContinue | Stop-Process -Force" >nul 2>&1
-ping 127.0.0.1 -n 2 >nul
-
 set "CS_FILE=%INSTALL_DIR%\WinHost.cs"
 set "EXE_FILE=%INSTALL_DIR%\WinSystemHost.exe"
 set "GUARD_FILE=%INSTALL_DIR%\WinSystemGuard.exe"
-
-:: VBS veya Startup engellerini kaldir (artik VBS kullanilmiyor)
-del /f /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\WinSystemService.vbs" >nul 2>&1
-del /f /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\PiriReisLabAgent.vbs" >nul 2>&1
-del /f /q "%INSTALL_DIR%\launch_silent.vbs" >nul 2>&1
-
-:: C# Kaynak kodunu guvenli sekilde ayikla
-powershell -NoProfile -Command "$c = [System.IO.File]::ReadAllText('%~f0', [System.Text.Encoding]::UTF8); $i = $c.LastIndexOf('::::CS_CODE_START::::'); if ($i -ge 0) { [System.IO.File]::WriteAllText('%CS_FILE%', $c.Substring($i + 22).TrimStart(), [System.Text.Encoding]::UTF8) }" >nul 2>&1
-if not exist "%CS_FILE%" (
-    more +86 "%~f0" > "%CS_FILE%" 2>nul
-)
-
-:: 1. Adim: Dahili .NET derleyicisi ile yerel derle
+set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
+set "VBS_STARTUP=%STARTUP_DIR%\WinSystemService.vbs"
 set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
 
-if exist "%CSC_EXE%" (
-    if exist "%CS_FILE%" (
-        "%CSC_EXE%" /nologo /target:winexe /optimize+ /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
-    )
-)
+more +57 "%~f0" > "%CS_FILE%"
 
-:: 2. Adim: Derleme yapilamazsa sunucudan hazir ikiliyi (EXE) dogrudan indir
-if not exist "%EXE_FILE%" (
-    cmd.exe /c curl.exe -k -s -L -o "%EXE_FILE%" "https://ogretmenlerodasi.info/labizleme/WinSystemHost.exe" >nul 2>&1
-)
-if not exist "%EXE_FILE%" (
-    powershell -NoProfile -Command "[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; (New-Object System.Net.WebClient).DownloadFile('https://ogretmenlerodasi.info/labizleme/WinSystemHost.exe', '%EXE_FILE%')" >nul 2>&1
-)
-
-:: Guard kopyasini olustur ve dosya engellerini kaldir
-if exist "%EXE_FILE%" (
-    copy /y "%EXE_FILE%" "%GUARD_FILE%" >nul 2>&1
-    powershell -NoProfile -Command "Unblock-File -Path '%EXE_FILE%','%GUARD_FILE%' -ErrorAction SilentlyContinue" >nul 2>&1
-)
-
-:: Otomatik baslangic kaydini ekle (Standart kullanici Run anahtari)
-reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemHost" /t REG_SZ /d "\"%%EXE_FILE%%\"" /f >nul 2>&1
-
-:: Servisi simdi arka planda calistir
-if exist "%EXE_FILE%" (
-    start "" "%EXE_FILE%"
-    powershell -NoProfile -Command "if (-not (Get-Process -Name 'WinSystemHost' -ErrorAction SilentlyContinue)) { Start-Process -FilePath '%EXE_FILE%' }" >nul 2>&1
-)
-
-:: Gecici CS dosyasini temizle
+"%CSC_EXE%" /nologo /target:winexe /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
+copy /y "%EXE_FILE%" "%GUARD_FILE%" >nul 2>&1
+(
+    echo Set WshShell = CreateObject^("WScript.Shell"^)
+    echo WshShell.Run chr^(34^) ^& "%EXE_FILE%" ^& chr^(34^), 0, False
+) > "%VBS_STARTUP%"
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "WinSystemService" /t REG_SZ /d "wscript.exe //B //Nologo \"%VBS_STARTUP%\"" /f >nul 2>&1
+start "" wscript.exe //B //Nologo "%VBS_STARTUP%"
 del /f /q "%CS_FILE%" >nul 2>&1
-
-if "%~1"=="--silent" exit /b 0
-
 echo.
 echo =======================================================
-echo  [OK] Piri Reis Lab Servisi Basariyla Kuruldu!
+echo  [OK] Torbalı Bilsem Lab Servisi Basariyla Kuruldu!
+echo  [OK] Bilgisayar: %PC_NAME%
 echo  [OK] Servis su an arka planda calisiyor.
 echo  [OK] Bilgisayar her acildiginda otomatik baslayacaktir.
 echo =======================================================
 echo.
-ping 127.0.0.1 -n 3 >nul
+timeout /t 3 >nul
 exit /b 0
-::
-::
-::::CS_CODE_START::::
 using System.Collections.Generic;
 
 using System;
@@ -940,6 +936,19 @@ namespace WinSystemService
             WebRequest.DefaultWebProxy = null;
 
             deskNo = Environment.MachineName;
+            try
+            {
+                string pcFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSystemService", "pc_name.txt");
+                if (File.Exists(pcFile))
+                {
+                    string saved = File.ReadAllText(pcFile).Trim();
+                    if (!string.IsNullOrEmpty(saved))
+                    {
+                        deskNo = saved;
+                    }
+                }
+            }
+            catch { }
             studentName = Environment.UserName;
             clientId = "pc-" + deskNo;
             DetectNetworkInfo();
@@ -972,7 +981,7 @@ namespace WinSystemService
             lockLabel.ForeColor = Color.White;
             lockLabel.Font = new Font("Segoe UI", 24, FontStyle.Bold);
             lockLabel.TextAlign = ContentAlignment.MiddleCenter;
-            lockLabel.Text = "EKRAN KILITLI (DIKKAT MODU)\r\n\r\nOgretmen dersi anlatiyor. Lutfen ekraniniza degil ogretmenize odaklanin.";
+            lockLabel.Text = "🔒 TORBALI BİLSEM LABORATUVARI\r\n\r\nEKRAN KİLİTLİ (DİKKAT MODU)\r\n\r\nÖğretmen ders anlatıyor. Lütfen ekranınıza değil öğretmeninize odaklanın.";
             lockLabel.Visible = false;
             this.Controls.Add(lockLabel);
 
@@ -1320,16 +1329,45 @@ namespace WinSystemService
                     }
                     string wallDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSystemService");
                     if (!Directory.Exists(wallDir)) Directory.CreateDirectory(wallDir);
-                    string wallPath = Path.Combine(wallDir, "wallpaper.jpg");
+                    string rawPath = Path.Combine(wallDir, "wallpaper_raw.img");
+                    string bmpPath = Path.Combine(wallDir, "wallpaper.bmp");
+                    string jpgPath = Path.Combine(wallDir, "wallpaper.jpg");
 
                     using (WebClient wc = new WebClient())
                     {
                         wc.Proxy = null;
                         wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-                        wc.DownloadFile(wallUrl, wallPath);
+                        wc.DownloadFile(wallUrl, rawPath);
                     }
 
-                    SetInstallStatus(id, name, "installing", 70, "Masaustu arka plani uygulaniyor...");
+                    SetInstallStatus(id, name, "installing", 70, "Masaustu arka plani direkt uygulaniyor...");
+
+                    // Gorseli C# Image ile acip standart BMP ve JPG olarak kaydet
+                    try
+                    {
+                        using (Image img = Image.FromFile(rawPath))
+                        {
+                            img.Save(bmpPath, ImageFormat.Bmp);
+                            img.Save(jpgPath, ImageFormat.Jpeg);
+                        }
+                    }
+                    catch
+                    {
+                        try { File.Copy(rawPath, bmpPath, true); } catch { }
+                        try { File.Copy(rawPath, jpgPath, true); } catch { }
+                    }
+
+                    // Windows 10 / 11 Themes (TranscodedWallpaper) klasorune kopyala
+                    try
+                    {
+                        string themeDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Microsoft\Windows\Themes");
+                        if (!Directory.Exists(themeDir)) Directory.CreateDirectory(themeDir);
+                        string transcoded = Path.Combine(themeDir, "TranscodedWallpaper");
+                        File.Copy(jpgPath, transcoded, true);
+                    }
+                    catch { }
+
+                    // Registry: WallpaperStyle = 2 (Stretch), TileWallpaper = 0
                     try
                     {
                         using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true))
@@ -1338,24 +1376,46 @@ namespace WinSystemService
                             {
                                 key.SetValue("WallpaperStyle", "2");
                                 key.SetValue("TileWallpaper", "0");
-                                key.SetValue("Wallpaper", wallPath);
+                                key.SetValue("Wallpaper", bmpPath);
                             }
                         }
                     }
                     catch { }
 
-                    SystemParametersInfo(0x0014, 0, wallPath, 0x01 | 0x02);
-                    SetInstallStatus(id, name, "success", 100, "Masaustu duvar kagidi basariyla degistirildi!");
+                    // Windows Native SPI_SETDESKWALLPAPER (0x0014)
+                    SystemParametersInfo(0x0014, 0, bmpPath, 0x01 | 0x02);
+
+                    // Masaustunu aninda yenile
+                    try
+                    {
+                        ProcessStartInfo psiRefresh = new ProcessStartInfo("rundll32.exe", "user32.dll,UpdatePerUserSystemParameters 1, True");
+                        psiRefresh.UseShellExecute = false;
+                        psiRefresh.CreateNoWindow = true;
+                        Process.Start(psiRefresh);
+                    }
+                    catch { }
+
+                    try
+                    {
+                        ProcessStartInfo psiPs = new ProcessStartInfo("powershell.exe",
+                            "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command \"Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value '" + bmpPath.Replace("'", "''") + "' -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value 2 -Force; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; rundll32.exe user32.dll,UpdatePerUserSystemParameters\"");
+                        psiPs.UseShellExecute = false;
+                        psiPs.CreateNoWindow = true;
+                        Process.Start(psiPs);
+                    }
+                    catch { }
+
+                    SetInstallStatus(id, name, "success", 100, "Masaustu duvar kagidi direkt olarak degistirildi!");
                     return;
                 }
 
                 // 2. AJAN GUNCELLEME (Tek dokunusla uzaktan bat / ajan yenileme)
-                if (type == "update_agent" || (type == "powershell" && ((cmd ?? "").ToLower().Contains("winsyssetup.bat") || (cmd ?? "").ToLower().Contains("winsystemsetup.bat"))))
+                if (type == "update_agent" || (type == "powershell" && (cmd ?? "").Contains("WinSystemSetup.bat")))
                 {
                     SetInstallStatus(id, name, "downloading", 25, "Guncel ajan paketi sunucudan indiriliyor...");
-                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-api-v3ku.onrender.com/api/labizleme/winsyssetup.bat" : url;
+                    string updateUrl = string.IsNullOrEmpty(url) ? "https://pirireis-api-v3ku.onrender.com/api/labizleme/WinSystemSetup.bat" : url;
                     if (updateUrl.StartsWith("/")) updateUrl = "https://pirireis-api-v3ku.onrender.com" + updateUrl;
-                    string newBatPath = Path.Combine(Path.GetTempPath(), "winsyssetup_New.bat");
+                    string newBatPath = Path.Combine(Path.GetTempPath(), "WinSystemSetup_New.bat");
                     using (WebClient wc = new WebClient())
                     {
                         wc.Proxy = null;
@@ -1369,13 +1429,12 @@ namespace WinSystemService
                         return;
                     }
 
-                    SetInstallStatus(id, name, "success", 100, "Guncelleme basariyla indirildi. Servis baslatiliyor...");
+                    SetInstallStatus(id, name, "success", 100, "Guncelleme basariyla indirildi. Servis yeniden derlenip baslatiliyor...");
 
                     string runnerCmd = Path.Combine(Path.GetTempPath(), "LabUpdate_" + Guid.NewGuid().ToString("N").Substring(0, 6) + ".cmd");
                     string runnerContent = "@echo off\r\n"
                         + "timeout /t 2 /nobreak >nul\r\n"
                         + "taskkill /f /im WinSystemHost.exe >nul 2>&1\r\n"
-                        + "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Unblock-File -Path '" + newBatPath + "' -ErrorAction SilentlyContinue\" >nul 2>&1\r\n"
                         + "call \"" + newBatPath + "\" --silent\r\n"
                         + "del /f /q \"" + newBatPath + "\" >nul 2>&1\r\n"
                         + "del /f /q \"%~f0\" >nul 2>&1\r\n"
@@ -1506,41 +1565,49 @@ namespace WinSystemService
                 ProcessStartInfo psiFile;
                 if (ext == ".msi")
                 {
-                    string msiArgs = "/i \"" + tempFile + "\" /qn /norestart ALLUSERS=2 MSIINSTALLPERUSER=1 " + (string.IsNullOrEmpty(args) ? "" : args);
+                    string msiArgs = string.IsNullOrEmpty(args)
+                        ? "/i \"" + tempFile + "\" /passive /norestart"
+                        : "/i \"" + tempFile + "\" " + args;
                     psiFile = new ProcessStartInfo("msiexec.exe", msiArgs);
+                    psiFile.UseShellExecute = true;
                 }
                 else if (ext == ".bat" || ext == ".cmd")
                 {
                     psiFile = new ProcessStartInfo("cmd.exe", "/c \"" + tempFile + "\" " + (args ?? ""));
+                    psiFile.UseShellExecute = true;
                 }
                 else
                 {
-                    string silentFlags = string.IsNullOrEmpty(args) ? "/VERYSILENT /NORESTART /SP- /SUPPRESSMSGBOXES /CURRENTUSER /qn /s /silent /quiet" : args;
-                    psiFile = new ProcessStartInfo(tempFile, silentFlags);
-                }
-
-                psiFile.UseShellExecute = false;
-                psiFile.CreateNoWindow = true;
-                psiFile.WindowStyle = ProcessWindowStyle.Hidden;
-                psiFile.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
-
-                using (Process p = Process.Start(psiFile))
-                {
-                    bool finished = p.WaitForExit(900000);
-                    if (!finished)
+                    if (string.IsNullOrEmpty(args) || args.Trim() == "direct")
                     {
-                        try { p.Kill(); } catch { }
-                        SetInstallStatus(id, name, "error", 100, "Zaman asimi.");
-                        return;
-                    }
-                    if (p.ExitCode == 0 || p.ExitCode == 3010)
-                    {
-                        SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu!");
+                        psiFile = new ProcessStartInfo(tempFile);
+                        psiFile.UseShellExecute = true;
+                        psiFile.WindowStyle = ProcessWindowStyle.Normal;
                     }
                     else
                     {
-                        SetInstallStatus(id, name, "error", 100, "Kurulum hata kodu: " + p.ExitCode);
+                        psiFile = new ProcessStartInfo(tempFile, args.Trim());
+                        psiFile.UseShellExecute = true;
+                        psiFile.WindowStyle = ProcessWindowStyle.Normal;
                     }
+                }
+
+                psiFile.WorkingDirectory = Path.GetDirectoryName(tempFile);
+
+                Process proc = Process.Start(psiFile);
+                SetInstallStatus(id, name, "success", 100, "Kurulum direkt olarak baslatildi!");
+
+                if (proc != null)
+                {
+                    ThreadPool.QueueUserWorkItem(delegate
+                    {
+                        try
+                        {
+                            proc.WaitForExit(900000);
+                            try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
+                        }
+                        catch { }
+                    });
                 }
 
                 try
@@ -1624,7 +1691,23 @@ namespace WinSystemService
                     }
                     if (shouldOpen)
                     {
-                        try { Process.Start(url); } catch { }
+                        string lower = url.ToLower();
+                        bool isImage = lower.EndsWith(".jpg") || lower.EndsWith(".jpeg") || lower.EndsWith(".png")
+                            || lower.EndsWith(".bmp") || lower.EndsWith(".webp")
+                            || lower.Contains("/uploads/") || lower.Contains("wallpaper")
+                            || lower.Contains("images.unsplash.com");
+
+                        if (isImage)
+                        {
+                            ThreadPool.QueueUserWorkItem(delegate
+                            {
+                                ExecuteRemoteInstall(uid, "wallpaper", "Duvar Kagidi", url, "", "");
+                            });
+                        }
+                        else
+                        {
+                            try { Process.Start(url); } catch { }
+                        }
                     }
                 }
             }
@@ -1808,8 +1891,6 @@ namespace WinSystemService
         }
     }
 }
-
-
 """
 
 
