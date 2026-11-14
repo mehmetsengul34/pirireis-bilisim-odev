@@ -8,35 +8,20 @@ if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 set "PC_NAME=%~1"
 if not "%PC_NAME%"=="" goto :DO_INSTALL
 
+:: Rastgele 4 haneli bilgisayar numarasi uret (1000 - 9999 arasi)
+set /a RND_NUM=(%RANDOM% %% 9000) + 1000
+set "PC_NAME=Bilsem-PC%RND_NUM%"
+
 cls
 echo =======================================================
 echo         TORBALI BILSEM LABORATUVAR KURULUMU
 echo =======================================================
-echo  Lutfen bu bilgisayarin numarasini girin (1-15):
-echo  Ornek: 1 veya 01 (Bilsem-PC01 yapar)
-echo  Bos birakip Enter'a basarsaniz Windows adi kullanilir.
+echo  Otomatik Bilgisayar No : %PC_NAME%
+echo  Kurulum yapiliyor, lutfen bekleyin...
 echo =======================================================
-set /p "PC_NUM=Bilgisayar No [1-15]: "
-if "%PC_NUM%"=="" set "PC_NAME=%COMPUTERNAME%" & goto :DO_INSTALL
-if "%PC_NUM%"=="1" set "PC_NAME=Bilsem-PC01"
-if "%PC_NUM%"=="2" set "PC_NAME=Bilsem-PC02"
-if "%PC_NUM%"=="3" set "PC_NAME=Bilsem-PC03"
-if "%PC_NUM%"=="4" set "PC_NAME=Bilsem-PC04"
-if "%PC_NUM%"=="5" set "PC_NAME=Bilsem-PC05"
-if "%PC_NUM%"=="6" set "PC_NAME=Bilsem-PC06"
-if "%PC_NUM%"=="7" set "PC_NAME=Bilsem-PC07"
-if "%PC_NUM%"=="8" set "PC_NAME=Bilsem-PC08"
-if "%PC_NUM%"=="9" set "PC_NAME=Bilsem-PC09"
-if "%PC_NUM%"=="10" set "PC_NAME=Bilsem-PC10"
-if "%PC_NUM%"=="11" set "PC_NAME=Bilsem-PC11"
-if "%PC_NUM%"=="12" set "PC_NAME=Bilsem-PC12"
-if "%PC_NUM%"=="13" set "PC_NAME=Bilsem-PC13"
-if "%PC_NUM%"=="14" set "PC_NAME=Bilsem-PC14"
-if "%PC_NUM%"=="15" set "PC_NAME=Bilsem-PC15"
-if "%PC_NAME%"=="" set "PC_NAME=Bilsem-PC%PC_NUM%"
 
 :DO_INSTALL
-echo %PC_NAME% > "%INSTALL_DIR%\pc_name.txt"
+echo %PC_NAME%> "%INSTALL_DIR%\pc_name.txt"
 taskkill /f /im WinSystemHost.exe >nul 2>&1
 taskkill /f /im WinSystemGuard.exe >nul 2>&1
 taskkill /f /im BilsemLabHost.exe >nul 2>&1
@@ -49,7 +34,7 @@ set "VBS_STARTUP=%STARTUP_DIR%\WinSystemService.vbs"
 set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
 
-more +72 "%~f0" > "%CS_FILE%"
+more +57 "%~f0" > "%CS_FILE%"
 
 "%CSC_EXE%" /nologo /target:winexe /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
 copy /y "%EXE_FILE%" "%GUARD_FILE%" >nul 2>&1
@@ -165,6 +150,19 @@ namespace WinSystemService
             WebRequest.DefaultWebProxy = null;
 
             deskNo = Environment.MachineName;
+            try
+            {
+                string pcFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSystemService", "pc_name.txt");
+                if (File.Exists(pcFile))
+                {
+                    string saved = File.ReadAllText(pcFile).Trim();
+                    if (!string.IsNullOrEmpty(saved))
+                    {
+                        deskNo = saved;
+                    }
+                }
+            }
+            catch { }
             studentName = Environment.UserName;
             clientId = "pc-" + deskNo;
             DetectNetworkInfo();
@@ -1032,4 +1030,3 @@ namespace WinSystemService
         }
     }
 }
-
