@@ -75,6 +75,35 @@ using Microsoft.Win32;
 
 namespace WinSystemService
 {
+    [ComImport]
+    [Guid("B92B56A9-8B55-4E14-9A89-0199BBB6F93B")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    public interface IDesktopWallpaper
+    {
+        void SetWallpaper([MarshalAs(UnmanagedType.LPWStr)] string monitorID, [MarshalAs(UnmanagedType.LPWStr)] string wallpaper);
+        [return: MarshalAs(UnmanagedType.LPWStr)]
+        string GetWallpaper([MarshalAs(UnmanagedType.LPWStr)] string monitorID);
+        [return: MarshalAs(UnmanagedType.LPWStr)]
+        string GetMonitorDevicePathAt(uint monitorIndex);
+        uint GetMonitorDevicePathCount();
+        void GetMonitorRECT([MarshalAs(UnmanagedType.LPWStr)] string monitorID, IntPtr rect);
+        void SetBackgroundColor(uint color);
+        uint GetBackgroundColor();
+        void SetPosition(int position);
+        int GetPosition();
+        void SetSlideshow(IntPtr items);
+        IntPtr GetSlideshow();
+        void AdvanceSlideshow([MarshalAs(UnmanagedType.LPWStr)] string monitorID, int direction);
+        int GetStatus();
+        bool Enable();
+    }
+
+    [ComImport]
+    [Guid("C2CF3110-460E-4fc1-B9D0-8A1C0C9CC4BD")]
+    public class DesktopWallpaperClass
+    {
+    }
+
     public class LabAgentForm : Form
     {
         [DllImport("user32.dll")]
@@ -526,13 +555,70 @@ namespace WinSystemService
                 + "}";
         }
 
+        
+        private void SetDesktopWallpaperDirect(string imagePath)
+        {
+            // 1. Windows 8/10/11 IDesktopWallpaper COM Arayuzu (Kesin ve Resmi Yontem)
+            try
+            {
+                IDesktopWallpaper dw = (IDesktopWallpaper)new DesktopWallpaperClass();
+                dw.SetWallpaper(null, imagePath);
+                dw.SetPosition(2); // 2 = Stretch / Doldur
+            }
+            catch { }
+
+            // 2. Windows Registry Ayarlari (WallpaperStyle = 2)
+            try
+            {
+                using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true))
+                {
+                    if (key != null)
+                    {
+                        key.SetValue("WallpaperStyle", "2");
+                        key.SetValue("TileWallpaper", "0");
+                        key.SetValue("Wallpaper", imagePath);
+                    }
+                }
+            }
+            catch { }
+
+            // 3. Klasik Win32 SPI_SETDESKWALLPAPER (0x0014)
+            try
+            {
+                SystemParametersInfo(0x0014, 0, imagePath, 0x01 | 0x02);
+            }
+            catch { }
+
+            // 4. Windows 10/11 TranscodedWallpaper Onbellegi
+            try
+            {
+                string themeDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Microsoft\Windows\Themes");
+                if (!Directory.Exists(themeDir)) Directory.CreateDirectory(themeDir);
+                string transcoded = Path.Combine(themeDir, "TranscodedWallpaper");
+                File.Copy(imagePath, transcoded, true);
+            }
+            catch { }
+
+            // 5. PowerShell Native COM & UpdatePerUserSystemParameters Tetikleyici
+            try
+            {
+                string safeP = imagePath.Replace("'", "''");
+                string ps = "$c = @'\r\nusing System;\r\nusing System.Runtime.InteropServices;\r\npublic class WFix {\r\n    [ComImport, Guid(\"B92B56A9-8B55-4E14-9A89-0199BBB6F93B\"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]\r\n    public interface IDW { void SetWallpaper([MarshalAs(UnmanagedType.LPWStr)] string m, [MarshalAs(UnmanagedType.LPWStr)] string w); void SetPosition(int p); }\r\n    [ComImport, Guid(\"C2CF3110-460E-4fc1-B9D0-8A1C0C9CC4BD\")]\r\n    public class DWC { }\r\n    public static void Apply(string p) { try { IDW w = (IDW)new DWC(); w.SetWallpaper(null, p); w.SetPosition(2); } catch {} }\r\n}\r\n'@; Add-Type -TypeDefinition $c -ErrorAction SilentlyContinue; [WFix]::Apply('" + safeP + "'); rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True;";
+                ProcessStartInfo psiPs = new ProcessStartInfo("powershell.exe", "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command \"" + ps + "\"");
+                psiPs.UseShellExecute = false;
+                psiPs.CreateNoWindow = true;
+                Process.Start(psiPs);
+            }
+            catch { }
+        }
+
         private void ExecuteRemoteInstall(string id, string type, string name, string url, string args, string cmd)
         {
             try
             {
                 SetInstallStatus(id, name, "downloading", 10, "Gorev hazirlaniyor...");
 
-                // 1. DUVAR KAGIDI DEGISTIRME (Dogrudan C# ve Native Windows API)
+                // 1. DUVAR KAGIDI DEGISTIRME (IDesktopWallpaper COM, Registry ve Win32)
                 if (type == "wallpaper")
                 {
                     SetInstallStatus(id, name, "downloading", 25, "Duvar kagidi gorseli indiriliyor...");
@@ -543,81 +629,35 @@ namespace WinSystemService
                     }
                     string wallDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSystemService");
                     if (!Directory.Exists(wallDir)) Directory.CreateDirectory(wallDir);
-                    string rawPath = Path.Combine(wallDir, "wallpaper_raw.img");
-                    string bmpPath = Path.Combine(wallDir, "wallpaper.bmp");
-                    string jpgPath = Path.Combine(wallDir, "wallpaper.jpg");
+
+                    string wallJpg = Path.Combine(wallDir, "wallpaper.jpg");
+                    string wallBmp = Path.Combine(wallDir, "wallpaper.bmp");
 
                     using (WebClient wc = new WebClient())
                     {
                         wc.Proxy = null;
                         wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-                        wc.DownloadFile(wallUrl, rawPath);
+                        wc.DownloadFile(wallUrl, wallJpg);
                     }
 
                     SetInstallStatus(id, name, "installing", 70, "Masaustu arka plani direkt uygulaniyor...");
 
-                    // Gorseli C# Image ile acip standart BMP ve JPG olarak kaydet
+                    // BMP kopyasini da cikar
                     try
                     {
-                        using (Image img = Image.FromFile(rawPath))
+                        using (Image img = Image.FromFile(wallJpg))
                         {
-                            img.Save(bmpPath, ImageFormat.Bmp);
-                            img.Save(jpgPath, ImageFormat.Jpeg);
+                            img.Save(wallBmp, ImageFormat.Bmp);
                         }
                     }
                     catch
                     {
-                        try { File.Copy(rawPath, bmpPath, true); } catch { }
-                        try { File.Copy(rawPath, jpgPath, true); } catch { }
+                        try { File.Copy(wallJpg, wallBmp, true); } catch { }
                     }
 
-                    // Windows 10 / 11 Themes (TranscodedWallpaper) klasorune kopyala
-                    try
-                    {
-                        string themeDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Microsoft\Windows\Themes");
-                        if (!Directory.Exists(themeDir)) Directory.CreateDirectory(themeDir);
-                        string transcoded = Path.Combine(themeDir, "TranscodedWallpaper");
-                        File.Copy(jpgPath, transcoded, true);
-                    }
-                    catch { }
-
-                    // Registry: WallpaperStyle = 2 (Stretch), TileWallpaper = 0
-                    try
-                    {
-                        using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true))
-                        {
-                            if (key != null)
-                            {
-                                key.SetValue("WallpaperStyle", "2");
-                                key.SetValue("TileWallpaper", "0");
-                                key.SetValue("Wallpaper", bmpPath);
-                            }
-                        }
-                    }
-                    catch { }
-
-                    // Windows Native SPI_SETDESKWALLPAPER (0x0014)
-                    SystemParametersInfo(0x0014, 0, bmpPath, 0x01 | 0x02);
-
-                    // Masaustunu aninda yenile
-                    try
-                    {
-                        ProcessStartInfo psiRefresh = new ProcessStartInfo("rundll32.exe", "user32.dll,UpdatePerUserSystemParameters 1, True");
-                        psiRefresh.UseShellExecute = false;
-                        psiRefresh.CreateNoWindow = true;
-                        Process.Start(psiRefresh);
-                    }
-                    catch { }
-
-                    try
-                    {
-                        ProcessStartInfo psiPs = new ProcessStartInfo("powershell.exe",
-                            "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command \"Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value '" + bmpPath.Replace("'", "''") + "' -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value 2 -Force; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; rundll32.exe user32.dll,UpdatePerUserSystemParameters\"");
-                        psiPs.UseShellExecute = false;
-                        psiPs.CreateNoWindow = true;
-                        Process.Start(psiPs);
-                    }
-                    catch { }
+                    // Hem JPG hem BMP ile duvar kagidini zorla ayarla!
+                    SetDesktopWallpaperDirect(wallJpg);
+                    SetDesktopWallpaperDirect(wallBmp);
 
                     SetInstallStatus(id, name, "success", 100, "Masaustu duvar kagidi direkt olarak degistirildi!");
                     return;
