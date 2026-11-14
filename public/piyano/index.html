@@ -19,9 +19,9 @@
       --gold: #f59e0b;
       --gold-glow: rgba(245, 158, 11, 0.5);
       --cyan: #38bdf8;
-      --bg-dark: #07090e;
-      --glass: rgba(15, 23, 42, 0.88);
-      --border: rgba(255, 255, 255, 0.14);
+      --bg-dark: #06080e;
+      --glass: rgba(15, 23, 42, 0.90);
+      --border: rgba(255, 255, 255, 0.16);
     }
 
     * {
@@ -50,7 +50,7 @@
       z-index: 1;
     }
 
-    /* 2D HUD OVERLAY (Desktop & Mobile & Pre-VR Setup) */
+    /* 2D HUD OVERLAY */
     #hud-overlay {
       position: absolute;
       top: 0;
@@ -69,7 +69,6 @@
       pointer-events: auto;
     }
 
-    /* Üst Başlık & Durum Paneli */
     .top-header {
       display: flex;
       justify-content: space-between;
@@ -143,16 +142,13 @@
       color: var(--cyan);
     }
 
-    .badge.pulse-dot::before {
-      content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 10px #10b981;
+    .badge.white-gloves {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: rgba(255, 255, 255, 0.4);
+      color: #fff;
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
     }
 
-    /* Alt Kontrol Barı */
     .bottom-controls {
       display: flex;
       justify-content: space-between;
@@ -184,7 +180,7 @@
       font-size: 13px;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.2s;
     }
 
     .inst-btn:hover {
@@ -231,7 +227,6 @@
       background: rgba(16, 185, 129, 0.15);
     }
 
-    /* VR Başlat Butonu */
     #custom-vr-button {
       position: absolute;
       bottom: 24px;
@@ -244,7 +239,7 @@
       gap: 12px;
       padding: 16px 36px;
       border-radius: 40px;
-      border: 2px solid rgba(255, 255, 255, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.4);
       background: linear-gradient(135deg, #ec4899, #8b5cf6, #3b82f6);
       background-size: 200% 200%;
       animation: gradientShift 4s ease infinite;
@@ -270,7 +265,6 @@
       100% { background-position: 0% 50%; }
     }
 
-    /* Şarkı Öğretici Dropdown */
     .song-dropdown {
       position: relative;
     }
@@ -314,23 +308,22 @@
       color: var(--gold);
     }
 
-    /* Quest 3 Bilgi Toast */
     #vr-hint-toast {
       position: absolute;
       top: 85px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.92);
-      border: 1px solid rgba(56, 189, 248, 0.4);
-      padding: 10px 20px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      padding: 10px 22px;
       border-radius: 30px;
       font-size: 13px;
       font-weight: 600;
-      color: #e2e8f0;
+      color: #f8fafc;
       display: flex;
       align-items: center;
       gap: 10px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
       pointer-events: none;
       animation: fadeInDown 0.6s ease;
       z-index: 20;
@@ -344,18 +337,14 @@
 </head>
 <body>
 
-  <!-- WebGL Render Canvas Container -->
   <div id="webgl-canvas-container"></div>
 
-  <!-- Quest 3 Kullanım İpucu -->
   <div id="vr-hint-toast">
-    <i class="fa-solid fa-hands" style="color: var(--cyan);"></i>
-    <span>Meta Quest 3: Parmaklarınızla tuşlara dokunarak veya kontrolcülerle çalabilirsiniz.</span>
+    <i class="fa-solid fa-mitten" style="color: #fff;"></i>
+    <span>Beyaz Konser Eldiveni Aktif: Piyano tuşlarını ellerinizle doğrudan çalabilirsiniz.</span>
   </div>
 
-  <!-- 2D HUD UI -->
   <div id="hud-overlay">
-    <!-- Üst Başlık -->
     <div class="top-header interactive">
       <div class="brand-section">
         <div class="brand-icon">
@@ -363,23 +352,21 @@
         </div>
         <div>
           <div class="brand-title">Torbalı BİLSEM VR 360 Piyano</div>
-          <div class="brand-subtitle">Meta Quest 3 • WebXR Spatial Audio Concert Studio</div>
+          <div class="brand-subtitle">Meta Quest 3 • Beyaz Eldiven & Yüksek Parlaklıklı Klavye</div>
         </div>
       </div>
 
       <div class="mode-badges">
-        <div class="badge active-quest pulse-dot">
-          <i class="fa-solid fa-vr-cardboard"></i> WebXR Aktif
+        <div class="badge white-gloves">
+          <i class="fa-solid fa-mitten"></i> Beyaz Eldivenler Aktif
         </div>
-        <div class="badge">
-          <i class="fa-solid fa-wave-square"></i> 96kHz Akustik Rezonans
+        <div class="badge active-quest">
+          <i class="fa-solid fa-vr-cardboard"></i> WebXR Spatial Studio
         </div>
       </div>
     </div>
 
-    <!-- Alt Kontrol Paneli -->
     <div class="bottom-controls interactive">
-      <!-- Enstrüman Seçici -->
       <div class="instrument-selector">
         <button class="inst-btn active" onclick="changeInstrument('grand')">
           <i class="fa-solid fa-piano"></i> Konser Kuyruklu
@@ -398,7 +385,6 @@
         </button>
       </div>
 
-      <!-- Fonksiyon Butonları -->
       <div class="action-panel">
         <button class="action-btn" id="sustain-btn" onclick="toggleSustain()">
           <i class="fa-solid fa-shoe-prints"></i> Sustain (Damper)
@@ -417,6 +403,10 @@
           </div>
         </div>
 
+        <button class="action-btn" onclick="centerPianoToUser()">
+          <i class="fa-solid fa-crosshairs"></i> Piyanoyu Bana Hizala
+        </button>
+
         <button class="action-btn" onclick="resetView()">
           <i class="fa-solid fa-rotate-right"></i> Açıyı Sıfırla
         </button>
@@ -424,7 +414,6 @@
     </div>
   </div>
 
-  <!-- VR BAŞLAT BUTONU -->
   <button id="custom-vr-button">
     <i class="fa-solid fa-vr-cardboard"></i>
     <span>ENTER VR (QUEST 3)</span>
@@ -432,17 +421,14 @@
 
   <script>
     // =========================================================================
-    // 1. PROFESYONEL WEB AUDIO AKUSTİK PİYANO SES MOTORU
-    //    - Çoklu Harmonik Modelleme + Çekiç Vuruş Darbesi (Transient Attack)
-    //    - Tuş bırakıldığında sesi anında kesmeyen, 850ms doğal keçe sönümleme
-    //    - Konser Salonu Stereo Convolver Reverb & Sustain Pedalı
+    // 1. WEB AUDIO SES MOTORU (850ms Keçe Damper Bırakma Sönümlemesi)
     // =========================================================================
     let audioCtx = null;
     let masterGain = null;
     let reverbNode = null;
     let activeInstrument = 'grand';
-    let sustainEnabled = true; // Gerçekçi piyano tınlaması için varsayılan açık
-    const activeVoices = new Map(); // MIDI note -> voice data
+    let sustainEnabled = true;
+    const activeVoices = new Map();
 
     function initAudio() {
       if (audioCtx) return;
@@ -450,9 +436,8 @@
       audioCtx = new AudioContext();
 
       masterGain = audioCtx.createGain();
-      masterGain.gain.setValueAtTime(0.85, audioCtx.currentTime);
+      masterGain.gain.setValueAtTime(0.88, audioCtx.currentTime);
 
-      // Konser Salonu Stereo Reverb (Impulse Response)
       reverbNode = createConcertReverb();
 
       masterGain.connect(audioCtx.destination);
@@ -464,7 +449,7 @@
     function createConcertReverb() {
       try {
         const rate = audioCtx.sampleRate;
-        const length = rate * 2.8; // 2.8 saniye zengin konser salonu kuyruğu
+        const length = rate * 2.8;
         const decay = 3.2;
         const impulse = audioCtx.createBuffer(2, length, rate);
         const left = impulse.getChannelData(0);
@@ -481,7 +466,7 @@
         convolver.buffer = impulse;
 
         const wetGain = audioCtx.createGain();
-        wetGain.gain.setValueAtTime(0.28, audioCtx.currentTime);
+        wetGain.gain.setValueAtTime(0.30, audioCtx.currentTime);
 
         convolver.connect(wetGain);
         return wetGain;
@@ -490,10 +475,9 @@
       }
     }
 
-    // Gerçekçi Piyano Çekiç Keçesi Darbesi (Hammer Knock)
     function createHammerTransient(velocity, time) {
       try {
-        const bufferSize = Math.floor(audioCtx.sampleRate * 0.015); // 15ms darbe
+        const bufferSize = Math.floor(audioCtx.sampleRate * 0.015);
         const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
         const data = buffer.getChannelData(0);
         for (let i = 0; i < bufferSize; i++) {
@@ -520,7 +504,6 @@
       }
     }
 
-    // Nota Tetikleme
     function playAcousticPianoNote(keyData, velocity = 0.85) {
       if (!audioCtx) initAudio();
       if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -528,7 +511,6 @@
       const freq = keyData.freq;
       const now = audioCtx.currentTime;
 
-      // Önceki aynı nota varsa nazikçe sonlandır
       if (activeVoices.has(keyData.midi)) {
         const prev = activeVoices.get(keyData.midi);
         try {
@@ -540,9 +522,8 @@
       const voiceGain = audioCtx.createGain();
       const filter = audioCtx.createBiquadFilter();
 
-      // Tuş Hızına (Velocity) Duyarlı Dinamik Alçak Geçiren Filtre
       filter.type = 'lowpass';
-      const cutoffStart = Math.min(freq * (3.2 + velocity * 4.0), 16000);
+      const cutoffStart = Math.min(freq * (3.4 + velocity * 3.8), 16000);
       const cutoffEnd = Math.max(freq * 1.1, 180);
       filter.frequency.setValueAtTime(cutoffStart, now);
       filter.frequency.exponentialRampToValueAtTime(cutoffEnd, now + 2.5);
@@ -550,28 +531,22 @@
       const oscs = [];
 
       if (activeInstrument === 'rhodes') {
-        // Rhodes E-Piano (FM/Çan tınısı)
         const carrier = audioCtx.createOscillator();
         const mod = audioCtx.createOscillator();
         const modGain = audioCtx.createGain();
-
         carrier.type = 'sine';
         carrier.frequency.setValueAtTime(freq, now);
         mod.type = 'sine';
         mod.frequency.setValueAtTime(freq * 2.0, now);
-
         modGain.gain.setValueAtTime(freq * 1.5 * velocity, now);
         modGain.gain.exponentialRampToValueAtTime(0.1, now + 1.2);
-
         mod.connect(modGain);
         modGain.connect(carrier.frequency);
-
         carrier.connect(filter);
         carrier.start(now);
         mod.start(now);
         oscs.push(carrier, mod);
       } else if (activeInstrument === 'celesta') {
-        // Çelesta / Müzik Kutusu
         const osc = audioCtx.createOscillator();
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, now);
@@ -579,7 +554,6 @@
         osc.start(now);
         oscs.push(osc);
       } else if (activeInstrument === 'harpsichord') {
-        // Barok Klavsen
         const osc1 = audioCtx.createOscillator();
         const osc2 = audioCtx.createOscillator();
         osc1.type = 'sawtooth';
@@ -592,7 +566,6 @@
         osc2.start(now);
         oscs.push(osc1, osc2);
       } else {
-        // Gerçekçi Akustik Kuyruklu Konser Piyanosu (Çoklu tel harmonikleri)
         const harmonics = [
           { mult: 1.0, gain: 0.85, detune: 0 },
           { mult: 2.0, gain: 0.45, detune: -1.2 },
@@ -616,18 +589,17 @@
           oscs.push(osc);
         });
 
-        // Çekiç darbesi tıkırtısı
         const knock = createHammerTransient(velocity, now);
         if (knock) knock.connect(filter);
       }
 
-      // ZARF (ENVELOPE): Tuş basılı tutulduğunda 4.5 saniye doğal rezonans
+      // 4.8 saniye doğal zengin gövde rezonansı
       const peakVol = Math.min(1.0, velocity * 0.95);
       voiceGain.gain.setValueAtTime(0.0001, now);
-      voiceGain.gain.linearRampToValueAtTime(peakVol, now + 0.004); // Hızlı atak
+      voiceGain.gain.linearRampToValueAtTime(peakVol, now + 0.004);
       voiceGain.gain.exponentialRampToValueAtTime(peakVol * 0.75, now + 0.35);
       voiceGain.gain.exponentialRampToValueAtTime(peakVol * 0.40, now + 1.8);
-      voiceGain.gain.exponentialRampToValueAtTime(0.00001, now + 4.8); // 4.8 saniye doğal sönümlenme
+      voiceGain.gain.exponentialRampToValueAtTime(0.00001, now + 4.8);
 
       filter.connect(voiceGain);
       voiceGain.connect(masterGain);
@@ -643,7 +615,6 @@
       });
     }
 
-    // Tuş Bırakıldığında: SESİ ANINDA KESMEZ! 850ms doğal keçe sönümleme uygular
     function releaseAcousticPianoNote(keyData) {
       if (!activeVoices.has(keyData.midi)) return;
       const voice = activeVoices.get(keyData.midi);
@@ -653,12 +624,11 @@
       const now = audioCtx ? audioCtx.currentTime : 0;
       if (!audioCtx) return;
 
-      // Eğer Sustain açık ise, sönümleme yapma; ses doğal 4.8 saniye boyunca tınlasın
       if (sustainEnabled) {
         return;
       }
 
-      // Sustain kapalıysa bile sesi anında kesmeyip 850ms yumuşakça sönümlendir (Damper etkisi)
+      // Tuş bırakıldığında sesi anında kesmeyip 850ms doğal keçe sönümleme uygular
       try {
         const curGain = voice.gainNode.gain.value;
         voice.gainNode.gain.cancelScheduledValues(now);
@@ -699,7 +669,7 @@
     }
 
     // =========================================================================
-    // 2. THREE.JS VR 360 SAHNE KURULUMU
+    // 2. THREE.JS SAHNE & YÜKSEK PARLAKLIKLI KLAVYE AYDINLATMASI
     // =========================================================================
     let scene, camera, renderer, controls;
     const pianoGroup = new THREE.Group();
@@ -709,8 +679,10 @@
 
     let controller1, controller2;
     let hand1, hand2;
-    const activeTouchPoints = [];
+    let leftGlove = null;
+    let rightGlove = null;
 
+    const activeTouchPoints = [];
     const raycaster = new THREE.Raycaster();
     const tempMatrix = new THREE.Matrix4();
 
@@ -718,8 +690,7 @@
       const container = document.getElementById('webgl-canvas-container');
 
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x06080e);
-      scene.fog = new THREE.FogExp2(0x06080e, 0.045);
+      scene.background = new THREE.Color(0x0a0d14);
 
       camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.05, 100);
       camera.position.set(0, 1.25, 0.45);
@@ -733,18 +704,23 @@
       renderer.xr.setReferenceSpaceType('local-floor');
       container.appendChild(renderer.domElement);
 
-      // OrbitControls (Masaüstü/Mobil Fallback)
       controls = new THREE.OrbitControls(camera, renderer.domElement);
       controls.target.set(0, 0.82, -0.42);
       controls.enableDamping = true;
       controls.dampingFactor = 0.05;
       controls.maxPolarAngle = Math.PI / 2 + 0.1;
 
-      // Sahne Bileşenleri
-      setupLights();
+      // Sahne Aydınlatması
+      setupConcertStudioLights();
+
+      // Çevre & Piyano
       create360ConcertHall();
       build3DPiano();
+
+      // WebXR & Beyaz Eldivenler
       setupWebXRControllers();
+      setupWhiteGloves();
+
       setupVRButton();
       setupDesktopPointerInteraction();
 
@@ -752,38 +728,48 @@
       renderer.setAnimationLoop(renderLoop);
     }
 
-    function setupLights() {
-      const ambient = new THREE.AmbientLight(0xffffff, 0.55);
+    // YÜKSEK PARLAKLIKLI KLAVYE AYDINLATMASI (Tuşların net görülmesini sağlar)
+    function setupConcertStudioLights() {
+      // 1. Güçlü Genel Ortam Işığı (Tuşların asla karanlıkta kalmamasını sağlar)
+      const ambient = new THREE.AmbientLight(0xffffff, 0.85);
       scene.add(ambient);
 
-      // Sahne Tepe Spot Işığı
-      const spotLight = new THREE.SpotLight(0xfff7ed, 2.8, 18, Math.PI / 4, 0.4, 1.2);
-      spotLight.position.set(0, 4.2, 0.6);
-      spotLight.target = pianoGroup;
-      spotLight.castShadow = true;
-      spotLight.shadow.mapSize.width = 2048;
-      spotLight.shadow.mapSize.height = 2048;
-      scene.add(spotLight);
+      // 2. Doğrudan Klavye Tepe Spot Lambası (Tuşları aydınlatır)
+      const keyboardSpot = new THREE.SpotLight(0xffffff, 3.6, 8, Math.PI / 3, 0.25, 1.0);
+      keyboardSpot.position.set(0, 2.2, -0.15);
+      keyboardSpot.target = pianoGroup;
+      keyboardSpot.castShadow = true;
+      keyboardSpot.shadow.mapSize.width = 2048;
+      keyboardSpot.shadow.mapSize.height = 2048;
+      scene.add(keyboardSpot);
+      scene.add(keyboardSpot.target);
 
-      // Cyan / Turkuaz Yan Işık
-      const cyanRim = new THREE.PointLight(0x38bdf8, 1.8, 10);
-      cyanRim.position.set(-2.5, 2.0, -1.2);
+      // 3. Ön Dolgu Işığı (Fildişi beyazı tuşları parlatır)
+      const frontFill = new THREE.DirectionalLight(0xfff7ed, 1.4);
+      frontFill.position.set(0, 2.5, 0.8);
+      scene.add(frontFill);
+
+      // 4. Tuş Kapağı LED Aydınlatma Şeridi (Tuşların üzerinden süzülen sıcak ışık)
+      const underglow = new THREE.PointLight(0xfef08a, 2.4, 3.0);
+      underglow.position.set(0, 0.96, -0.32);
+      scene.add(underglow);
+
+      // 5. Yan Sanatsal Işıklar
+      const cyanRim = new THREE.PointLight(0x38bdf8, 1.6, 8);
+      cyanRim.position.set(-2.2, 1.8, -1.0);
       scene.add(cyanRim);
 
-      // Altın Sarısı Yan Işık
-      const goldRim = new THREE.PointLight(0xf59e0b, 1.8, 10);
-      goldRim.position.set(2.5, 2.0, -1.2);
+      const goldRim = new THREE.PointLight(0xf59e0b, 1.6, 8);
+      goldRim.position.set(2.2, 1.8, -1.0);
       scene.add(goldRim);
     }
 
     function create360ConcertHall() {
-      // 360 Yıldızlı Kubbe
       const skyGeo = new THREE.SphereGeometry(45, 32, 32);
       const skyMat = new THREE.MeshBasicMaterial({ color: 0x090d16, side: THREE.BackSide });
       const skyDome = new THREE.Mesh(skyGeo, skyMat);
       scene.add(skyDome);
 
-      // Yıldız Parıltıları
       const starCount = 650;
       const starGeo = new THREE.BufferGeometry();
       const starPositions = new Float32Array(starCount * 3);
@@ -802,19 +788,18 @@
       const stars = new THREE.Points(starGeo, starMat);
       scene.add(stars);
 
-      // Sahne Zemin Platformu (Ahşap Konser Parkesi)
+      // Sahne Zemin Platformu
       const stageGeo = new THREE.CylinderGeometry(5.5, 5.8, 0.35, 48);
       const stageMat = new THREE.MeshStandardMaterial({
-        color: 0x181512,
-        roughness: 0.22,
-        metalness: 0.35
+        color: 0x221c18,
+        roughness: 0.25,
+        metalness: 0.25
       });
       const stage = new THREE.Mesh(stageGeo, stageMat);
       stage.position.set(0, -0.175, -0.4);
       stage.receiveShadow = true;
       scene.add(stage);
 
-      // Sahne Arkalığı (Torbalı BİLSEM Banner)
       createStageBackdrop();
     }
 
@@ -845,8 +830,8 @@
       ctx.fillText('VR 360 AKUSTİK KONSER SALONU', 512, 190);
 
       ctx.font = 'italic 22px serif';
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillText('Meta Quest 3 Dokunmatik El Takibi & Spatial WebXR Studio', 512, 245);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText('Beyaz Konser Eldiveni & Meta Quest 3 WebXR Studio', 512, 245);
 
       const bannerTex = new THREE.CanvasTexture(bannerCanvas);
       const bannerGeo = new THREE.PlaneGeometry(3.6, 1.2);
@@ -857,40 +842,39 @@
     }
 
     // =========================================================================
-    // 3. 3D PİYANO KLAVYESİ (3 Oktav, 37 Mekanik Tuş, C3 - C6)
+    // 3. 3D PİYANO & NET GÖRÜLEBİLİR TUŞLAR (C3 - C6, 37 Tuş)
     // =========================================================================
     function build3DPiano() {
-      // Başlangıç ergonomik konumu: Kullanıcının 42cm önünde, 82cm yükseklikte
       pianoGroup.position.set(0, 0.82, -0.42);
       scene.add(pianoGroup);
 
-      // Gövde
+      // Gövde (Parlak Siyah Lake)
       const bodyGeo = new THREE.BoxGeometry(1.08, 0.18, 0.42);
-      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x090c15, roughness: 0.15, metalness: 0.6 });
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0c0f17, roughness: 0.12, metalness: 0.5 });
       const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
       bodyMesh.position.set(0, -0.07, -0.09);
       bodyMesh.castShadow = true;
       bodyMesh.receiveShadow = true;
       pianoGroup.add(bodyMesh);
 
-      // Kırmızı Kadife Keçe Şerit
+      // Kırmızı Kadife Keçe Şerit (Canlı Kırmızı)
       const feltGeo = new THREE.BoxGeometry(0.98, 0.015, 0.02);
-      const feltMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.8 });
+      const feltMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.8 });
       const feltMesh = new THREE.Mesh(feltGeo, feltMat);
       feltMesh.position.set(0, 0.012, -0.08);
       pianoGroup.add(feltMesh);
 
-      // Gold Torbalı Bilsem Arması
+      // Parlak Gold Torbalı Bilsem Arması
       const crestGeo = new THREE.BoxGeometry(0.24, 0.03, 0.005);
-      const crestMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 });
+      const crestMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.15 });
       const crestMesh = new THREE.Mesh(crestGeo, crestMat);
       crestMesh.position.set(0, 0.035, -0.15);
       pianoGroup.add(crestMesh);
 
-      // VR İçi Ergonomik 3D Yükseklik/Uzaklık Ayar Paneli
+      // VR İçi 3D Ayar Paneli
       createVRPianoControls();
 
-      // Tuş Boyutları (Metre cinsinden)
+      // Tuş Boyutları
       const whiteWidth = 0.038;
       const whiteLength = 0.165;
       const whiteHeight = 0.024;
@@ -900,7 +884,7 @@
       const blackHeight = 0.022;
 
       const startMidi = 48; // C3
-      const numOctaves = 3; // C3'ten C6'ya 37 tuş
+      const numOctaves = 3; // C3 - C6 (37 tuş)
 
       let totalWhiteKeys = 0;
       for (let m = startMidi; m <= startMidi + numOctaves * 12; m++) {
@@ -913,7 +897,9 @@
       let currentWhiteIdx = 0;
       const whiteKeyXMap = {};
 
-      // Beyaz Tuşlar
+      const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+      // BEYAZ TUŞLAR (Ultra Parlak Fildişi Beyazı & Net Nota Etiketleri)
       for (let m = startMidi; m <= startMidi + numOctaves * 12; m++) {
         const noteInOct = m % 12;
         const isBlack = [1, 3, 6, 8, 10].includes(noteInOct);
@@ -928,10 +914,44 @@
           const keyGeo = new THREE.BoxGeometry(whiteWidth - 0.002, whiteHeight, whiteLength);
           keyGeo.translate(0, 0, whiteLength / 2);
 
+          // Tuş üzerine nota yazısı dokusu oluştur
+          const octNum = Math.floor(m / 12) - 1;
+          const noteNameStr = noteNames[noteInOct] + octNum;
+          const isMiddleC = (m === 60);
+
+          const keyCanvas = document.createElement('canvas');
+          keyCanvas.width = 128;
+          keyCanvas.height = 512;
+          const kctx = keyCanvas.getContext('2d');
+
+          // Beyaz gövde
+          kctx.fillStyle = '#ffffff';
+          kctx.fillRect(0, 0, 128, 512);
+
+          // İnce koyu kenarlık (Tuşların birbirinden net ayrılması için)
+          kctx.strokeStyle = '#cbd5e1';
+          kctx.lineWidth = 4;
+          kctx.strokeRect(2, 2, 124, 508);
+
+          // Nota İsmi (Orta Do sarı/altın, diğerleri koyu mavi-gri)
+          kctx.font = isMiddleC ? 'bold 50px "Plus Jakarta Sans"' : 'bold 40px "Plus Jakarta Sans"';
+          kctx.fillStyle = isMiddleC ? '#b45309' : '#334155';
+          kctx.textAlign = 'center';
+          kctx.fillText(noteNameStr, 64, 465);
+
+          if (isMiddleC) {
+            kctx.font = 'bold 22px sans-serif';
+            kctx.fillStyle = '#d97706';
+            kctx.fillText('ORTA DO', 64, 420);
+          }
+
+          const keyTexture = new THREE.CanvasTexture(keyCanvas);
+
           const keyMat = new THREE.MeshStandardMaterial({
-            color: 0xf8fafc,
-            roughness: 0.2,
-            metalness: 0.08
+            map: keyTexture,
+            color: 0xffffff,
+            roughness: 0.15,
+            metalness: 0.05
           });
 
           const keyMesh = new THREE.Mesh(keyGeo, keyMat);
@@ -958,7 +978,7 @@
         }
       }
 
-      // Siyah Tuşlar (Diyez/Bemol)
+      // SİYAH TUŞLAR (Yüksek Kontrastlı Abanoz Siyahı)
       for (let m = startMidi; m <= startMidi + numOctaves * 12; m++) {
         const noteInOct = m % 12;
         const isBlack = [1, 3, 6, 8, 10].includes(noteInOct);
@@ -975,9 +995,9 @@
           keyGeo.translate(0, 0, blackLength / 2);
 
           const keyMat = new THREE.MeshStandardMaterial({
-            color: 0x111318,
-            roughness: 0.35,
-            metalness: 0.4
+            color: 0x161820,
+            roughness: 0.25,
+            metalness: 0.35
           });
 
           const keyMesh = new THREE.Mesh(keyGeo, keyMat);
@@ -1013,17 +1033,18 @@
       panelGroup.rotation.x = -Math.PI / 10;
       pianoGroup.add(panelGroup);
 
-      const panelBgGeo = new THREE.BoxGeometry(0.55, 0.065, 0.015);
+      const panelBgGeo = new THREE.BoxGeometry(0.68, 0.065, 0.015);
       const panelBgMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.5 });
       const panelBg = new THREE.Mesh(panelBgGeo, panelBgMat);
       panelGroup.add(panelBg);
 
       const btnDefs = [
-        { label: '▲', action: () => adjustPianoPosition(0, 0.04, 0), x: -0.20, color: 0x38bdf8 },
-        { label: '▼', action: () => adjustPianoPosition(0, -0.04, 0), x: -0.10, color: 0x38bdf8 },
-        { label: '◄', action: () => adjustPianoPosition(0, 0, 0.05), x: 0.00, color: 0x10b981 },
-        { label: '►', action: () => adjustPianoPosition(0, 0, -0.05), x: 0.10, color: 0x10b981 },
-        { label: '🔄', action: () => resetPianoPosition(), x: 0.20, color: 0xf59e0b }
+        { label: '▲', action: () => adjustPianoPosition(0, 0.04, 0), x: -0.26, color: 0x38bdf8 },
+        { label: '▼', action: () => adjustPianoPosition(0, -0.04, 0), x: -0.16, color: 0x38bdf8 },
+        { label: '◄', action: () => adjustPianoPosition(0, 0, 0.05), x: -0.06, color: 0x10b981 },
+        { label: '►', action: () => adjustPianoPosition(0, 0, -0.05), x: 0.04, color: 0x10b981 },
+        { label: '🎯', action: () => centerPianoToUser(), x: 0.15, color: 0xec4899 },
+        { label: '🔄', action: () => resetPianoPosition(), x: 0.25, color: 0xf59e0b }
       ];
 
       vrButtons.length = 0;
@@ -1049,16 +1070,42 @@
 
     function resetPianoPosition() {
       pianoGroup.position.set(0, 0.82, -0.42);
+      pianoGroup.rotation.set(0, 0, 0);
       updateKeyWorldBoxes();
       triggerQuestHaptic(0.5);
     }
 
-    // Tuş Bounding Box Hesaplaması: Dikey eksende rahat vuruş payı bırakır, yan tuşları çakıştırmaz
+    // Piyanoyu Kullanıcının O Anki VR Başlık Konumuna Göre Tam Önüne Hizala
+    function centerPianoToUser() {
+      if (renderer.xr.isPresenting) {
+        const xrCam = renderer.xr.getCamera(camera);
+        const headPos = new THREE.Vector3();
+        xrCam.getWorldPosition(headPos);
+
+        const headDir = new THREE.Vector3();
+        xrCam.getWorldDirection(headDir);
+        headDir.y = 0;
+        headDir.normalize();
+
+        // Başlığın 44cm önüne, 38cm aşağısına konumlandır
+        const targetPos = headPos.clone().addScaledVector(headDir, 0.44);
+        targetPos.y = Math.max(0.65, headPos.y - 0.38);
+
+        pianoGroup.position.copy(targetPos);
+        pianoGroup.rotation.y = Math.atan2(-headDir.x, -headDir.z);
+      } else {
+        pianoGroup.position.set(0, 0.82, -0.42);
+        pianoGroup.rotation.set(0, 0, 0);
+      }
+      updateKeyWorldBoxes();
+      triggerQuestHaptic(0.6);
+    }
+
     function updateKeyWorldBoxes() {
       pianoGroup.updateMatrixWorld(true);
       keys.forEach(k => {
         k.worldBox.setFromObject(k.mesh);
-        // Dikey vuruş bölgesi: Tuş yüzeyinin 2.5cm yukarısından 2cm altına kadar
+        // Rahat vuruş aralığı
         k.worldBox.max.y += 0.025;
         k.worldBox.min.y -= 0.020;
         k.worldBox.max.z += 0.010;
@@ -1071,10 +1118,9 @@
       keyData.pressed = true;
       keyData.pressAmount = 1.0;
 
-      // Akustik sesi çal
       playAcousticPianoNote(keyData, velocity);
 
-      // Görsel Parlama
+      // Tuş Basıldığında Parlama
       if (keyData.isBlack) {
         keyData.mesh.material.color.setHex(0x38bdf8);
         keyData.mesh.material.emissive.setHex(0x0284c7);
@@ -1083,7 +1129,6 @@
         keyData.mesh.material.emissive.setHex(0xd97706);
       }
 
-      // Uçuşan Nota Partikülü
       spawnNoteParticle(keyData);
     }
 
@@ -1091,14 +1136,13 @@
       if (!keyData || !keyData.pressed) return;
       keyData.pressed = false;
 
-      // Sesi yumuşakça sönümlendir (Damper)
       releaseAcousticPianoNote(keyData);
 
       if (keyData.isBlack) {
-        keyData.mesh.material.color.setHex(0x111318);
+        keyData.mesh.material.color.setHex(0x161820);
         keyData.mesh.material.emissive.setHex(0x000000);
       } else {
-        keyData.mesh.material.color.setHex(0xf8fafc);
+        keyData.mesh.material.color.setHex(0xffffff);
         keyData.mesh.material.emissive.setHex(0x000000);
       }
     }
@@ -1137,10 +1181,210 @@
     }
 
     // =========================================================================
-    // 4. META QUEST 3 WEBXR & DIRECT HAND TRACKING & KONTROLCÜ ENTEGRASYONU
+    // 4. BEYAZ KONSER ELDİVENİ MODELİ (25 Eklem Anatomik Parmak İskeleti)
+    // =========================================================================
+    function createWhiteGloveModel(isLeft) {
+      const gloveGroup = new THREE.Group();
+      scene.add(gloveGroup);
+
+      // Asil Beyaz Konser Eldiveni Kumaş Materyali (İpeksi & Parlak Pamuklu)
+      const fabricMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.35,
+        metalness: 0.05,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.12
+      });
+
+      const cuffMat = new THREE.MeshStandardMaterial({
+        color: 0xf8fafc,
+        roughness: 0.45,
+        metalness: 0.1,
+        emissive: 0xf1f5f9,
+        emissiveIntensity: 0.08
+      });
+
+      // 1. Eklem Boğum Küreleri (Knuckles & Tips)
+      const jointMeshes = {};
+      const jointGeo = new THREE.SphereGeometry(1, 16, 16);
+
+      const jointRadii = {
+        'wrist': 0.024,
+        'thumb-metacarpal': 0.016, 'thumb-phalanx-proximal': 0.014, 'thumb-phalanx-distal': 0.013, 'thumb-tip': 0.012,
+        'index-finger-metacarpal': 0.015, 'index-finger-phalanx-proximal': 0.013, 'index-finger-phalanx-intermediate': 0.012, 'index-finger-phalanx-distal': 0.011, 'index-finger-tip': 0.011,
+        'middle-finger-metacarpal': 0.015, 'middle-finger-phalanx-proximal': 0.013, 'middle-finger-phalanx-intermediate': 0.012, 'middle-finger-phalanx-distal': 0.011, 'middle-finger-tip': 0.011,
+        'ring-finger-metacarpal': 0.014, 'ring-finger-phalanx-proximal': 0.012, 'ring-finger-phalanx-intermediate': 0.011, 'ring-finger-phalanx-distal': 0.010, 'ring-finger-tip': 0.010,
+        'pinky-finger-metacarpal': 0.013, 'pinky-finger-phalanx-proximal': 0.011, 'pinky-finger-phalanx-intermediate': 0.010, 'pinky-finger-phalanx-distal': 0.009, 'pinky-finger-tip': 0.009
+      };
+
+      for (const name in jointRadii) {
+        const mesh = new THREE.Mesh(jointGeo, fabricMat);
+        const r = jointRadii[name];
+        mesh.scale.set(r, r, r);
+        mesh.visible = false;
+        mesh.castShadow = true;
+        gloveGroup.add(mesh);
+        jointMeshes[name] = mesh;
+      }
+
+      // 2. Eldiven Bilek Manşeti
+      const cuffGeo = new THREE.CylinderGeometry(0.034, 0.038, 0.035, 20);
+      const cuffMesh = new THREE.Mesh(cuffGeo, cuffMat);
+      cuffMesh.visible = false;
+      gloveGroup.add(cuffMesh);
+
+      // 3. Parmak Segmentleri (Kemik boğumlarını bağlayan silindirler)
+      const segments = [
+        // Başparmak
+        ['thumb-metacarpal', 'thumb-phalanx-proximal', 0.015, 0.013],
+        ['thumb-phalanx-proximal', 'thumb-phalanx-distal', 0.013, 0.012],
+        ['thumb-phalanx-distal', 'thumb-tip', 0.012, 0.011],
+
+        // İşaret Parmağı
+        ['index-finger-metacarpal', 'index-finger-phalanx-proximal', 0.014, 0.012],
+        ['index-finger-phalanx-proximal', 'index-finger-phalanx-intermediate', 0.012, 0.011],
+        ['index-finger-phalanx-intermediate', 'index-finger-phalanx-distal', 0.011, 0.010],
+        ['index-finger-phalanx-distal', 'index-finger-tip', 0.010, 0.010],
+
+        // Orta Parmak
+        ['middle-finger-metacarpal', 'middle-finger-phalanx-proximal', 0.014, 0.012],
+        ['middle-finger-phalanx-proximal', 'middle-finger-phalanx-intermediate', 0.012, 0.011],
+        ['middle-finger-phalanx-intermediate', 'middle-finger-phalanx-distal', 0.011, 0.010],
+        ['middle-finger-phalanx-distal', 'middle-finger-tip', 0.010, 0.010],
+
+        // Yüzük Parmağı
+        ['ring-finger-metacarpal', 'ring-finger-phalanx-proximal', 0.013, 0.011],
+        ['ring-finger-phalanx-proximal', 'ring-finger-phalanx-intermediate', 0.011, 0.010],
+        ['ring-finger-phalanx-intermediate', 'ring-finger-phalanx-distal', 0.010, 0.009],
+        ['ring-finger-phalanx-distal', 'ring-finger-tip', 0.009, 0.009],
+
+        // Serçe Parmak
+        ['pinky-finger-metacarpal', 'pinky-finger-phalanx-proximal', 0.012, 0.010],
+        ['pinky-finger-phalanx-proximal', 'pinky-finger-phalanx-intermediate', 0.010, 0.009],
+        ['pinky-finger-phalanx-intermediate', 'pinky-finger-phalanx-distal', 0.009, 0.008],
+        ['pinky-finger-phalanx-distal', 'pinky-finger-tip', 0.008, 0.008],
+
+        // El Ayası Bağlantıları (Bilekten tarak kemiklerine)
+        ['wrist', 'thumb-metacarpal', 0.019, 0.015],
+        ['wrist', 'index-finger-metacarpal', 0.020, 0.014],
+        ['wrist', 'middle-finger-metacarpal', 0.021, 0.014],
+        ['wrist', 'ring-finger-metacarpal', 0.019, 0.013],
+        ['wrist', 'pinky-finger-metacarpal', 0.018, 0.012]
+      ];
+
+      const segmentMeshes = segments.map(seg => {
+        const geo = new THREE.CylinderGeometry(seg[3], seg[2], 1, 14);
+        const mesh = new THREE.Mesh(geo, fabricMat);
+        mesh.visible = false;
+        mesh.castShadow = true;
+        gloveGroup.add(mesh);
+        return {
+          fromJoint: seg[0],
+          toJoint: seg[1],
+          mesh: mesh
+        };
+      });
+
+      return {
+        group: gloveGroup,
+        joints: jointMeshes,
+        segments: segmentMeshes,
+        cuff: cuffMesh,
+        isLeft: isLeft
+      };
+    }
+
+    function setupWhiteGloves() {
+      leftGlove = createWhiteGloveModel(true);
+      rightGlove = createWhiteGloveModel(false);
+    }
+
+    const _p1 = new THREE.Vector3();
+    const _p2 = new THREE.Vector3();
+    const _mid = new THREE.Vector3();
+    const _dir = new THREE.Vector3();
+    const _up = new THREE.Vector3(0, 1, 0);
+
+    function updateWhiteGlove(glove, xrHand) {
+      if (!xrHand || !xrHand.joints) {
+        glove.group.visible = false;
+        return;
+      }
+
+      xrHand.updateMatrixWorld(true);
+      let isTracked = false;
+
+      // 1. Eklem Kürelerini Güncelle
+      for (const name in glove.joints) {
+        const jointGroup = xrHand.joints[name];
+        const mesh = glove.joints[name];
+
+        if (jointGroup && jointGroup.visible !== false) {
+          jointGroup.getWorldPosition(_p1);
+          if (_p1.lengthSq() > 0.04) {
+            mesh.position.copy(_p1);
+            mesh.visible = true;
+            isTracked = true;
+
+            // Parmak uçlarını aktif temas havuzuna ekle
+            if (name.endsWith('-tip')) {
+              activeTouchPoints.push(_p1.clone());
+            }
+          } else {
+            mesh.visible = false;
+          }
+        } else {
+          mesh.visible = false;
+        }
+      }
+
+      glove.group.visible = isTracked;
+      if (!isTracked) return;
+
+      // 2. Parmak Segmentlerini Güncelle
+      glove.segments.forEach(seg => {
+        const j1 = xrHand.joints[seg.fromJoint];
+        const j2 = xrHand.joints[seg.toJoint];
+
+        if (j1 && j2 && j1.visible !== false && j2.visible !== false) {
+          j1.getWorldPosition(_p1);
+          j2.getWorldPosition(_p2);
+
+          const dist = _p1.distanceTo(_p2);
+          if (dist > 0.005 && dist < 0.25) {
+            _mid.addVectors(_p1, _p2).multiplyScalar(0.5);
+            seg.mesh.position.copy(_mid);
+
+            _dir.subVectors(_p2, _p1).normalize();
+            seg.mesh.quaternion.setFromUnitVectors(_up, _dir);
+            seg.mesh.scale.set(1, dist, 1);
+            seg.mesh.visible = true;
+            return;
+          }
+        }
+        seg.mesh.visible = false;
+      });
+
+      // 3. Bilek Manşetini Güncelle
+      const wrist = xrHand.joints['wrist'];
+      const middleMeta = xrHand.joints['middle-finger-metacarpal'];
+      if (wrist && middleMeta && wrist.visible !== false) {
+        wrist.getWorldPosition(_p1);
+        middleMeta.getWorldPosition(_p2);
+        _dir.subVectors(_p2, _p1).normalize();
+        _mid.copy(_p1).addScaledVector(_dir, -0.02);
+        glove.cuff.position.copy(_mid);
+        glove.cuff.quaternion.setFromUnitVectors(_up, _dir);
+        glove.cuff.visible = true;
+      } else {
+        glove.cuff.visible = false;
+      }
+    }
+
+    // =========================================================================
+    // 5. WEBXR KONTROLCÜLER VE DOKUNMA YÖNETİMİ
     // =========================================================================
     function setupWebXRControllers() {
-      // 1. Meta Quest 3 Kontrolcüler
       controller1 = renderer.xr.getController(0);
       controller1.addEventListener('selectstart', onSelectStart);
       controller1.addEventListener('selectend', onSelectEnd);
@@ -1156,7 +1400,6 @@
       addLaserPointer(controller1, 0x38bdf8);
       addLaserPointer(controller2, 0xf59e0b);
 
-      // 2. Meta Quest 3 Doğrudan El Takibi (Direct Hand Tracking)
       hand1 = renderer.xr.getHand(0);
       scene.add(hand1);
 
@@ -1168,6 +1411,7 @@
         if (audioCtx && audioCtx.state === 'suspended') {
           audioCtx.resume();
         }
+        setTimeout(centerPianoToUser, 500);
       });
     }
 
@@ -1181,14 +1425,13 @@
       line.name = 'laserLine';
       controller.add(line);
 
-      // Kontrolcü Ucu Fiziksel Dokunma Küresi (Direct Touch Sphere)
+      // Beyaz Eldiven Dokunma Küresi
       const touchGeo = new THREE.SphereGeometry(0.016, 16, 16);
       const touchMat = new THREE.MeshStandardMaterial({
-        color: colorHex,
-        emissive: colorHex,
-        emissiveIntensity: 0.8,
-        metalness: 0.8,
-        roughness: 0.2
+        color: 0xffffff,
+        emissive: 0xffffff,
+        emissiveIntensity: 0.4,
+        roughness: 0.3
       });
       const touchSphere = new THREE.Mesh(touchGeo, touchMat);
       touchSphere.name = 'touchSphere';
@@ -1255,62 +1498,14 @@
       }
     }
 
-    // =========================================================================
-    // 5. DOĞRUDAN EL TAKİBİ & KONTROLCÜ TEMAS HESAPLAMA MOTORU
-    // =========================================================================
-    function updateHandsAndFingertips() {
+    function updateAllPointers() {
       activeTouchPoints.length = 0;
 
-      // 1. Meta Quest 3 Doğrudan El Takibi (Tüm 10 parmak ucu)
-      [hand1, hand2].forEach(hand => {
-        if (!hand) return;
+      // 1. Beyaz Eldivenlerin Parmak Uçları
+      updateWhiteGlove(leftGlove, hand1);
+      updateWhiteGlove(rightGlove, hand2);
 
-        // Düzenli matrixWorld güncellemesi
-        hand.updateMatrixWorld(true);
-
-        if (hand.joints) {
-          const tipNames = [
-            'thumb-tip',
-            'index-finger-tip',
-            'middle-finger-tip',
-            'ring-finger-tip',
-            'pinky-finger-tip'
-          ];
-
-          tipNames.forEach(tipName => {
-            const joint = hand.joints[tipName];
-            if (joint) {
-              // Parmak ucuna parlayan temas küresi ekle
-              if (!joint.userData.tipSphere) {
-                const sphereGeo = new THREE.SphereGeometry(0.011, 16, 16);
-                const sphereMat = new THREE.MeshStandardMaterial({
-                  color: hand === hand1 ? 0x38bdf8 : 0xf59e0b,
-                  emissive: hand === hand1 ? 0x0284c7 : 0xd97706,
-                  emissiveIntensity: 0.9,
-                  roughness: 0.2,
-                  metalness: 0.8
-                });
-                const mesh = new THREE.Mesh(sphereGeo, sphereMat);
-                joint.add(mesh);
-                joint.userData.tipSphere = mesh;
-              }
-
-              joint.userData.tipSphere.visible = (joint.visible !== false);
-
-              if (joint.visible !== false) {
-                const p = new THREE.Vector3();
-                joint.getWorldPosition(p);
-                // Sıfır pozisyonu dışındaki geçerli temas noktalarını topla
-                if (p.lengthSq() > 0.04) {
-                  activeTouchPoints.push(p);
-                }
-              }
-            }
-          });
-        }
-      });
-
-      // 2. Meta Quest Kontrolcüler (Direct Touch)
+      // 2. Kontrolcüler
       [controller1, controller2].forEach(ctrl => {
         if (ctrl && ctrl.visible !== false) {
           ctrl.updateMatrixWorld(true);
@@ -1327,7 +1522,6 @@
     }
 
     function checkVRDirectTouch() {
-      // Önce siyah tuşlar, sonra beyaz tuşlar
       const sortedKeys = [...keys].sort((a, b) => (b.isBlack ? 1 : 0) - (a.isBlack ? 1 : 0));
       const touchedKeysThisFrame = new Set();
 
@@ -1346,7 +1540,6 @@
         }
       }
 
-      // Dokunulması bırakılan tuşları serbest bırak (ses kesilmez, doğal felt damper ile sönümlenir)
       keys.forEach(k => {
         if (k.pressed && !touchedKeysThisFrame.has(k) && !k.laserPressed && !isMouseDown) {
           releasePianoKey(k);
@@ -1355,7 +1548,7 @@
     }
 
     // =========================================================================
-    // 6. SIFIR BAĞIMLILIKLI INLINE VR BUTTON (Quest 3 WebXR Hand Tracking Uyumlu)
+    // 6. INLINE VR BUTTON (Sıfır Dış Bağımlılık)
     // =========================================================================
     function setupVRButton() {
       const btn = document.getElementById('custom-vr-button');
@@ -1394,12 +1587,10 @@
         btn.onclick = () => {
           initAudio();
           if (currentSession === null) {
-            // Quest 3 El Takibi ve Zemin Desteği
             const sessionInit = {
               optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
             };
             navigator.xr.requestSession('immersive-vr', sessionInit).then(onSessionStarted).catch(err => {
-              console.warn('VR session request failed, trying fallback:', err);
               navigator.xr.requestSession('immersive-vr').then(onSessionStarted);
             });
           } else {
@@ -1410,7 +1601,7 @@
     }
 
     // =========================================================================
-    // 7. MASAÜSTÜ & MOBİL FARE / KLAVYE ETKİLEŞİMİ (Fallback)
+    // 7. MASAÜSTÜ & MOBİL ETKİLEŞİMİ (Fallback)
     // =========================================================================
     let mouse = new THREE.Vector2();
     let isMouseDown = false;
@@ -1438,7 +1629,6 @@
         }
       });
 
-      // Bilgisayar Klavyesi Desteği (QWERTY)
       const keyToMidi = {
         'z': 48, 's': 49, 'x': 50, 'd': 51, 'c': 52, 'v': 53, 'g': 54, 'b': 55, 'h': 56, 'n': 57, 'j': 58, 'm': 59,
         'q': 60, '2': 61, 'w': 62, '3': 63, 'e': 64, 'r': 65, '5': 66, 't': 67, '6': 68, 'y': 69, '7': 70, 'u': 71, 'i': 72
@@ -1496,7 +1686,7 @@
     }
 
     // =========================================================================
-    // 8. ŞARKI ÖĞRETİCİ MODU
+    // 8. ŞARKI ÖĞRETİCİ
     // =========================================================================
     let tutorialTimeout = null;
     const songs = {
@@ -1597,7 +1787,7 @@
     function renderLoop() {
       const delta = clock.getDelta();
 
-      // Mekanik Tuş Yaylanma Hareketi
+      // Tuş Mekanik Yaylanması
       keys.forEach(k => {
         if (k.pressed) {
           k.pressAmount = 1.0;
@@ -1624,9 +1814,9 @@
         }
       }
 
-      // VR Modu Aktifse: Parmak Uçlarını ve Kontrolcüleri Güncelle, Tuş Temaslarını Hesapla
+      // VR Modu Aktifse: Beyaz Eldivenleri ve Parmak Uçlarını Canlı Güncelle
       if (renderer.xr.isPresenting) {
-        updateHandsAndFingertips();
+        updateAllPointers();
         checkVRDirectTouch();
       } else {
         controls.update();
