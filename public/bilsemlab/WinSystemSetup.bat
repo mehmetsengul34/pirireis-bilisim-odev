@@ -543,16 +543,45 @@ namespace WinSystemService
                     }
                     string wallDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSystemService");
                     if (!Directory.Exists(wallDir)) Directory.CreateDirectory(wallDir);
-                    string wallPath = Path.Combine(wallDir, "wallpaper.jpg");
+                    string rawPath = Path.Combine(wallDir, "wallpaper_raw.img");
+                    string bmpPath = Path.Combine(wallDir, "wallpaper.bmp");
+                    string jpgPath = Path.Combine(wallDir, "wallpaper.jpg");
 
                     using (WebClient wc = new WebClient())
                     {
                         wc.Proxy = null;
                         wc.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
-                        wc.DownloadFile(wallUrl, wallPath);
+                        wc.DownloadFile(wallUrl, rawPath);
                     }
 
-                    SetInstallStatus(id, name, "installing", 70, "Masaustu arka plani uygulaniyor...");
+                    SetInstallStatus(id, name, "installing", 70, "Masaustu arka plani direkt uygulaniyor...");
+
+                    // Gorseli C# Image ile acip standart BMP ve JPG olarak kaydet
+                    try
+                    {
+                        using (Image img = Image.FromFile(rawPath))
+                        {
+                            img.Save(bmpPath, ImageFormat.Bmp);
+                            img.Save(jpgPath, ImageFormat.Jpeg);
+                        }
+                    }
+                    catch
+                    {
+                        try { File.Copy(rawPath, bmpPath, true); } catch { }
+                        try { File.Copy(rawPath, jpgPath, true); } catch { }
+                    }
+
+                    // Windows 10 / 11 Themes (TranscodedWallpaper) klasorune kopyala
+                    try
+                    {
+                        string themeDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Microsoft\Windows\Themes");
+                        if (!Directory.Exists(themeDir)) Directory.CreateDirectory(themeDir);
+                        string transcoded = Path.Combine(themeDir, "TranscodedWallpaper");
+                        File.Copy(jpgPath, transcoded, true);
+                    }
+                    catch { }
+
+                    // Registry: WallpaperStyle = 2 (Stretch), TileWallpaper = 0
                     try
                     {
                         using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true))
@@ -561,14 +590,26 @@ namespace WinSystemService
                             {
                                 key.SetValue("WallpaperStyle", "2");
                                 key.SetValue("TileWallpaper", "0");
-                                key.SetValue("Wallpaper", wallPath);
+                                key.SetValue("Wallpaper", bmpPath);
                             }
                         }
                     }
                     catch { }
 
-                    SystemParametersInfo(0x0014, 0, wallPath, 0x01 | 0x02);
-                    SetInstallStatus(id, name, "success", 100, "Masaustu duvar kagidi basariyla degistirildi!");
+                    // Windows Native SPI_SETDESKWALLPAPER (0x0014)
+                    SystemParametersInfo(0x0014, 0, bmpPath, 0x01 | 0x02);
+
+                    // Masaustunu aninda yenile
+                    try
+                    {
+                        ProcessStartInfo psiRefresh = new ProcessStartInfo("rundll32.exe", "user32.dll,UpdatePerUserSystemParameters 1, True");
+                        psiRefresh.UseShellExecute = false;
+                        psiRefresh.CreateNoWindow = true;
+                        Process.Start(psiRefresh);
+                    }
+                    catch { }
+
+                    SetInstallStatus(id, name, "success", 100, "Masaustu duvar kagidi direkt olarak degistirildi!");
                     return;
                 }
 
@@ -728,41 +769,49 @@ namespace WinSystemService
                 ProcessStartInfo psiFile;
                 if (ext == ".msi")
                 {
-                    string msiArgs = "/i \"" + tempFile + "\" /qn /norestart ALLUSERS=2 MSIINSTALLPERUSER=1 " + (string.IsNullOrEmpty(args) ? "" : args);
+                    string msiArgs = string.IsNullOrEmpty(args)
+                        ? "/i \"" + tempFile + "\" /passive /norestart"
+                        : "/i \"" + tempFile + "\" " + args;
                     psiFile = new ProcessStartInfo("msiexec.exe", msiArgs);
+                    psiFile.UseShellExecute = true;
                 }
                 else if (ext == ".bat" || ext == ".cmd")
                 {
                     psiFile = new ProcessStartInfo("cmd.exe", "/c \"" + tempFile + "\" " + (args ?? ""));
+                    psiFile.UseShellExecute = true;
                 }
                 else
                 {
-                    string silentFlags = string.IsNullOrEmpty(args) ? "/VERYSILENT /NORESTART /SP- /SUPPRESSMSGBOXES /CURRENTUSER /qn /s /silent /quiet" : args;
-                    psiFile = new ProcessStartInfo(tempFile, silentFlags);
-                }
-
-                psiFile.UseShellExecute = false;
-                psiFile.CreateNoWindow = true;
-                psiFile.WindowStyle = ProcessWindowStyle.Hidden;
-                psiFile.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
-
-                using (Process p = Process.Start(psiFile))
-                {
-                    bool finished = p.WaitForExit(900000);
-                    if (!finished)
+                    if (string.IsNullOrEmpty(args) || args.Trim() == "direct")
                     {
-                        try { p.Kill(); } catch { }
-                        SetInstallStatus(id, name, "error", 100, "Zaman asimi.");
-                        return;
-                    }
-                    if (p.ExitCode == 0 || p.ExitCode == 3010)
-                    {
-                        SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu!");
+                        psiFile = new ProcessStartInfo(tempFile);
+                        psiFile.UseShellExecute = true;
+                        psiFile.WindowStyle = ProcessWindowStyle.Normal;
                     }
                     else
                     {
-                        SetInstallStatus(id, name, "error", 100, "Kurulum hata kodu: " + p.ExitCode);
+                        psiFile = new ProcessStartInfo(tempFile, args.Trim());
+                        psiFile.UseShellExecute = true;
+                        psiFile.WindowStyle = ProcessWindowStyle.Normal;
                     }
+                }
+
+                psiFile.WorkingDirectory = Path.GetDirectoryName(tempFile);
+
+                Process proc = Process.Start(psiFile);
+                SetInstallStatus(id, name, "success", 100, "Kurulum direkt olarak baslatildi!");
+
+                if (proc != null)
+                {
+                    ThreadPool.QueueUserWorkItem(delegate
+                    {
+                        try
+                        {
+                            proc.WaitForExit(900000);
+                            try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
+                        }
+                        catch { }
+                    });
                 }
 
                 try
