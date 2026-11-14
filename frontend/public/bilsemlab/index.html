@@ -1382,13 +1382,13 @@
                   <select
                     id="localUploadPresetSelect"
                     onchange="applySilentPreset('localUploadPresetSelect', 'localUploadArgs')"
-                    class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-violet-300 font-semibold focus:outline-none focus:border-violet-500"
+                    class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-emerald-300 font-semibold focus:outline-none focus:border-emerald-500"
                   >
+                    <option value="" selected>🚀 Direkt Olarak Kurulumu Başlat (Önerilen)</option>
                     <option value="/VERYSILENT /NORESTART /SP-">Inno Setup (/VERYSILENT /NORESTART)</option>
                     <option value="/S">NSIS Kurulumu (/S)</option>
                     <option value="/qn /norestart">MSI Paketi (/qn /norestart)</option>
-                    <option value="/quiet InstallAllUsers=1 PrependPath=1">Python Installer (/quiet InstallAllUsers=1)</option>
-                    <option value="/s /v&quot;/qn&quot;">InstallShield (/s /v"/qn")</option>
+                    <option value="/quiet InstallAllUsers=1 PrependPath=1">Python Installer (/quiet)</option>
                     <option value="custom">Özel Parametre...</option>
                   </select>
                 </div>
@@ -1399,8 +1399,8 @@
                 <input
                   type="text"
                   id="localUploadArgs"
-                  value="/VERYSILENT /NORESTART /SP-"
-                  placeholder="/VERYSILENT /NORESTART"
+                  value=""
+                  placeholder="Boş bırakırsanız program direkt olarak başlatılır (veya /S, /VERYSILENT yazabilirsiniz)"
                   class="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-violet-500"
                 />
               </div>
@@ -2871,7 +2871,7 @@
       }
 
       const pkgName = (document.getElementById('localUploadPkgName').value || file.name).trim();
-      const args = document.getElementById('localUploadArgs').value || '/VERYSILENT /NORESTART';
+      const args = (document.getElementById('localUploadArgs').value || '').trim();
       const selCount = selectedStudentIds.size;
       const targetList = selCount > 0 ? Array.from(selectedStudentIds) : null;
       const targetLabel = targetList ? `seçili ${targetList.length} bilgisayara` : 'tüm laboratuvara';
@@ -3289,7 +3289,7 @@
         url = 'https://pirireis-api-v3ku.onrender.com' + url;
       }
       const safeUrl = url.replace(/'/g, "''");
-      return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $d = Join-Path $env:TEMP 'lab_wall.jpg'; cmd.exe /c curl.exe -k -s -L -o \"$d\" \"$u\"; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value 2 -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value 0 -Force; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
+      return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $raw = Join-Path $env:TEMP 'lab_wall_raw.img'; $bmp = Join-Path $env:TEMP 'lab_wall.bmp'; (New-Object System.Net.WebClient).DownloadFile($u, $raw); Add-Type -AssemblyName System.Drawing; $img = [System.Drawing.Image]::FromFile($raw); $img.Save($bmp, [System.Drawing.Imaging.ImageFormat]::Bmp); $img.Dispose(); Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $bmp -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value 2 -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value 0 -Force; $code = '[System.Runtime.InteropServices.DllImport(\"user32.dll\")] public static extern int SystemParametersInfo(int u, int p, string v, int f);'; Add-Type -MemberDefinition $code -Name WinApi -Namespace User32; [User32.WinApi]::SystemParametersInfo(20, 0, $bmp, 3); rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
     }
 
     async function handleWallpaperFileUpload(e) {
@@ -4250,6 +4250,20 @@
 
     async function processVoiceCommand(cmd) {
       cmd = cmd.toLowerCase();
+
+      // 0. Duvar Kağıdı Değiştir
+      if (cmd.includes('duvar') || cmd.includes('arkaplan') || cmd.includes('arka plan')) {
+        speakFeedback('Masaüstü duvar kağıdı doğrudan değiştiriliyor.');
+        await runSetWallpaper();
+        return;
+      }
+
+      // 0.1 Program Kurulumu
+      if (cmd.includes('program') || cmd.includes('kurulum') || cmd.includes('yazılım')) {
+        speakFeedback('Program kurulum menüsü açılıyor.');
+        if (typeof openBatchModal === 'function') openBatchModal('deploy');
+        return;
+      }
 
       // 1. Ekranları Kilitle (Dikkat Modu)
       if (cmd.includes('kilit') && !cmd.includes('aç')) {
