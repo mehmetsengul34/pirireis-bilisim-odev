@@ -73,6 +73,14 @@
       "destination": "/vr7/:path*"
     },
     {
+      "source": "/vr6",
+      "destination": "/vr6/index.html"
+    },
+    {
+      "source": "/vr6/:path*",
+      "destination": "/vr6/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/"
     }
