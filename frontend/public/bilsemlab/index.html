@@ -162,6 +162,16 @@
           <span>Seçililerin Kilidini Aç</span>
         </button>
 
+        <!-- Set Wallpaper Directly Button -->
+        <input type="file" id="sidebarWallpaperFile" accept="image/jpeg,image/png,image/jpg" class="hidden" onchange="handleWallpaperFileUpload(event)" />
+        <button onclick="document.getElementById('sidebarWallpaperFile').click()" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white text-xs font-bold transition shadow-sm" title="Bilgisayarınızdan bir resim seçin; sormadan anında tüm bilgisayarların masaüstü arka planı yapılsın!">
+          <span class="flex items-center gap-2">
+            <span>🖼️</span>
+            <span>Masaüstü Görseli Değiştir</span>
+          </span>
+          <span class="text-[10px] bg-black/20 px-1.5 py-0.5 rounded">Direkt Uygula</span>
+        </button>
+
         <!-- Open URL -->
         <button onclick="promptOpenUrl()" class="w-full flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition">
           <span>🌐</span>
