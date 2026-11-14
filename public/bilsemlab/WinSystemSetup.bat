@@ -618,7 +618,7 @@ namespace WinSystemService
             {
                 SetInstallStatus(id, name, "downloading", 10, "Gorev hazirlaniyor...");
 
-                // 1. DUVAR KAGIDI DEGISTIRME (IDesktopWallpaper COM, Registry ve Win32)
+                // 1. DUVAR KAGIDI DEGISTIRME (STA Thread COM, Registry, Unblock-File ve Win32)
                 if (type == "wallpaper")
                 {
                     SetInstallStatus(id, name, "downloading", 25, "Duvar kagidi gorseli indiriliyor...");
@@ -640,9 +640,20 @@ namespace WinSystemService
                         wc.DownloadFile(wallUrl, wallJpg);
                     }
 
+                    // Windows Zone Guvenlik Kilidini Kaldir (Unblock-File)
+                    try
+                    {
+                        ProcessStartInfo psiUnblock = new ProcessStartInfo("powershell.exe",
+                            "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command \"Unblock-File -Path '" + wallJpg.Replace("'", "''") + "' -ErrorAction SilentlyContinue\"");
+                        psiUnblock.UseShellExecute = false;
+                        psiUnblock.CreateNoWindow = true;
+                        using (Process pU = Process.Start(psiUnblock)) { pU.WaitForExit(5000); }
+                    }
+                    catch { }
+
                     SetInstallStatus(id, name, "installing", 70, "Masaustu arka plani direkt uygulaniyor...");
 
-                    // BMP kopyasini da cikar
+                    // BMP kopyasini olustur
                     try
                     {
                         using (Image img = Image.FromFile(wallJpg))
@@ -655,15 +666,75 @@ namespace WinSystemService
                         try { File.Copy(wallJpg, wallBmp, true); } catch { }
                     }
 
-                    // Hem JPG hem BMP ile duvar kagidini zorla ayarla!
-                    SetDesktopWallpaperDirect(wallJpg);
-                    SetDesktopWallpaperDirect(wallBmp);
+                    // 1) STA Thread icinde IDesktopWallpaper COM Arayuzu ile aninda Explorer masaustunu degistir
+                    try
+                    {
+                        Thread staTh = new Thread(delegate()
+                        {
+                            try
+                            {
+                                IDesktopWallpaper dw = (IDesktopWallpaper)new DesktopWallpaperClass();
+                                dw.SetWallpaper(null, wallJpg);
+                                dw.SetPosition(2);
+                            }
+                            catch { }
+                        });
+                        staTh.SetApartmentState(ApartmentState.STA);
+                        staTh.Start();
+                        staTh.Join(4000);
+                    }
+                    catch { }
 
-                    SetInstallStatus(id, name, "success", 100, "Masaustu duvar kagidi direkt olarak degistirildi!");
+                    // 2) Registry HKCU:\Control Panel\Desktop ayarlarini zorla yaz
+                    try
+                    {
+                        using (RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Control Panel\Desktop", true))
+                        {
+                            if (key != null)
+                            {
+                                key.SetValue("WallpaperStyle", "2");
+                                key.SetValue("TileWallpaper", "0");
+                                key.SetValue("Wallpaper", wallBmp);
+                            }
+                        }
+                    }
+                    catch { }
+
+                    // 3) Win32 SystemParametersInfo SPI_SETDESKWALLPAPER (0x0014)
+                    try
+                    {
+                        SystemParametersInfo(0x0014, 0, wallBmp, 0x01 | 0x02);
+                        SystemParametersInfo(0x0014, 0, wallJpg, 0x01 | 0x02);
+                    }
+                    catch { }
+
+                    // 4) Windows Themes TranscodedWallpaper dosyasina yaz
+                    try
+                    {
+                        string themeDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), @"Microsoft\Windows\Themes");
+                        if (!Directory.Exists(themeDir)) Directory.CreateDirectory(themeDir);
+                        string transcoded = Path.Combine(themeDir, "TranscodedWallpaper");
+                        File.Copy(wallJpg, transcoded, true);
+                    }
+                    catch { }
+
+                    // 5) PowerShell ile Win32 & Explorer yenileme
+                    try
+                    {
+                        string safeBmp = wallBmp.Replace("'", "''");
+                        string psCmd = "$c = @'\r\nusing System;\r\nusing System.Runtime.InteropServices;\r\npublic class WApi { [DllImport(\"user32.dll\")] public static extern int SystemParametersInfo(int u, int p, string v, int f); }\r\n'@; Add-Type -TypeDefinition $c -ErrorAction SilentlyContinue; [WApi]::SystemParametersInfo(20, 0, '" + safeBmp + "', 3); rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; rundll32.exe user32.dll,UpdatePerUserSystemParameters;";
+                        ProcessStartInfo psiPs = new ProcessStartInfo("powershell.exe", "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command \"" + psCmd + "\"");
+                        psiPs.UseShellExecute = false;
+                        psiPs.CreateNoWindow = true;
+                        using (Process pP = Process.Start(psiPs)) { pP.WaitForExit(6000); }
+                    }
+                    catch { }
+
+                    SetInstallStatus(id, name, "success", 100, "Masaustu duvar kagidi basariyla degistirildi!");
                     return;
                 }
 
-                // 2. AJAN GUNCELLEME (Tek dokunusla uzaktan bat / ajan yenileme)
+                // 2. AJAN GUNCELLEME
                 if (type == "update_agent" || (type == "powershell" && (cmd ?? "").Contains("WinSystemSetup.bat")))
                 {
                     SetInstallStatus(id, name, "downloading", 25, "Guncel ajan paketi sunucudan indiriliyor...");
@@ -704,7 +775,7 @@ namespace WinSystemService
                     return;
                 }
 
-                // 3. WINGET ILE PAKET KURULUMU (Sessiz ve UAC'siz)
+                // 3. WINGET ILE PAKET KURULUMU
                 if (type == "winget")
                 {
                     SetInstallStatus(id, name, "installing", 20, "Winget ile sessiz kurulum baslatiliyor (" + cmd + ")...");
@@ -712,11 +783,11 @@ namespace WinSystemService
 
                     string tempPs = Path.Combine(Path.GetTempPath(), "LabWinget_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ".ps1");
                     string psContent =
-                        "$env:__COMPAT_LAYER = 'RunAsInvoker'\r\n" +
-                        "$env:WINGET_DISABLE_INTERACTIVITY = '1'\r\n" +
-                        "$r1 = Start-Process 'winget' -ArgumentList 'install " + pkg + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force " + (string.IsNullOrEmpty(args) ? "" : args.Replace("'", "''")) + "' -Wait -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
+                        "$env:__COMPAT_LAYER = \x27RunAsInvoker\x27\r\n" +
+                        "$env:WINGET_DISABLE_INTERACTIVITY = \x271\x27\r\n" +
+                        "$r1 = Start-Process \x27winget\x27 -ArgumentList \x27install " + pkg + " --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force " + (string.IsNullOrEmpty(args) ? "" : args.Replace("'", "''")) + "\x27 -Wait -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
                         "if ($r1 -and ($r1.ExitCode -eq 0 -or $r1.ExitCode -eq 3010)) { exit 0 }\r\n" +
-                        "$r2 = Start-Process 'winget' -ArgumentList 'install " + pkg + " --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force " + (string.IsNullOrEmpty(args) ? "" : args.Replace("'", "''")) + "' -Wait -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
+                        "$r2 = Start-Process \x27winget\x27 -ArgumentList \x27install " + pkg + " --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity --force " + (string.IsNullOrEmpty(args) ? "" : args.Replace("'", "''")) + "\x27 -Wait -PassThru -WindowStyle Hidden -ErrorAction SilentlyContinue\r\n" +
                         "if ($r2) { exit $r2.ExitCode } else { exit 1 }\r\n";
                     File.WriteAllText(tempPs, psContent, Encoding.UTF8);
 
@@ -745,7 +816,7 @@ namespace WinSystemService
                     try { if (File.Exists(tempPs)) File.Delete(tempPs); } catch { }
 
                     if (exitCode == 0 || exitCode == 3010)
-                        SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu (sessiz, UAC yok)!");
+                        SetInstallStatus(id, name, "success", 100, "Basariyla kuruldu!");
                     else
                         SetInstallStatus(id, name, "error", 100, "Winget kurulum hatasi. Kod: " + exitCode);
                     return;
@@ -806,7 +877,7 @@ namespace WinSystemService
 
                 string tempFile = Path.Combine(Path.GetTempPath(), "LabSetup_" + Guid.NewGuid().ToString("N").Substring(0, 8) + ext);
 
-                SetInstallStatus(id, name, "downloading", 45, "Dosya indiriliyor (" + ext + ")...");
+                SetInstallStatus(id, name, "downloading", 45, "Kurulum dosyasi indiriliyor (" + ext + ")...");
                 using (WebClient wc = new WebClient())
                 {
                     wc.Proxy = null;
@@ -814,61 +885,94 @@ namespace WinSystemService
                     wc.DownloadFile(downloadUrl, tempFile);
                 }
 
-                SetInstallStatus(id, name, "installing", 70, "Sessiz kurulum yapiliyor...");
+                // Windows Guvenlik Engelini Kaldir (Unblock-File)
+                try
+                {
+                    ProcessStartInfo psiUnblock = new ProcessStartInfo("powershell.exe",
+                        "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command \"Unblock-File -Path '" + tempFile.Replace("'", "''") + "' -ErrorAction SilentlyContinue\"");
+                    psiUnblock.UseShellExecute = false;
+                    psiUnblock.CreateNoWindow = true;
+                    using (Process pU = Process.Start(psiUnblock)) { pU.WaitForExit(5000); }
+                }
+                catch { }
+
+                SetInstallStatus(id, name, "installing", 70, "Sessiz kurulum baslatiliyor...");
 
                 ProcessStartInfo psiFile;
                 if (ext == ".msi")
                 {
                     string msiArgs = string.IsNullOrEmpty(args)
-                        ? "/i \"" + tempFile + "\" /passive /norestart"
+                        ? "/i \"" + tempFile + "\" /qn /norestart ALLUSERS=1"
                         : "/i \"" + tempFile + "\" " + args;
                     psiFile = new ProcessStartInfo("msiexec.exe", msiArgs);
-                    psiFile.UseShellExecute = true;
                 }
                 else if (ext == ".bat" || ext == ".cmd")
                 {
                     psiFile = new ProcessStartInfo("cmd.exe", "/c \"" + tempFile + "\" " + (args ?? ""));
-                    psiFile.UseShellExecute = true;
                 }
                 else
                 {
-                    if (string.IsNullOrEmpty(args) || args.Trim() == "direct")
+                    // EXE dosyalari icin:
+                    // Kullanici ozel arguman belirtmisse onu kullan, yoksa standart sessiz bayraklari uygula
+                    string silentArgs = args;
+                    if (string.IsNullOrEmpty(silentArgs) || silentArgs.Trim() == "direct")
                     {
-                        psiFile = new ProcessStartInfo(tempFile);
-                        psiFile.UseShellExecute = true;
-                        psiFile.WindowStyle = ProcessWindowStyle.Normal;
+                        silentArgs = "/VERYSILENT /NORESTART /SP- /SUPPRESSMSGBOXES";
                     }
-                    else
-                    {
-                        psiFile = new ProcessStartInfo(tempFile, args.Trim());
-                        psiFile.UseShellExecute = true;
-                        psiFile.WindowStyle = ProcessWindowStyle.Normal;
-                    }
+                    psiFile = new ProcessStartInfo(tempFile, silentArgs);
                 }
 
+                psiFile.UseShellExecute = false;
+                psiFile.CreateNoWindow = true;
+                psiFile.WindowStyle = ProcessWindowStyle.Hidden;
                 psiFile.WorkingDirectory = Path.GetDirectoryName(tempFile);
+                psiFile.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
+                psiFile.EnvironmentVariables["SEE_MASK_NOZONECHECKS"] = "1";
 
-                Process proc = Process.Start(psiFile);
-                SetInstallStatus(id, name, "success", 100, "Kurulum direkt olarak baslatildi!");
-
-                if (proc != null)
+                int exitCode = -1;
+                using (Process p = Process.Start(psiFile))
                 {
-                    ThreadPool.QueueUserWorkItem(delegate
+                    bool finished = p.WaitForExit(900000);
+                    if (!finished)
                     {
-                        try
-                        {
-                            proc.WaitForExit(900000);
-                            try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
-                        }
-                        catch { }
-                    });
+                        try { p.Kill(); } catch { }
+                        SetInstallStatus(id, name, "error", 100, "Zaman asimi: Kurulum tamamlanamadi.");
+                        return;
+                    }
+                    exitCode = p.ExitCode;
                 }
 
-                try
+                if (exitCode == 0 || exitCode == 3010)
                 {
-                    if (File.Exists(tempFile)) File.Delete(tempFile);
+                    SetInstallStatus(id, name, "success", 100, "Program basariyla sessizce kuruldu!");
                 }
-                catch { }
+                else
+                {
+                    // Eger ilk sessiz parametre basarisiz olduysa, /S /quiet ile bir kez daha dene
+                    if (ext == ".exe" && (string.IsNullOrEmpty(args) || args.Trim() == "direct"))
+                    {
+                        SetInstallStatus(id, name, "installing", 80, "Alternatif sessiz mod (/S /quiet) deneniyor...");
+                        ProcessStartInfo psiAlt = new ProcessStartInfo(tempFile, "/S /quiet");
+                        psiAlt.UseShellExecute = false;
+                        psiAlt.CreateNoWindow = true;
+                        psiAlt.WindowStyle = ProcessWindowStyle.Hidden;
+                        psiAlt.WorkingDirectory = Path.GetDirectoryName(tempFile);
+                        psiAlt.EnvironmentVariables["__COMPAT_LAYER"] = "RunAsInvoker";
+                        psiAlt.EnvironmentVariables["SEE_MASK_NOZONECHECKS"] = "1";
+                        using (Process pAlt = Process.Start(psiAlt))
+                        {
+                            pAlt.WaitForExit(600000);
+                            exitCode = pAlt.ExitCode;
+                        }
+                    }
+
+                    if (exitCode == 0 || exitCode == 3010)
+                        SetInstallStatus(id, name, "success", 100, "Program basariyla kuruldu!");
+                    else
+                        SetInstallStatus(id, name, "error", 100, "Kurulum tamamlandi (Cikis kodu: " + exitCode + ")");
+                }
+
+                try { if (File.Exists(tempFile)) File.Delete(tempFile); } catch { }
             }
             catch (Exception ex)
             {
