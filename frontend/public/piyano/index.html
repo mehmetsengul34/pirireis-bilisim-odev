@@ -1,0 +1,1369 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Torbalı Bilsem VR 360 Piyano | Meta Quest 3</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Playfair+Display:ital,wght@0,700;1,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Three.js & WebXR Controls -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/webxr/VRButton.js"></script>
+
+  <style>
+    :root {
+      --gold: #f59e0b;
+      --gold-glow: rgba(245, 158, 11, 0.5);
+      --cyan: #38bdf8;
+      --bg-dark: #07090e;
+      --glass: rgba(15, 23, 42, 0.85);
+      --border: rgba(255, 255, 255, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      background: var(--bg-dark);
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #webgl-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+
+    /* 2D Overlay HUD (Masaüstü ve Quest Browser 2D Modu) */
+    #hud-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 16px 20px;
+    }
+
+    .interactive {
+      pointer-events: auto;
+    }
+
+    /* Üst Bar */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: var(--glass);
+      backdrop-filter: blur(16px);
+      padding: 10px 18px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--gold), #d97706);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      box-shadow: 0 4px 16px var(--gold-glow);
+    }
+
+    .brand-text h1 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-text h1 span {
+      background: linear-gradient(135deg, #fde047, var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-text p {
+      font-size: 0.72rem;
+      color: #94a3b8;
+    }
+
+    .top-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.16);
+      transform: translateY(-1px);
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold), #d97706);
+      border-color: #fbbf24;
+      color: #fff;
+      box-shadow: 0 4px 14px var(--gold-glow);
+    }
+
+    .btn-cyan {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-color: #38bdf8;
+      color: #fff;
+    }
+
+    .select-box {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid var(--border);
+      padding: 7px 12px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Alt Durum & Yardım Bilgisi */
+    .bottom-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .quest-tips {
+      background: var(--glass);
+      backdrop-filter: blur(12px);
+      padding: 8px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .quest-badge {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--cyan);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-weight: 800;
+      font-size: 0.7rem;
+    }
+
+    /* VR Butonu Stili */
+    #vr-button-container {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 50;
+      pointer-events: auto;
+    }
+
+    #VRButton {
+      background: linear-gradient(135deg, #ec4899, #8b5cf6) !important;
+      color: #fff !important;
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+      font-weight: 800 !important;
+      font-size: 15px !important;
+      letter-spacing: 0.5px !important;
+      border: 2px solid #f472b6 !important;
+      border-radius: 30px !important;
+      padding: 12px 28px !important;
+      box-shadow: 0 0 35px rgba(236, 72, 153, 0.6) !important;
+      cursor: pointer !important;
+      transition: all 0.25s !important;
+    }
+
+    #VRButton:hover {
+      transform: scale(1.05) !important;
+      box-shadow: 0 0 50px rgba(236, 72, 153, 0.9) !important;
+    }
+
+    /* Şarkı Çalma Notu Bildirimi */
+    .song-hud {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--gold);
+      padding: 6px 18px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #fde68a;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 0 20px var(--gold-glow);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- WebGL 3D Canvas -->
+  <div id="webgl-canvas"></div>
+
+  <!-- VR Button Container -->
+  <div id="vr-button-container"></div>
+
+  <!-- 2D Visor HUD -->
+  <div id="hud-overlay">
+    <!-- Top Bar -->
+    <div class="top-bar interactive">
+      <div class="brand">
+        <div class="brand-icon">🎹</div>
+        <div class="brand-text">
+          <h1>Torbalı Bilsem <span>VR 360 Piyano</span></h1>
+          <p>Meta Quest 3 Sanal Gerçeklik Müzik Stüdyosu</p>
+        </div>
+      </div>
+
+      <div class="top-controls">
+        <!-- Instrument Select -->
+        <select id="inst-select" class="select-box" onchange="changeInstrument(this.value)">
+          <option value="grand">🎹 Konser Piyanosu (Grand Piano)</option>
+          <option value="rhodes">⚡ Vintage Rhodes E-Piano</option>
+          <option value="upright">🎼 Akustik Duvar Piyanosu</option>
+          <option value="celesta">✨ Müzik Kutusu (Çelesta)</option>
+          <option value="harpsichord">🏛️ Barok Klavsen</option>
+        </select>
+
+        <!-- Song Tutorial -->
+        <select id="song-select" class="select-box" onchange="loadSongTutorial(this.value)">
+          <option value="none">🎵 Şarkı Öğren (Seçiniz)</option>
+          <option value="esek">Barış Manço - Arkadaşım Eşek</option>
+          <option value="turk">Mozart - Türk Marşı</option>
+          <option value="elise">Beethoven - Für Elise</option>
+          <option value="katibim">Kâtibim (Üsküdar'a Gider İken)</option>
+          <option value="ode">Beethoven - Neşeye Övgü</option>
+        </select>
+
+        <button class="btn btn-gold" id="btn-sustain" onclick="toggleSustain()">
+          <i class="fa-solid fa-water"></i>
+          <span id="sustain-text">Sustain: Açık</span>
+        </button>
+
+        <button class="btn btn-cyan" onclick="resetView()">
+          <i class="fa-solid fa-eye"></i>
+          <span>Bakışı Sıfırla</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Song Helper HUD -->
+    <div id="song-hud" class="song-hud interactive">
+      <i class="fa-solid fa-music"></i>
+      <span id="song-title">Şarkı Modu</span>
+      <button class="btn btn-gold" style="padding:2px 8px;font-size:0.7rem;" onclick="stopSongTutorial()">Durdur</button>
+    </div>
+
+    <!-- Bottom Bar -->
+    <div class="bottom-bar interactive">
+      <div class="quest-tips">
+        <span class="quest-badge">META QUEST 3</span>
+        <span>👉 <strong>Dokunarak Çalma:</strong> Kontrolcü veya parmak ucunuzla tuşlara doğrudan basın.</span>
+        <span>🎯 <strong>Lazerle Çalma:</strong> Kontrolcüyü tuşa tutup Trigger'a (Tetik) basın.</span>
+        <span>💻 <strong>PC/Mobil:</strong> Fareyle veya dokunarak tuşlara tıklayın, 360° etrafa bakın.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Engine & 3D WebXR Piano Application -->
+  <script>
+    // =========================================================================
+    // 1. PROFESYONEL WEB AUDIO PİYANO SES MOTORU (Zero Latency Synthesizer)
+    // =========================================================================
+    let audioCtx = null;
+    let masterGain = null;
+    let reverbNode = null;
+    let sustainEnabled = true;
+    let activeInstrument = 'grand';
+
+    function initAudio() {
+      if (audioCtx) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        return;
+      }
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AudioContext();
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.setValueAtTime(0.7, audioCtx.currentTime);
+
+      // Reverb (Yankı & Konser Salonu Hacmi)
+      createConcertReverb();
+      masterGain.connect(audioCtx.destination);
+    }
+
+    function createConcertReverb() {
+      try {
+        const rate = audioCtx.sampleRate;
+        const length = rate * 2.2;
+        const decay = 2.0;
+        const impulse = audioCtx.createBuffer(2, length, rate);
+        const left = impulse.getChannelData(0);
+        const right = impulse.getChannelData(1);
+
+        for (let i = 0; i < length; i++) {
+          const n = i / length;
+          left[i] = (Math.random() * 2 - 1) * Math.pow(1 - n, decay);
+          right[i] = (Math.random() * 2 - 1) * Math.pow(1 - n, decay);
+        }
+
+        reverbNode = audioCtx.createConvolver();
+        reverbNode.buffer = impulse;
+
+        const revGain = audioCtx.createGain();
+        revGain.gain.setValueAtTime(0.28, audioCtx.currentTime);
+
+        masterGain.connect(reverbNode);
+        reverbNode.connect(revGain);
+        revGain.connect(audioCtx.destination);
+      } catch (e) {
+        console.warn('Reverb init error:', e);
+      }
+    }
+
+    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    function getNoteFrequency(midiNumber) {
+      return 440 * Math.pow(2, (midiNumber - 69) / 12);
+    }
+
+    function playPianoSound(freq, velocity = 0.8) {
+      if (!audioCtx) initAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const now = audioCtx.currentTime;
+
+      if (activeInstrument === 'rhodes') {
+        playRhodesSound(freq, velocity, now);
+        return;
+      } else if (activeInstrument === 'celesta') {
+        playCelestaSound(freq, velocity, now);
+        return;
+      } else if (activeInstrument === 'harpsichord') {
+        playHarpsichordSound(freq, velocity, now);
+        return;
+      }
+
+      // Standart Grand Piano / Upright
+      const oscCount = 3;
+      const detunes = [-1.5, 0, 1.8];
+      const gains = [0.65, 0.85, 0.5];
+
+      const noteGain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(freq * (2.8 + velocity * 2.5), now);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(freq * 1.1, 150), now + 1.2);
+
+      const decayTime = sustainEnabled ? 3.4 : 1.2;
+
+      noteGain.gain.setValueAtTime(0.0001, now);
+      noteGain.gain.linearRampToValueAtTime(velocity * 0.9, now + 0.006);
+      noteGain.gain.exponentialRampToValueAtTime(velocity * 0.45, now + 0.12);
+      noteGain.gain.exponentialRampToValueAtTime(0.00001, now + decayTime);
+
+      for (let i = 0; i < oscCount; i++) {
+        const osc = audioCtx.createOscillator();
+        osc.type = i === 1 ? 'triangle' : 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        osc.detune.setValueAtTime(detunes[i], now);
+
+        const subGain = audioCtx.createGain();
+        subGain.gain.setValueAtTime(gains[i], now);
+
+        osc.connect(subGain);
+        subGain.connect(filter);
+        osc.start(now);
+        osc.stop(now + decayTime + 0.1);
+      }
+
+      // Çekiç transient
+      try {
+        const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let j = 0; j < data.length; j++) data[j] = (Math.random() * 2 - 1) * Math.exp(-j / 120);
+        const thud = audioCtx.createBufferSource();
+        thud.buffer = buf;
+        const thudGain = audioCtx.createGain();
+        thudGain.gain.setValueAtTime(velocity * 0.25, now);
+        thud.connect(thudGain);
+        thudGain.connect(filter);
+        thud.start(now);
+      } catch (e) {}
+
+      filter.connect(noteGain);
+      noteGain.connect(masterGain);
+    }
+
+    function playRhodesSound(freq, velocity, now) {
+      const osc = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const noteGain = audioCtx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(freq * 2, now);
+      osc2.detune.setValueAtTime(3, now);
+
+      const decay = sustainEnabled ? 3.5 : 1.4;
+      noteGain.gain.setValueAtTime(0.001, now);
+      noteGain.gain.linearRampToValueAtTime(velocity * 0.8, now + 0.008);
+      noteGain.gain.exponentialRampToValueAtTime(0.00001, now + decay);
+
+      osc.connect(noteGain);
+      osc2.connect(noteGain);
+      noteGain.connect(masterGain);
+      osc.start(now);
+      osc2.start(now);
+      osc.stop(now + decay + 0.1);
+      osc2.stop(now + decay + 0.1);
+    }
+
+    function playCelestaSound(freq, velocity, now) {
+      const osc = audioCtx.createOscillator();
+      const noteGain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now);
+
+      const decay = 2.0;
+      noteGain.gain.setValueAtTime(velocity * 0.7, now);
+      noteGain.gain.exponentialRampToValueAtTime(0.00001, now + decay);
+
+      osc.connect(noteGain);
+      noteGain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + decay + 0.1);
+    }
+
+    function playHarpsichordSound(freq, velocity, now) {
+      const osc = audioCtx.createOscillator();
+      const noteGain = audioCtx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, now);
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(freq * 1.8, now);
+      filter.Q.setValueAtTime(3, now);
+
+      const decay = 0.9;
+      noteGain.gain.setValueAtTime(velocity * 0.7, now);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+
+      osc.connect(filter);
+      filter.connect(noteGain);
+      noteGain.connect(masterGain);
+      osc.start(now);
+      osc.stop(now + decay + 0.1);
+    }
+
+    function toggleSustain() {
+      sustainEnabled = !sustainEnabled;
+      const text = document.getElementById('sustain-text');
+      const btn = document.getElementById('btn-sustain');
+      if (text) text.textContent = sustainEnabled ? 'Sustain: Açık' : 'Sustain: Kapalı';
+      if (btn) btn.className = sustainEnabled ? 'btn btn-gold' : 'btn';
+    }
+
+    function changeInstrument(val) {
+      activeInstrument = val;
+    }
+
+    // =========================================================================
+    // 2. THREE.JS & WEBXR VR 360 SAHNE KURULUMU
+    // =========================================================================
+    const container = document.getElementById('webgl-canvas');
+    let scene, camera, renderer, controls;
+    let pianoGroup = new THREE.Group();
+    let keys = [];
+    let keyMeshMap = new Map();
+    let noteParticles = [];
+
+    // WebXR Controllers
+    let controller1, controller2;
+    let raycaster = new THREE.Raycaster();
+    let tempMatrix = new THREE.Matrix4();
+
+    function initThreeScene() {
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x05070c);
+
+      camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.05, 100);
+      camera.position.set(0, 1.25, 0.75);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.xr.enabled = true;
+      container.appendChild(renderer.domElement);
+
+      const vrBtn = VRButton.createButton(renderer, {
+        optionalFeatures: ["local-floor", "bounded-floor", "hand-tracking"]
+      });
+      document.getElementById('vr-button-container').appendChild(vrBtn);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 0.85, 0);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 + 0.15;
+      controls.minDistance = 0.3;
+      controls.maxDistance = 5;
+
+      setupLights();
+      create360ConcertHall();
+      build3DPiano();
+      setupWebXRControllers();
+
+      window.addEventListener('resize', onWindowResize);
+      setupDesktopPointerInteraction();
+
+      renderer.setAnimationLoop(renderLoop);
+    }
+
+    function setupLights() {
+      const ambientLight = new THREE.AmbientLight(0x2d3748, 1.2);
+      scene.add(ambientLight);
+
+      const spotLight = new THREE.SpotLight(0xfef08a, 2.5);
+      spotLight.position.set(0, 3.8, 0.8);
+      spotLight.angle = Math.PI / 4;
+      spotLight.penumbra = 0.6;
+      spotLight.castShadow = true;
+      spotLight.target = pianoGroup;
+      scene.add(spotLight);
+
+      const leftLight = new THREE.PointLight(0x38bdf8, 1.4, 8);
+      leftLight.position.set(-2.5, 2.0, 0);
+      scene.add(leftLight);
+
+      const rightLight = new THREE.PointLight(0xa855f7, 1.4, 8);
+      rightLight.position.set(2.5, 2.0, 0);
+      scene.add(rightLight);
+    }
+
+    function create360ConcertHall() {
+      // 360 Büyük Küre
+      const domeGeo = new THREE.SphereGeometry(35, 32, 24);
+      const domeMat = new THREE.MeshBasicMaterial({ color: 0x070b14, side: THREE.BackSide });
+      const dome = new THREE.Mesh(domeGeo, domeMat);
+      scene.add(dome);
+
+      // Yıldızlar
+      const starGeo = new THREE.BufferGeometry();
+      const starCount = 600;
+      const starPos = new Float32Array(starCount * 3);
+      for (let i = 0; i < starCount * 3; i += 3) {
+        const u = Math.random();
+        const v = Math.random();
+        const theta = u * 2.0 * Math.PI;
+        const phi = Math.acos(2.0 * v - 1.0);
+        const r = 25 + Math.random() * 8;
+        starPos[i] = r * Math.sin(phi) * Math.cos(theta);
+        starPos[i + 1] = Math.abs(r * Math.cos(phi)) + 1.5;
+        starPos[i + 2] = r * Math.sin(phi) * Math.sin(theta);
+      }
+      starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+      const starMat = new THREE.PointsMaterial({ color: 0xfef08a, size: 0.15, transparent: true, opacity: 0.85 });
+      const stars = new THREE.Points(starGeo, starMat);
+      scene.add(stars);
+
+      // Cilalı Sahne Zemini
+      const floorGeo = new THREE.CircleGeometry(12, 48);
+      const floorMat = new THREE.MeshStandardMaterial({ color: 0x111625, roughness: 0.25, metalness: 0.35 });
+      const floor = new THREE.Mesh(floorGeo, floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = 0;
+      floor.receiveShadow = true;
+      scene.add(floor);
+
+      createStageBackdrop();
+    }
+
+    function createStageBackdrop() {
+      const bannerGeo = new THREE.PlaneGeometry(3.6, 1.4);
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+
+      const grad = ctx.createLinearGradient(0, 0, 1024, 400);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(0.5, '#1e1b4b');
+      grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad;
+      ctx.roundRect(10, 10, 1004, 380, 24);
+      ctx.fill();
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 6;
+      ctx.stroke();
+
+      ctx.fillStyle = '#fde047';
+      ctx.font = 'bold 50px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('TORBALI BİLİM VE SANAT MERKEZİ', 512, 120);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 36px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText('VR 360 Sanal Müzik & Piyano Sahnesi', 512, 200);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '28px "Plus Jakarta Sans", sans-serif';
+      ctx.fillText('Meta Quest 3 Dokunmatik & El Takibi Uyumlu', 512, 280);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const bannerMat = new THREE.MeshStandardMaterial({ map: texture, roughness: 0.3, metalness: 0.2 });
+      const banner = new THREE.Mesh(bannerGeo, bannerMat);
+      banner.position.set(0, 2.1, -1.8);
+      scene.add(banner);
+    }
+
+    // =========================================================================
+    // 3. 3D PİYANO KLAVYESİ & MEKANİK TUŞ YAPISI
+    // =========================================================================
+    function build3DPiano() {
+      pianoGroup.position.set(0, 0.82, -0.42);
+      scene.add(pianoGroup);
+
+      // Gövde
+      const bodyGeo = new THREE.BoxGeometry(1.08, 0.18, 0.42);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x090c15, roughness: 0.15, metalness: 0.6 });
+      const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+      bodyMesh.position.set(0, -0.07, -0.09);
+      bodyMesh.castShadow = true;
+      bodyMesh.receiveShadow = true;
+      pianoGroup.add(bodyMesh);
+
+      // Kırmızı Kadife
+      const feltGeo = new THREE.BoxGeometry(0.98, 0.015, 0.02);
+      const feltMat = new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.8 });
+      const feltMesh = new THREE.Mesh(feltGeo, feltMat);
+      feltMesh.position.set(0, 0.012, -0.08);
+      pianoGroup.add(feltMesh);
+
+      // Gold Arma
+      const crestGeo = new THREE.BoxGeometry(0.24, 0.03, 0.005);
+      const crestMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.85, roughness: 0.2 });
+      const crestMesh = new THREE.Mesh(crestGeo, crestMat);
+      crestMesh.position.set(0, 0.035, -0.15);
+      pianoGroup.add(crestMesh);
+
+      // VR İçi Kolay Yükseklik / Uzaklık Ayarlayıcı 3D Buton Paneli
+      createVRPianoControls();
+    function createVRPianoControls() {
+      const panelGroup = new THREE.Group();
+      panelGroup.position.set(0, 0.24, -0.25);
+      panelGroup.rotation.x = -Math.PI / 10;
+      pianoGroup.add(panelGroup);
+
+      const panelBgGeo = new THREE.BoxGeometry(0.55, 0.07, 0.015);
+      const panelBgMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.5 });
+      const panelBg = new THREE.Mesh(panelBgGeo, panelBgMat);
+      panelGroup.add(panelBg);
+
+      // 3D Butonlar: [▲ Yükselt] [▼ Alçalt] [◄ Yaklaştır] [► Uzaklaştır] [🔄 Sıfırla]
+      const btnDefs = [
+        { label: '▲', action: () => adjustPianoPosition(0, 0.04, 0), x: -0.20, color: 0x38bdf8 },
+        { label: '▼', action: () => adjustPianoPosition(0, -0.04, 0), x: -0.10, color: 0x38bdf8 },
+        { label: '◄', action: () => adjustPianoPosition(0, 0, 0.05), x: 0.00, color: 0x10b981 },
+        { label: '►', action: () => adjustPianoPosition(0, 0, -0.05), x: 0.10, color: 0x10b981 },
+        { label: '🔄', action: () => resetPianoPosition(), x: 0.20, color: 0xf59e0b }
+      ];
+
+      vrButtons.length = 0;
+      btnDefs.forEach(b => {
+        const btnGeo = new THREE.BoxGeometry(0.065, 0.045, 0.02);
+        const btnMat = new THREE.MeshStandardMaterial({ color: b.color, roughness: 0.3, metalness: 0.6 });
+        const btnMesh = new THREE.Mesh(btnGeo, btnMat);
+        btnMesh.position.set(b.x, 0, 0.01);
+        panelGroup.add(btnMesh);
+
+        btnMesh.userData = { isButton: true, action: b.action };
+        vrButtons.push(btnMesh);
+      });
+    }
+
+    function adjustPianoPosition(dx, dy, dz) {
+      pianoGroup.position.x += dx;
+      pianoGroup.position.y = Math.max(0.4, Math.min(1.4, pianoGroup.position.y + dy));
+      pianoGroup.position.z = Math.max(-1.2, Math.min(-0.15, pianoGroup.position.z + dz));
+      updateKeyWorldBoxes();
+      triggerQuestHaptic(0.5);
+    }
+
+    function resetPianoPosition() {
+      pianoGroup.position.set(0, 0.82, -0.42);
+      updateKeyWorldBoxes();
+      triggerQuestHaptic(0.5);
+    }
+
+    function updateKeyWorldBoxes() {
+      pianoGroup.updateMatrixWorld(true);
+      keys.forEach(k => {
+        k.worldBox.setFromObject(k.mesh);
+        // Sadece dikey eksende hafif esneme payı veriyoruz, yan tuşlarla karışmaması için X eksenini hassas tutuyoruz
+        k.worldBox.min.y -= 0.015;
+        k.worldBox.max.y += 0.025;
+        k.worldBox.min.z -= 0.01;
+        k.worldBox.max.z += 0.01;
+      });
+    }
+
+
+      const whiteWidth = 0.038;
+      const whiteLength = 0.165;
+      const whiteHeight = 0.024;
+
+      const blackWidth = 0.022;
+      const blackLength = 0.105;
+      const blackHeight = 0.022;
+
+      const startMidi = 48; // C3
+      const numOctaves = 3;
+
+      const whiteKeyMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.2, metalness: 0.08 });
+      const blackKeyMat = new THREE.MeshStandardMaterial({ color: 0x111318, roughness: 0.35, metalness: 0.4 });
+
+      let totalWhiteKeys = 0;
+      for (let m = startMidi; m <= startMidi + numOctaves * 12; m++) {
+        const noteInOct = m % 12;
+        if (![1, 3, 6, 8, 10].includes(noteInOct)) totalWhiteKeys++;
+      }
+
+      const keyboardStartX = -((totalWhiteKeys * whiteWidth) / 2) + whiteWidth / 2;
+
+      // Beyaz Tuşlar
+      let currentWhiteIdx = 0;
+      const whiteKeyXMap = {};
+
+      for (let m = startMidi; m <= startMidi + numOctaves * 12; m++) {
+        const noteInOct = m % 12;
+        const isBlack = [1, 3, 6, 8, 10].includes(noteInOct);
+
+        if (!isBlack) {
+          const xPos = keyboardStartX + currentWhiteIdx * whiteWidth;
+          whiteKeyXMap[m] = xPos;
+
+          const pivot = new THREE.Group();
+          pivot.position.set(xPos, 0, -whiteLength / 2);
+
+          const keyGeo = new THREE.BoxGeometry(whiteWidth - 0.002, whiteHeight, whiteLength);
+          keyGeo.translate(0, 0, whiteLength / 2);
+
+          const keyMesh = new THREE.Mesh(keyGeo, whiteKeyMat.clone());
+          keyMesh.castShadow = true;
+          keyMesh.receiveShadow = true;
+          pivot.add(keyMesh);
+          pianoGroup.add(pivot);
+
+          const noteName = NOTE_NAMES[noteInOct] + (Math.floor(m / 12) - 1);
+          const keyData = {
+            midi: m,
+            name: noteName,
+            freq: getNoteFrequency(m),
+            isBlack: false,
+            pivot: pivot,
+            mesh: keyMesh,
+            defaultY: 0,
+            pressAmount: 0,
+            pressed: false,
+            worldBox: new THREE.Box3()
+          };
+
+          keys.push(keyData);
+          keyMeshMap.set(keyMesh, keyData);
+          currentWhiteIdx++;
+        }
+      }
+
+      // Siyah Tuşlar
+      for (let m = startMidi; m <= startMidi + numOctaves * 12; m++) {
+        const noteInOct = m % 12;
+        const isBlack = [1, 3, 6, 8, 10].includes(noteInOct);
+
+        if (isBlack) {
+          const prevWhiteX = whiteKeyXMap[m - 1];
+          const nextWhiteX = whiteKeyXMap[m + 1];
+          const xPos = (prevWhiteX + nextWhiteX) / 2;
+
+          const pivot = new THREE.Group();
+          pivot.position.set(xPos, whiteHeight * 0.72, -whiteLength / 2);
+
+          const keyGeo = new THREE.BoxGeometry(blackWidth, blackHeight, blackLength);
+          keyGeo.translate(0, 0, blackLength / 2);
+
+          const keyMesh = new THREE.Mesh(keyGeo, blackKeyMat.clone());
+          keyMesh.castShadow = true;
+          keyMesh.receiveShadow = true;
+          pivot.add(keyMesh);
+          pianoGroup.add(pivot);
+
+          const noteName = NOTE_NAMES[noteInOct] + (Math.floor(m / 12) - 1);
+          const keyData = {
+            midi: m,
+            name: noteName,
+            freq: getNoteFrequency(m),
+            isBlack: true,
+            pivot: pivot,
+            mesh: keyMesh,
+            defaultY: whiteHeight * 0.72,
+            pressAmount: 0,
+            pressed: false,
+            worldBox: new THREE.Box3()
+          };
+
+          keys.push(keyData);
+          keyMeshMap.set(keyMesh, keyData);
+        }
+      }
+
+      updateKeyWorldBoxes();
+    }
+
+    function triggerPianoKey(keyData, velocity = 0.85) {
+      if (!keyData || keyData.pressed) return;
+      keyData.pressed = true;
+      keyData.pressAmount = 1.0;
+
+      playPianoSound(keyData.freq, velocity);
+
+      if (keyData.isBlack) {
+        keyData.mesh.material.color.setHex(0xb45309);
+        keyData.mesh.material.emissive.setHex(0xf59e0b);
+        keyData.mesh.material.emissiveIntensity = 0.6;
+      } else {
+        keyData.mesh.material.color.setHex(0xfef08a);
+        keyData.mesh.material.emissive.setHex(0x38bdf8);
+        keyData.mesh.material.emissiveIntensity = 0.4;
+      }
+
+      spawnNoteParticle(keyData);
+      triggerQuestHaptic(velocity);
+    }
+
+    function releasePianoKey(keyData) {
+      if (!keyData || !keyData.pressed) return;
+      keyData.pressed = false;
+
+      if (keyData.isBlack) {
+        keyData.mesh.material.color.setHex(0x111318);
+        keyData.mesh.material.emissive.setHex(0x000000);
+      } else {
+        keyData.mesh.material.color.setHex(0xf8fafc);
+        keyData.mesh.material.emissive.setHex(0x000000);
+      }
+    }
+
+    function spawnNoteParticle(keyData) {
+      const symbols = ['♪', '♫', '♬', '✨'];
+      const sym = symbols[Math.floor(Math.random() * symbols.length)];
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = keyData.isBlack ? '#f59e0b' : '#38bdf8';
+      ctx.font = 'bold 84px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(sym, 64, 64);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.95 });
+      const sprite = new THREE.Sprite(spriteMat);
+
+      const pos = new THREE.Vector3();
+      keyData.mesh.getWorldPosition(pos);
+      sprite.position.copy(pos);
+      sprite.position.y += 0.08;
+      sprite.scale.set(0.12, 0.12, 0.12);
+      scene.add(sprite);
+
+      noteParticles.push({
+        sprite: sprite,
+        vy: 0.45 + Math.random() * 0.2,
+        vx: (Math.random() - 0.5) * 0.15,
+        life: 1.0
+      });
+    }
+
+    // =========================================================================
+    // 4. META QUEST 3 KONTROLCÜLER VE DOKUNMATİK ETKİLEŞİM
+    // =========================================================================
+    let hand1, hand2;
+    const handJointSpheres = [];
+
+    function setupWebXRControllers() {
+      // 1. Meta Quest 3 Kontrolcüler (Controllers)
+      controller1 = renderer.xr.getController(0);
+      controller1.addEventListener('selectstart', onSelectStart);
+      controller1.addEventListener('selectend', onSelectEnd);
+      controller1.addEventListener('squeeze', () => toggleSustain());
+      scene.add(controller1);
+
+      controller2 = renderer.xr.getController(1);
+      controller2.addEventListener('selectstart', onSelectStart);
+      controller2.addEventListener('selectend', onSelectEnd);
+      controller2.addEventListener('squeeze', () => toggleSustain());
+      scene.add(controller2);
+
+      addLaserPointer(controller1, 0x38bdf8);
+      addLaserPointer(controller2, 0xf59e0b);
+
+      // 2. Meta Quest 3 Doğrudan El Takibi (Direct Hand Tracking)
+      hand1 = renderer.xr.getHand(0);
+      scene.add(hand1);
+      setupHandVisuals(hand1, 0x38bdf8);
+
+      hand2 = renderer.xr.getHand(1);
+      scene.add(hand2);
+      setupHandVisuals(hand2, 0xf59e0b);
+
+      renderer.xr.addEventListener('sessionstart', () => {
+        initAudio();
+        if (audioCtx && audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      });
+    }
+
+    function setupHandVisuals(hand, glowColor) {
+      // Parmak uçlarına (işaret, başparmak, orta parmak vb.) görsel ve dokunsal küreler ekle
+      const tipNames = ['index-finger-tip', 'middle-finger-tip', 'thumb-tip', 'ring-finger-tip', 'pinky-finger-tip'];
+      
+      hand.addEventListener('connected', (event) => {
+        console.log('WebXR El Bağlandı:', event.data.handedness);
+      });
+
+      const sphereGeo = new THREE.SphereGeometry(0.012, 16, 16);
+      const sphereMat = new THREE.MeshStandardMaterial({
+        color: glowColor,
+        emissive: glowColor,
+        emissiveIntensity: 0.85,
+        roughness: 0.2,
+        metalness: 0.8
+      });
+
+      tipNames.forEach(name => {
+        const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+        sphere.name = 'handTip_' + name;
+        sphere.visible = false;
+        scene.add(sphere);
+        handJointSpheres.push({ hand, jointName: name, mesh: sphere });
+      });
+    }
+
+    function addLaserPointer(controller, colorHex) {
+      const lineGeo = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, -1.5)
+      ]);
+      const lineMat = new THREE.LineBasicMaterial({ color: colorHex, transparent: true, opacity: 0.65 });
+      const line = new THREE.Line(lineGeo, lineMat);
+      line.name = 'laserLine';
+      controller.add(line);
+
+      const touchGeo = new THREE.SphereGeometry(0.016, 16, 16);
+      const touchMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        emissive: colorHex,
+        emissiveIntensity: 0.8,
+        metalness: 0.8,
+        roughness: 0.2
+      });
+      const touchSphere = new THREE.Mesh(touchGeo, touchMat);
+      touchSphere.name = 'touchSphere';
+      touchSphere.position.set(0, 0, -0.04);
+      controller.add(touchSphere);
+    }
+
+    function triggerQuestHaptic(intensity = 0.8) {
+      try {
+        const session = renderer.xr.getSession();
+        if (session && session.inputSources) {
+          session.inputSources.forEach(source => {
+            if (source.gamepad && source.gamepad.hapticActuators && source.gamepad.hapticActuators.length > 0) {
+              source.gamepad.hapticActuators[0].pulse(intensity, 40);
+            }
+          });
+        }
+      } catch (e) {}
+    }
+
+    const vrButtons = [];
+
+    function getIntersectedButton(controller) {
+      tempMatrix.identity().extractRotation(controller.matrixWorld);
+      raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+      raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+      const intersects = raycaster.intersectObjects(vrButtons, false);
+      return intersects.length > 0 ? intersects[0].object : null;
+    }
+
+    function onSelectStart(event) {
+      initAudio();
+      const controller = event.target;
+      
+      const hitBtn = getIntersectedButton(controller);
+      if (hitBtn && hitBtn.userData && hitBtn.userData.action) {
+        hitBtn.userData.action();
+        return;
+      }
+
+      const key = getIntersectedKey(controller);
+      if (key) {
+        key.laserPressed = true;
+        triggerPianoKey(key, 0.95);
+        triggerQuestHaptic(0.8);
+      }
+    }
+
+    function onSelectEnd(event) {
+      const controller = event.target;
+      const key = getIntersectedKey(controller);
+      if (key) {
+        key.laserPressed = false;
+        releasePianoKey(key);
+      }
+    }
+
+    function getIntersectedKey(controller) {
+      tempMatrix.identity().extractRotation(controller.matrixWorld);
+      raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+      raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+      const keyMeshes = keys.map(k => k.mesh);
+      const intersects = raycaster.intersectObjects(keyMeshes, false);
+
+      if (intersects.length > 0) {
+        return keyMeshMap.get(intersects[0].object);
+      }
+      return null;
+    }
+
+    // =========================================================================
+    // 5. MASAÜSTÜ & MOBİL FARE ETKİLEŞİMİ (Fallback)
+    // =========================================================================
+    let mouse = new THREE.Vector2();
+    let isMouseDown = false;
+    let hoveredKey = null;
+
+    function setupDesktopPointerInteraction() {
+      window.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('#hud-overlay') || e.target.closest('#VRButton')) return;
+        initAudio();
+        isMouseDown = true;
+        handlePointer(e.clientX, e.clientY, true);
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        if (!isMouseDown) return;
+        handlePointer(e.clientX, e.clientY, false);
+      });
+
+      window.addEventListener('pointerup', () => {
+        isMouseDown = false;
+        if (hoveredKey) {
+          releasePianoKey(hoveredKey);
+          hoveredKey = null;
+        }
+      });
+
+      const keyMap = {
+        'a': 60, 'w': 61, 's': 62, 'e': 63, 'd': 64, 'f': 65, 't': 66,
+        'g': 67, 'y': 68, 'h': 69, 'u': 70, 'j': 71, 'k': 72
+      };
+
+      window.addEventListener('keydown', (e) => {
+        if (e.repeat) return;
+        const k = e.key.toLowerCase();
+        if (k === ' ') {
+          toggleSustain();
+          return;
+        }
+        if (keyMap[k]) {
+          const keyData = keys.find(x => x.midi === keyMap[k]);
+          if (keyData) triggerPianoKey(keyData, 0.9);
+        }
+      });
+
+      window.addEventListener('keyup', (e) => {
+        const k = e.key.toLowerCase();
+        if (keyMap[k]) {
+          const keyData = keys.find(x => x.midi === keyMap[k]);
+          if (keyData) releasePianoKey(keyData);
+        }
+      });
+    }
+
+    function handlePointer(clientX, clientY, isDown = false) {
+      mouse.x = (clientX / window.innerWidth) * 2 - 1;
+      mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const keyMeshes = keys.map(k => k.mesh);
+      const intersects = raycaster.intersectObjects(keyMeshes, false);
+
+      if (intersects.length > 0) {
+        const keyData = keyMeshMap.get(intersects[0].object);
+        if (keyData !== hoveredKey) {
+          if (hoveredKey) releasePianoKey(hoveredKey);
+          hoveredKey = keyData;
+          triggerPianoKey(keyData, 0.88);
+        }
+      } else {
+        if (hoveredKey) {
+          releasePianoKey(hoveredKey);
+          hoveredKey = null;
+        }
+      }
+    }
+
+    function resetView() {
+      camera.position.set(0, 1.25, 0.75);
+      controls.target.set(0, 0.85, 0);
+      controls.update();
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    // =========================================================================
+    // 6. ŞARKI ÖĞRETİCİ MODU
+    // =========================================================================
+    const SONGS = {
+      esek: [
+        { note: 60, time: 0 }, { note: 62, time: 400 }, { note: 64, time: 800 }, { note: 65, time: 1200 },
+        { note: 67, time: 1600 }, { note: 67, time: 2000 }, { note: 69, time: 2600 }, { note: 67, time: 3200 },
+        { note: 65, time: 3800 }, { note: 64, time: 4400 }, { note: 62, time: 5000 }, { note: 60, time: 5600 }
+      ],
+      elise: [
+        { note: 76, time: 0 }, { note: 75, time: 300 }, { note: 76, time: 600 }, { note: 75, time: 900 },
+        { note: 76, time: 1200 }, { note: 71, time: 1500 }, { note: 74, time: 1800 }, { note: 72, time: 2100 },
+        { note: 69, time: 2500 }
+      ],
+      ode: [
+        { note: 64, time: 0 }, { note: 64, time: 400 }, { note: 65, time: 800 }, { note: 67, time: 1200 },
+        { note: 67, time: 1600 }, { note: 65, time: 2000 }, { note: 64, time: 2400 }, { note: 62, time: 2800 },
+        { note: 60, time: 3200 }, { note: 60, time: 3600 }, { note: 62, time: 4000 }, { note: 64, time: 4400 }
+      ]
+    };
+
+    function loadSongTutorial(songKey) {
+      if (songKey === 'none') {
+        stopSongTutorial();
+        return;
+      }
+      stopSongTutorial();
+      const song = SONGS[songKey] || SONGS.esek;
+      const songHud = document.getElementById('song-hud');
+      const songTitle = document.getElementById('song-title');
+      if (songHud) songHud.style.display = 'flex';
+      if (songTitle) songTitle.textContent = `Şarkı Çalınıyor: ${songKey.toUpperCase()}`;
+
+      initAudio();
+      song.forEach(item => {
+        setTimeout(() => {
+          const key = keys.find(k => k.midi === item.note);
+          if (key) {
+            triggerPianoKey(key, 0.9);
+            setTimeout(() => releasePianoKey(key), 280);
+          }
+        }, item.time);
+      });
+    }
+
+    function stopSongTutorial() {
+      const songHud = document.getElementById('song-hud');
+      if (songHud) songHud.style.display = 'none';
+      const select = document.getElementById('song-select');
+      if (select) select.value = 'none';
+    }
+
+    // =========================================================================
+    // 7. RENDER DÖNGÜSÜ & VR DOKUNMA HESAPLAMASI
+    // =========================================================================
+    const clock = new THREE.Clock();
+
+    function renderLoop() {
+      const delta = clock.getDelta();
+
+      // Tuş mekanik basılı tutma / geri yaylanma hareketi
+      keys.forEach(k => {
+        if (k.pressed) {
+          k.pressAmount = 1.0;
+          k.pivot.rotation.x = 0.088;
+        } else if (k.pressAmount > 0) {
+          k.pressAmount = Math.max(0, k.pressAmount - delta * 9.0);
+          k.pivot.rotation.x = k.pressAmount * 0.088;
+        } else {
+          k.pivot.rotation.x = 0;
+        }
+      });
+
+      // Uçuşan müzik notası partikülleri
+      for (let i = noteParticles.length - 1; i >= 0; i--) {
+        const p = noteParticles[i];
+        p.life -= delta * 0.9;
+        p.sprite.position.y += p.vy * delta;
+        p.sprite.position.x += p.vx * delta;
+        p.sprite.material.opacity = Math.max(0, p.life);
+
+        if (p.life <= 0) {
+          scene.remove(p.sprite);
+          noteParticles.splice(i, 1);
+        }
+      }
+
+      if (renderer.xr.isPresenting) {
+        updateHandJoints();
+        checkVRDirectTouch();
+      } else {
+        controls.update();
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    function updateHandJoints() {
+      const jointPos = new THREE.Vector3();
+      handJointSpheres.forEach(item => {
+        if (item.hand && item.hand.joints && item.hand.joints[item.jointName]) {
+          const joint = item.hand.joints[item.jointName];
+          if (joint.visible !== false) {
+            joint.getWorldPosition(jointPos);
+            // Sıfır pozisyonu kontrolü
+            if (jointPos.lengthSq() > 0.02) {
+              item.mesh.position.copy(jointPos);
+              item.mesh.visible = true;
+              return;
+            }
+          }
+        }
+        item.mesh.visible = false;
+      });
+    }
+
+    const activeTouchPoints = [];
+    const _touchPos = new THREE.Vector3();
+
+    function checkVRDirectTouch() {
+      activeTouchPoints.length = 0;
+
+      // 1. Kontrolcü temas uçları (Controller tips)
+      [controller1, controller2].forEach(ctrl => {
+        if (ctrl) {
+          const sphere = ctrl.getObjectByName('touchSphere');
+          if (sphere) {
+            const p = new THREE.Vector3();
+            sphere.getWorldPosition(p);
+            activeTouchPoints.push(p);
+          }
+        }
+      });
+
+      // 2. Doğrudan el takibi parmak uçları (Meta Quest Hand Fingertips)
+      handJointSpheres.forEach(item => {
+        if (item.mesh.visible) {
+          activeTouchPoints.push(item.mesh.position.clone());
+        }
+      });
+
+      // 3. Tuşlarla temas tespiti (Önce siyah tuşlar, sonra beyaz tuşlar)
+      const sortedKeys = [...keys].sort((a, b) => (b.isBlack ? 1 : 0) - (a.isBlack ? 1 : 0));
+      const touchedKeysThisFrame = new Set();
+
+      for (let i = 0; i < activeTouchPoints.length; i++) {
+        const pt = activeTouchPoints[i];
+        for (let j = 0; j < sortedKeys.length; j++) {
+          const k = sortedKeys[j];
+          if (k.worldBox && k.worldBox.containsPoint(pt)) {
+            touchedKeysThisFrame.add(k);
+            if (!k.pressed) {
+              triggerPianoKey(k, 0.95);
+              triggerQuestHaptic(0.75);
+            }
+            // Aynı parmak ucu tek bir öncelikli tuşu bassın
+            break;
+          }
+        }
+      }
+
+      // 4. Dokunulması bırakılan tuşları serbest bırak
+      keys.forEach(k => {
+        if (k.pressed && !touchedKeysThisFrame.has(k) && !k.laserPressed && !isMouseDown) {
+          releasePianoKey(k);
+        }
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initThreeScene();
+    });
+  </script>
+</body>
+</html>
