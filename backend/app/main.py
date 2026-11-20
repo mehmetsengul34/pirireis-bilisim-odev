@@ -1,4 +1,5 @@
 import os
+import secrets
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -122,7 +123,14 @@ def startup_seed_data():
         # Check / Create pirireis admin teacher
         pirireis_teacher = db.query(User).filter(User.username == "pirireis").first()
         if not pirireis_teacher:
-            default_seed_pass = os.getenv("LAB_TEACHER_PASS", "20262027")
+            default_seed_pass = (os.getenv("LAB_TEACHER_PASS") or "").strip()
+            if not default_seed_pass:
+                # GÜVENLİK: Sabit/varsayılan şifre yerine rastgele şifre üretilir.
+                default_seed_pass = secrets.token_urlsafe(9)
+                print(
+                    "[KURULUM] 'pirireis' yönetici hesabı oluşturuldu. "
+                    f"Geçici şifre: {default_seed_pass}  (ilk girişte değiştirin)"
+                )
             pirireis_teacher = User(
                 username="pirireis",
                 password_hash=hash_password(default_seed_pass),
@@ -135,7 +143,10 @@ def startup_seed_data():
         else:
             # Preserve existing user password upon restart; only assign if missing
             if not pirireis_teacher.password_hash:
-                pirireis_teacher.password_hash = hash_password(os.getenv("LAB_TEACHER_PASS", "20262027"))
+                reset_pass = (os.getenv("LAB_TEACHER_PASS") or "").strip() or secrets.token_urlsafe(9)
+                pirireis_teacher.password_hash = hash_password(reset_pass)
+                if not os.getenv("LAB_TEACHER_PASS"):
+                    print(f"[KURULUM] 'pirireis' hesabına geçici şifre atandı: {reset_pass}")
             pirireis_teacher.role = "teacher"
             db.commit()
 
@@ -291,10 +302,15 @@ app = FastAPI(
 )
 
 # CORS Middleware
+# Kimlik doğrulama çerez değil "Authorization: Bearer" başlığı ile yapıldığı için
+# allow_credentials kapalıdır. İzin verilen adresler CORS_ORIGINS ile daraltılabilir
+# (örn: "https://ogretmenlerodasi.online,https://pirireis-bilisim-odev.vercel.app").
+_cors_env = (os.getenv("CORS_ORIGINS") or "*").strip()
+_cors_origins = ["*"] if _cors_env == "*" else [o.strip() for o in _cors_env.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -306,7 +322,27 @@ os.makedirs(os.path.join(UPLOADS_DIR, "submissions"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "curriculum"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "modules"), exist_ok=True)
 os.makedirs(os.path.join(UPLOADS_DIR, "presentations"), exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
+class SafeStaticFiles(StaticFiles):
+    """Yüklenen dosyaları güvenli başlıklarla sunar.
+
+    HTML/SVG/JS gibi tarayıcıda çalışabilen dosyalar sayfada açılmak yerine
+    indirilir; böylece öğrencinin yüklediği bir dosya API alan adında
+    komut çalıştıramaz (XSS). Resimler ve PDF'ler normal şekilde görüntülenir.
+    """
+
+    _FORCE_DOWNLOAD = (".html", ".htm", ".xhtml", ".svg", ".js", ".mjs", ".xml", ".php")
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        if path.lower().endswith(self._FORCE_DOWNLOAD):
+            response.headers["Content-Disposition"] = "attachment"
+            response.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
+        return response
+
+
+app.mount("/uploads", SafeStaticFiles(directory=UPLOADS_DIR), name="uploads")
 
 # Include Routers
 app.include_router(auth.router)
