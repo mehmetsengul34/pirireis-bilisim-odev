@@ -7,10 +7,16 @@ services:
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     plan: free
     autoDeploy: true
+    # GÜVENLİK: Gizli değerler bu dosyaya YAZILMAZ.
+    # "sync: false" olan değerler Render panelinde (Environment sekmesi) elle girilir.
     envVars:
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_p3x7vKOYnqmr@ep-icy-mode-b51ni2mr-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require
+        sync: false
       - key: GEMINI_API_KEY
-        value: AQ.Ab8RN6KTlFTwqsmAA4YcVjqjzyAF33MGmAThB3F5MvbZZQqSxw
+        sync: false
       - key: SECRET_KEY
-        value: piri-reis-mtal-bilisim-guvenli-anahtar-2026
+        generateValue: true
+      - key: LAB_DESKTOP_MASTER_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: "*"

@@ -20,8 +20,7 @@ start http://localhost:5173
 
 echo ========================================================
 echo Sistem Baslatildi!
-echo Master Ogretmen: pirireis / 20262027
-echo Ogrenci Girisi:  ogrenci / 123
+echo Yonetici sifresi: backend\.env icindeki LAB_TEACHER_PASS
 echo Canli Surum:    https://pirireis-bilisim-odev.vercel.app
 echo ========================================================
 
