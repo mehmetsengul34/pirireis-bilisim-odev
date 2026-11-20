@@ -44,19 +44,28 @@ namespace PiriReisLabMaster
         private string currentServerUrl;
         private const string CLOUD_URL = "https://ogretmenlerodasi.info/labizleme";
         private const string LOCAL_URL = "http://localhost:4000/labizleme";
-        private const string DESKTOP_MASTER_KEY = "pirireis-lab-master-secret-2026-auth-token";
+        // GUVENLIK: Anahtar ve giris bilgileri artik koda gomulu degildir.
+        // %LOCALAPPDATA%\PiriReisLabMaster\master_key.txt  -> sunucudaki LAB_DESKTOP_MASTER_KEY ile ayni deger (istege bagli)
+        // %LOCALAPPDATA%\PiriReisLabMaster\lab_login.txt   -> 1. satir kullanici adi, 2. satir sifre
+        // Alternatif: LAB_DESKTOP_MASTER_KEY, LAB_TEACHER_USER, LAB_TEACHER_PASS ortam degiskenleri.
+        private string desktopMasterKey = "";
+        private string loginUser = "";
+        private string loginPass = "";
+        private string appDataDir;
         private string configPath;
         private string tokenCachePath;
         private string cachedAuthToken = null;
 
         public MasterApp()
         {
-            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768 | SecurityProtocolType.Tls;
-            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072 | (SecurityProtocolType)768;
+            // GUVENLIK: Sertifika dogrulamasi artik kapatilmiyor (ortadaki adam saldirisina karsi).
 
             string appData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PiriReisLabMaster");
             if (!Directory.Exists(appData)) Directory.CreateDirectory(appData);
+            appDataDir = appData;
             configPath = Path.Combine(appData, "config.txt");
+            LoadSecrets();
             tokenCachePath = Path.Combine(appData, "token.txt");
 
             currentServerUrl = CLOUD_URL;
@@ -370,9 +379,60 @@ namespace PiriReisLabMaster
             }
         }
 
+        private static string ReadSecretFile(string path)
+        {
+            try { if (File.Exists(path)) return File.ReadAllText(path, Encoding.UTF8).Trim(); } catch { }
+            return "";
+        }
+
+        private void LoadSecrets()
+        {
+            desktopMasterKey = (Environment.GetEnvironmentVariable("LAB_DESKTOP_MASTER_KEY") ?? "").Trim();
+            if (desktopMasterKey.Length == 0) desktopMasterKey = ReadSecretFile(Path.Combine(appDataDir, "master_key.txt"));
+
+            loginUser = (Environment.GetEnvironmentVariable("LAB_TEACHER_USER") ?? "").Trim();
+            loginPass = (Environment.GetEnvironmentVariable("LAB_TEACHER_PASS") ?? "").Trim();
+            if (loginUser.Length == 0 || loginPass.Length == 0)
+            {
+                string raw = ReadSecretFile(Path.Combine(appDataDir, "lab_login.txt"));
+                string[] lines = raw.Replace("\r", "").Split('\n');
+                if (lines.Length >= 2)
+                {
+                    loginUser = lines[0].Trim();
+                    loginPass = lines[1].Trim();
+                }
+            }
+        }
+
+        private static string JsonEscape(string v)
+        {
+            if (v == null) return "";
+            StringBuilder sb = new StringBuilder();
+            foreach (char c in v)
+            {
+                if (c == '"') sb.Append("\\\"");
+                else if (c == '\\') sb.Append("\\\\");
+                else if (c < ' ') sb.Append("\\u" + ((int)c).ToString("x4"));
+                else sb.Append(c);
+            }
+            return sb.ToString();
+        }
+
         private void EnsureAuthToken(bool forceRefresh)
         {
             if (!forceRefresh && !string.IsNullOrEmpty(cachedAuthToken)) return;
+            if (loginUser.Length == 0 || loginPass.Length == 0)
+            {
+                try
+                {
+                    if (trayIcon != null)
+                        trayIcon.ShowBalloonTip(5000, "Piri Reis Lab Yonetimi",
+                            "Giris bilgisi bulunamadi. " + Path.Combine(appDataDir, "lab_login.txt") + " dosyasina kullanici adi ve sifre yazin.",
+                            ToolTipIcon.Warning);
+                }
+                catch { }
+                return;
+            }
             try
             {
                 string loginUrl = (currentServerUrl.Contains("localhost") || currentServerUrl.Contains(":4000"))
@@ -383,8 +443,8 @@ namespace PiriReisLabMaster
                 lReq.Method = "POST";
                 lReq.ContentType = "application/json; charset=utf-8";
                 lReq.Timeout = 5000;
-                lReq.Headers.Add("X-Master-App-Key", DESKTOP_MASTER_KEY);
-                byte[] payload = Encoding.UTF8.GetBytes("{\"username\":\"pirireis\",\"password\":\"20262027\"}");
+                if (desktopMasterKey.Length > 0) lReq.Headers.Add("X-Master-App-Key", desktopMasterKey);
+                byte[] payload = Encoding.UTF8.GetBytes("{\"username\":\"" + JsonEscape(loginUser) + "\",\"password\":\"" + JsonEscape(loginPass) + "\"}");
                 lReq.ContentLength = payload.Length;
                 using (Stream s = lReq.GetRequestStream()) s.Write(payload, 0, payload.Length);
                 using (HttpWebResponse resp = (HttpWebResponse)lReq.GetResponse())
@@ -422,10 +482,10 @@ namespace PiriReisLabMaster
                         req.Method = "POST";
                         req.ContentType = "application/json; charset=utf-8";
                         req.Timeout = 7000;
-                        req.Headers.Add("X-Master-App-Key", DESKTOP_MASTER_KEY);
+                        if (desktopMasterKey.Length > 0) req.Headers.Add("X-Master-App-Key", desktopMasterKey);
 
-                        string tokenToSend = !string.IsNullOrEmpty(cachedAuthToken) ? cachedAuthToken : DESKTOP_MASTER_KEY;
-                        req.Headers.Add("Authorization", "Bearer " + tokenToSend);
+                        string tokenToSend = !string.IsNullOrEmpty(cachedAuthToken) ? cachedAuthToken : desktopMasterKey;
+                        if (!string.IsNullOrEmpty(tokenToSend)) req.Headers.Add("Authorization", "Bearer " + tokenToSend);
 
                         byte[] data = Encoding.UTF8.GetBytes(jsonPayload);
                         req.ContentLength = data.Length;
