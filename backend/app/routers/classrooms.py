@@ -8,7 +8,8 @@ import pypdf
 from app.database import get_db
 from app.models import User, Classroom, ClassroomStudent, Assignment, Submission
 from app.schemas import ClassroomCreate, ClassroomOut, CreateStudentRequest, UserOut, ResetStudentPasswordRequest
-from app.auth import get_current_user, require_teacher, hash_password, verify_password
+from app.auth import get_current_user, require_teacher, hash_password, verify_password, is_admin
+from app.upload_utils import read_upload_limited
 
 router = APIRouter(prefix="/api/classrooms", tags=["classrooms"])
 
@@ -291,6 +292,15 @@ def get_classroom_students(
     if not classroom:
         raise HTTPException(status_code=404, detail="Sınıf bulunamadı.")
 
+    # GÜVENLİK: Öğrenci yalnızca kendi kayıtlı olduğu sınıfın listesini görebilir.
+    if current_user.role != "teacher":
+        enrolled = db.query(ClassroomStudent).filter(
+            ClassroomStudent.classroom_id == classroom_id,
+            ClassroomStudent.student_id == current_user.id
+        ).first()
+        if not enrolled:
+            raise HTTPException(status_code=403, detail="Bu sınıfın listesini görme yetkiniz yok.")
+
     students = (
         db.query(User)
         .join(ClassroomStudent, User.id == ClassroomStudent.student_id)
@@ -299,8 +309,11 @@ def get_classroom_students(
         .all()
     )
 
-    is_teacher = current_user.role == "teacher"
-    if not is_teacher:
+    # Öğrenci şifrelerini yalnızca sınıfın sorumlu öğretmeni ve yönetici görebilir.
+    can_see_passwords = current_user.role == "teacher" and (
+        is_admin(current_user) or classroom.teacher_id == current_user.id
+    )
+    if not can_see_passwords:
         return [
             UserOut(
                 id=s.id,
@@ -399,8 +412,10 @@ async def upload_students_pdf(
         raise HTTPException(status_code=400, detail="Lütfen geçerli bir .pdf dosyası yükleyiniz.")
 
     try:
-        content = await file.read()
+        content = await read_upload_limited(file, max_bytes=20 * 1024 * 1024)
         parsed_students = parse_students_from_pdf(content)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"PDF dosyası okunurken hata oluştu: {str(e)}")
 
@@ -472,7 +487,7 @@ async def upload_students_pdf(
                 "full_name": user.full_name,
                 "student_number": user.student_number,
                 "username": user.username,
-                "password": "1234",
+                "password": user.plain_password or "(öğrenci kendi şifresini belirlemiş)",
                 "status": "Eklendi"
             })
         else:
@@ -482,7 +497,7 @@ async def upload_students_pdf(
                 "full_name": user.full_name,
                 "student_number": user.student_number,
                 "username": user.username,
-                "password": "1234",
+                "password": user.plain_password or "(öğrenci kendi şifresini belirlemiş)",
                 "status": "Zaten Kayıtlı"
             })
 

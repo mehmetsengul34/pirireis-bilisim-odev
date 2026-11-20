@@ -13,7 +13,7 @@ try:
     from app.database import SessionLocal
     from app.models import User
 except Exception as e:
-    SECRET_KEY = os.getenv("SECRET_KEY", "piri-reis-mtal-bilisim-guvenli-anahtar-2026")
+    SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_urlsafe(48)
     ALGORITHM = "HS256"
     verify_password = None
     hash_password = None
@@ -26,13 +26,26 @@ INSTALLERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", 
 os.makedirs(INSTALLERS_DIR, exist_ok=True)
 
 
-DESKTOP_MASTER_KEY = os.getenv("LAB_DESKTOP_MASTER_KEY", "pirireis-lab-master-secret-2026-auth-token")
+# GÜVENLİK: Masaüstü uygulama anahtarı yalnızca ortam değişkeninden okunur.
+# Tanımlı değilse (veya çok kısaysa) anahtarla giriş tamamen devre dışıdır.
+# Eski sabit anahtar GitHub'da herkese açık olduğu için artık KABUL EDİLMEZ.
+_LEAKED_MASTER_KEYS = {"pirireis-lab-master-secret-2026-auth-token"}
+DESKTOP_MASTER_KEY = (os.getenv("LAB_DESKTOP_MASTER_KEY") or "").strip()
+if len(DESKTOP_MASTER_KEY) < 24 or DESKTOP_MASTER_KEY in _LEAKED_MASTER_KEYS:
+    if DESKTOP_MASTER_KEY:
+        print("[GÜVENLİK UYARISI] LAB_DESKTOP_MASTER_KEY çok kısa veya sızdırılmış bir değer; devre dışı bırakıldı.")
+    DESKTOP_MASTER_KEY = ""
+
+
+def _is_master_key(value: Optional[str]) -> bool:
+    if not DESKTOP_MASTER_KEY or not value:
+        return False
+    return secrets.compare_digest(value.encode("utf-8"), DESKTOP_MASTER_KEY.encode("utf-8"))
 
 
 def verify_teacher_token(authorization: Optional[str] = None, request: Optional[Request] = None) -> bool:
     if request:
-        master_key = request.headers.get("X-Master-App-Key")
-        if master_key and secrets.compare_digest(master_key, DESKTOP_MASTER_KEY):
+        if _is_master_key(request.headers.get("X-Master-App-Key")):
             return True
 
     if not authorization and request:
@@ -44,7 +57,7 @@ def verify_teacher_token(authorization: Optional[str] = None, request: Optional[
     if len(parts) != 2 or parts[0].lower() != "bearer":
         return False
     token = parts[1]
-    if secrets.compare_digest(token, DESKTOP_MASTER_KEY):
+    if _is_master_key(token):
         return True
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -105,9 +118,13 @@ class TeacherLoginPayload(BaseModel):
 
 
 @router.post("/login")
-def lab_teacher_login(payload: TeacherLoginPayload):
+def lab_teacher_login(payload: TeacherLoginPayload, request: Request):
     username = (payload.username or "").strip().lower()
     password = (payload.password or "").strip()
+    forwarded = request.headers.get("x-forwarded-for", "")
+    client_ip = forwarded.split(",")[0].strip() if forwarded else (request.client.host if request.client else "?")
+    rate_key = f"lab|{client_ip}|{username}"
+    check_password_rate_limit(rate_key, max_attempts=10)
 
     if not username or not password:
         raise HTTPException(
@@ -150,6 +167,7 @@ def lab_teacher_login(payload: TeacherLoginPayload):
             user_id = "master"
 
     if not authenticated:
+        record_password_failure(rate_key)
         time.sleep(0.3)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -244,7 +262,9 @@ def lab_change_password(payload: ChangePasswordPayload, request: Request):
                 user = None
                 if user_id.isdigit():
                     user = db.query(User).filter(User.id == int(user_id)).first()
-                if not user:
+                # GÜVENLİK: Başka bir öğretmenin oturumu ile yönetici şifresi değiştirilemez.
+                # Yalnızca ortam değişkeni tabanlı "master" oturumu pirireis hesabına eşlenir.
+                if not user and user_id == "master":
                     user = db.query(User).filter(User.username == "pirireis").first()
 
                 if user and user.role in ("teacher", "admin"):
@@ -262,12 +282,12 @@ def lab_change_password(payload: ChangePasswordPayload, request: Request):
             print(f"[labizleme change-password db error]: {db_err}")
 
     # Fallback to runtime / master pass check
-    if not password_verified:
-        master_pass = os.getenv("LAB_TEACHER_PASS", "20262027")
+    if not password_verified and user_id == "master":
+        master_pass = os.getenv("LAB_TEACHER_PASS") or ""
         if RUNTIME_MASTER_PASS_HASH and verify_password:
             if verify_password(current_pass, RUNTIME_MASTER_PASS_HASH):
                 password_verified = True
-        elif secrets.compare_digest(current_pass, master_pass):
+        elif master_pass and secrets.compare_digest(current_pass.encode("utf-8"), master_pass.encode("utf-8")):
             password_verified = True
 
         if password_verified:
@@ -743,8 +763,13 @@ def post_teacher_action(payload: ActionPayload, request: Request):
 
 
 @router.post("/arp")
-def sync_local_arp(payload: ArpSyncPayload):
+def sync_local_arp(payload: ArpSyncPayload, request: Request):
     global arp_devices_cache, arp_last_updated
+    if not verify_teacher_token(request.headers.get("Authorization"), request=request):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Bu işlem için öğretmen yetkisi gereklidir."
+        )
     arp_devices_cache = payload.devices or []
     arp_last_updated = time.time() * 1000.0
     return {"ok": True, "count": len(arp_devices_cache)}

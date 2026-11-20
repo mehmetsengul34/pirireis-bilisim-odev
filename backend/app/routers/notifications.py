@@ -105,7 +105,10 @@ def mark_as_read(
 ):
     """Bildirimi okundu olarak işaretler."""
     notification = db.query(Notification).filter(Notification.id == notification_id).first()
-    if not notification:
+    # GÜVENLİK: Başka bir kullanıcıya özel gönderilmiş bildirim değiştirilemez.
+    if not notification or (
+        notification.receiver_id is not None and notification.receiver_id != current_user.id
+    ):
         raise HTTPException(status_code=404, detail="Bildirim bulunamadı.")
 
     notification.is_read = True
