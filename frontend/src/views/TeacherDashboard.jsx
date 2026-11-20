@@ -323,7 +323,7 @@ export default function TeacherDashboard({ user }) {
 
   // Copy credentials of a single student
   const handleCopyStudentCreds = (st) => {
-    const pwd = st.plain_password || '1234';
+    const pwd = st.plain_password || '(öğrenci kendi şifresini belirlemiş)';
     const text = `Torbalı Piri Reis MTAL Bilişim Portalı\nÖğrenci: ${st.full_name}\nKullanıcı Adı: ${st.username}\nŞifre: ${pwd}`;
     navigator.clipboard.writeText(text);
     setCopiedStudentId(st.id);
@@ -334,7 +334,7 @@ export default function TeacherDashboard({ user }) {
   const handleCopyAllClassStudents = () => {
     if (!classStudents || classStudents.length === 0) return;
     const text = classStudents.map(s => 
-      `No: ${s.student_number || '-'} | Ad Soyad: ${s.full_name} | Kullanıcı Adı: ${s.username} | Şifre: ${s.plain_password || '1234'}`
+      `No: ${s.student_number || '-'} | Ad Soyad: ${s.full_name} | Kullanıcı Adı: ${s.username} | Şifre: ${s.plain_password || '(öğrenci kendi şifresini belirlemiş)'}`
     ).join('\n');
     navigator.clipboard.writeText(text);
     setCopiedAllClass(true);
@@ -915,7 +915,7 @@ export default function TeacherDashboard({ user }) {
                 <input
                   type="text"
                   required
-                  placeholder="Örn: 20262027"
+                  placeholder="En az 6 karakter"
                   value={teacherPassword}
                   onChange={(e) => setTeacherPassword(e.target.value)}
                   className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-zinc-900 dark:focus:border-zinc-400"
