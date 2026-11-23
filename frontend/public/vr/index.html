@@ -1,104 +1,197 @@
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>İzmir Torbalı BİLSEM - VR Duyu & Dil Atölyesi (Meta Quest 3)</title>
-  <script type="module" crossorigin src="/vr/assets/index-BXmjIAdT.js"></script>
-  <link rel="stylesheet" crossorigin href="/vr/assets/index-BuLgXoWb.css">
-  <!-- Mobil/tablet uyum kuralları (paket CSS'ine dokunmadan, üzerine yazar) -->
+  <meta name="description" content="Meta Quest 3, bilgisayar ve tablet için 3D İngilizce kelime atölyesi. Bak, dinle, doğru kartı seç." />
+  <!--
+    İzmir Torbalı BİLSEM — VR Dil Atölyesi (yeniden yazıldı, okunur kaynak)
+    Dosyalar:  words.js (kelime verisi) · game.js (oyun mantığı) · bu dosya (sahne + arayüz)
+    A-Frame WebXR ile Quest 3'te VR, bilgisayar ve tablette normal 3D olarak çalışır.
+    Sesler /vr/audio/ içindeki mevcut mp3'lerden gelir; eksikse tarayıcı seslendirmesine düşer.
+  -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
   <style>
-    /* Telefon ve küçük tabletlerde HUD öğeleri çakışmasın, dokunma hedefleri yeterli kalsın */
-    @media (max-width: 680px) {
-      .hud-top, .hud-bottom { flex-wrap: wrap; gap: 8px; padding: 8px; }
-      .quest-badge { padding: 6px 12px; gap: 8px; }
-      .quest-title { font-size: 12px; }
-      /* Ortadaki başlık mutlak konumdan çıkıp kendi satırına insin, çakışma biter */
-      .center-canopy {
-        position: static; transform: none; order: 3; width: 100%;
-        padding: 6px 16px 8px; border-radius: 16px; text-align: center;
-      }
-      .center-canopy-title { font-size: 13px; white-space: normal; }
-      .hud-btn { width: 42px; height: 42px; font-size: 18px; }
-      .guide-trigger { font-size: 12.5px; padding: 7px 14px; }
-    }
-    @media (max-width: 400px) {
-      .center-canopy-title { font-size: 12px; }
-      .guide-trigger span { font-size: 11.5px; }
-      .hud-btn { width: 40px; height: 40px; }
-    }
-    /* Rehber penceresi küçük ekranda taşmasın */
-    @media (max-width: 680px) {
-      #quest-modal { width: 92vw !important; max-width: 92vw !important; max-height: 86vh !important; overflow-y: auto; }
+    :root { --sky:#38bdf8; --ink:#0f172a; --gold:#ffcc48; }
+    * { box-sizing:border-box; }
+    html,body { margin:0; height:100%; font-family:'Trebuchet MS','Segoe UI',sans-serif; background:#0b1026; overflow:hidden; }
+    button { font-family:inherit; }
+
+    /* ---- Ortak katman ---- */
+    .overlay { position:fixed; inset:0; z-index:20; display:grid; place-items:center;
+               background:radial-gradient(circle at 50% 30%,#1e2a52,#0b1026); padding:18px; }
+    .panel { background:rgba(15,23,42,.82); border:1.5px solid rgba(56,189,248,.5); border-radius:24px;
+             padding:22px; max-width:720px; width:100%; color:#eaf2ff; backdrop-filter:blur(8px); text-align:center; }
+    .panel h1 { margin:0 0 6px; font-size:24px; }
+    .panel p { opacity:.8; margin:4px 0 16px; }
+    .big-btn { cursor:pointer; background:var(--gold); color:var(--ink); border:0; border-radius:16px;
+               padding:14px 30px; font-size:18px; font-weight:800; box-shadow:0 8px 30px rgba(255,204,72,.4); }
+
+    /* ---- Kategori menüsü ---- */
+    #cat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-top:8px; }
+    .cat-card { cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:6px;
+                background:linear-gradient(180deg,#273469,#1a2550); border:1.5px solid rgba(56,189,248,.4);
+                border-radius:18px; padding:16px 10px; color:#fff; transition:transform .1s, border-color .2s; }
+    .cat-card:hover { transform:translateY(-3px); border-color:var(--gold); }
+    .cat-card:active { transform:scale(.96); }
+    .cat-emoji { font-size:40px; } .cat-name { font-weight:700; font-size:14px; }
+    .cat-prog { font-size:12px; color:var(--sky); font-weight:700; }
+
+    /* ---- Oyun HUD'u ---- */
+    #game-hud { position:fixed; inset:0; z-index:15; display:none; flex-direction:column; justify-content:space-between; pointer-events:none; }
+    .hud-top { display:flex; align-items:flex-start; gap:10px; padding:12px; flex-wrap:wrap; }
+    .prompt-box { pointer-events:auto; background:rgba(15,23,42,.8); border:1.5px solid rgba(56,189,248,.6);
+                  border-radius:18px; padding:8px 18px; display:flex; align-items:center; gap:12px; }
+    .prompt-box .tr { font-size:24px; font-weight:900; color:#fff; }
+    .prompt-box .sub { font-size:12px; color:var(--sky); }
+    .prog-wrap { pointer-events:auto; flex:1; min-width:140px; background:rgba(15,23,42,.8); border-radius:18px;
+                 border:1.5px solid rgba(56,189,248,.4); padding:8px 14px; display:flex; align-items:center; gap:10px; }
+    .prog-track { flex:1; height:10px; background:#0b1026; border-radius:999px; overflow:hidden; }
+    #prog-fill { height:100%; width:0; background:linear-gradient(90deg,#38bdf8,#22c55e); transition:width .4s; }
+    #prog-label { font-size:12px; font-weight:700; color:#eaf2ff; }
+    .hud-actions { display:flex; gap:8px; }
+    .hud-btn { pointer-events:auto; cursor:pointer; width:46px; height:46px; border-radius:50%;
+               background:rgba(15,23,42,.8); border:1.5px solid rgba(56,189,248,.6); color:var(--sky);
+               font-size:20px; display:grid; place-items:center; }
+    .hud-btn:active { transform:scale(.9); }
+
+    /* ---- Alt cevap çubuğu (tablet/telefon/masaüstü) ---- */
+    #answer-bar { pointer-events:auto; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+                  padding:12px; max-width:900px; margin:0 auto; }
+    .ans { cursor:pointer; user-select:none; touch-action:manipulation; min-width:110px; padding:10px 8px;
+           border-radius:18px; border:2px solid rgba(255,255,255,.18); background:linear-gradient(180deg,#273469,#141d3e);
+           color:#fff; display:flex; flex-direction:column; align-items:center; gap:4px; transition:transform .07s, box-shadow .15s, border-color .15s; }
+    .ans:active { transform:scale(.95); }
+    .ans-emoji { font-size:40px; } .ans-word { font-weight:700; font-size:14px; }
+    .ans.ok { border-color:#22c55e; box-shadow:0 0 18px #22c55e; }
+    .ans.no { border-color:#ef4444; box-shadow:0 0 18px #ef4444; }
+
+    #toast { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:25;
+             background:rgba(15,23,42,.92); color:#fff; padding:12px 22px; border-radius:16px; font-weight:800;
+             font-size:18px; border:1.5px solid var(--gold); opacity:0; transition:opacity .2s; pointer-events:none; }
+    #toast.show { opacity:1; }
+
+    #guide .card2, #complete .panel { text-align:left; }
+    #guide li { margin:7px 0; font-size:14px; line-height:1.5; }
+    #guide code { background:rgba(255,255,255,.12); padding:1px 6px; border-radius:6px; }
+    .row { display:flex; gap:10px; justify-content:center; margin-top:14px; flex-wrap:wrap; }
+    .ghost { cursor:pointer; background:transparent; color:#eaf2ff; border:1.5px solid rgba(56,189,248,.6);
+             border-radius:14px; padding:12px 20px; font-weight:700; }
+
+    @media (max-width:560px){
+      .prompt-box .tr { font-size:20px; } .ans { min-width:86px; } .ans-emoji{font-size:34px;}
+      .hud-btn{width:42px;height:42px;font-size:18px;} .cat-emoji{font-size:34px;}
     }
   </style>
 </head>
-
 <body>
-  <!-- Futuristic VR Visor HUD Overlay -->
-  <div id="hud-visor">
-    <div class="visor-border"></div>
+  <!-- Başlangıç perdesi (ilk dokunuş sesi açar) -->
+  <div id="start" class="overlay"><div class="panel">
+    <h1>🥽 İzmir Torbalı BİLSEM — VR Dil Atölyesi</h1>
+    <p>Türkçesi gösterilir, İngilizcesi söylenir; sen doğru kartı seç.</p>
+    <button id="start-btn" class="big-btn">Başla</button>
+  </div></div>
 
-    <!-- Top HUD Header -->
+  <!-- Kategori menüsü -->
+  <div id="menu" class="overlay" style="display:none"><div class="panel">
+    <h1>Bir Kelime Grubu Seç</h1>
+    <p>İstediğin kategoriden başla; ilerlemen kaydedilir.</p>
+    <div id="cat-grid"></div>
+    <div class="row"><button id="btn-guide" class="ghost">🥽 Meta Quest 3 Rehberi</button></div>
+  </div></div>
+
+  <!-- Oyun HUD'u -->
+  <div id="game-hud">
     <div class="hud-top">
-      <!-- Language Quest Progress Capsule -->
-      <div class="quest-badge">
-        <div class="quest-bar-container">
-          <div class="quest-bar-fill" id="quest-progress-fill"></div>
-        </div>
-        <span class="quest-title" id="quest-status-text">Language Quest</span>
+      <div class="prompt-box">
+        <div><div class="tr" id="prompt-tr">—</div><div class="sub" id="prompt-sub"></div></div>
       </div>
-
-      <!-- Center Curved Canopy: Torbalı Bilim ve Sanat Merkezi -->
-      <div class="center-canopy">
-        <span class="center-canopy-title">Torbalı Bilim ve Sanat Merkezi</span>
+      <div class="prog-wrap">
+        <div class="prog-track"><div id="prog-fill"></div></div>
+        <span id="prog-label">0/0</span>
       </div>
-
-      <!-- Top Right Action Controls -->
       <div class="hud-actions">
-        <button class="hud-btn" id="btn-sound-top" title="Ses Aç/Kapat">🔊</button>
-        <button class="hud-btn" id="btn-home-top" title="Ana Menü / Kategoriler">🏠</button>
+        <button class="hud-btn" id="btn-replay" title="Tekrar dinle">🔁</button>
+        <button class="hud-btn" id="btn-sound" title="Ses">🔊</button>
+        <button class="hud-btn" id="btn-home" title="Kategoriler">🏠</button>
       </div>
     </div>
-
-    <!-- Bottom HUD Footer -->
-    <div class="hud-bottom">
-      <!-- Bottom Left: Quest Connection Guide Trigger -->
-      <button class="guide-trigger" id="btn-open-guide">
-        <span>🥽 Meta Quest 3 Rehberi</span>
-      </button>
-
-      <!-- Bottom Right: Secondary Action Buttons -->
-      <div class="hud-bottom-actions">
-        <button class="hud-btn" id="btn-sound-bottom" title="Ses Aç/Kapat">🔊</button>
-        <button class="hud-btn" id="btn-home-bottom" title="Ana Menü / Kategoriler">🏠</button>
-      </div>
-    </div>
+    <div id="answer-bar"></div>
   </div>
 
-  <!-- Meta Quest 3 Connection Instructions Modal -->
-  <div id="quest-modal">
-    <div class="modal-header">
-      <div class="modal-title">
-        <span>🥽</span> Meta Quest 3 ile Bağlantı
-      </div>
-      <button class="modal-close" id="btn-close-guide">&times;</button>
-    </div>
-    <div class="modal-body">
-      <ol>
-        <li>Meta Quest 3 başlığınızdan <strong>Meta Quest Browser</strong> tarayıcısını açın.</li>
-        <li>Adres çubuğuna canlı web adresini yazın: <code>https://ogretmenlerodasi.info/vr</code></li>
-        <li>Doğrudan güvenli SSL bağlantısı ile açılır (aynı Wi-Fi veya APK kurulumu gerekmez).</li>
-        <li>Aşağıdaki parlayan <strong>ENTER VR</strong> butonuna dokunarak İzmir Torbalı BİLSEM sanal evrenine geçin!</li>
-      </ol>
-    </div>
-    <div class="modal-footer">
-      🎮 <strong>Kontroller:</strong> Quest 3 kontrolcüsünün Trigger veya Grip tuşu ile kartları tutup Cevap Yuvasına bırakabilirsiniz. PC'de fare ile tıklayıp sürükleyebilirsiniz.
-    </div>
-  </div>
+  <div id="toast"></div>
 
-  <!-- Main Application Script -->
+  <!-- Rehber -->
+  <div id="guide" class="overlay" style="display:none"><div class="panel card2">
+    <h1>🥽 Nasıl Oynanır?</h1>
+    <ol>
+      <li><strong>Meta Quest 3:</strong> Başlıktan <strong>Meta Quest Browser</strong>'ı açıp <code>https://ogretmenlerodasi.info/vr</code> adresine girin, sağ alttaki <strong>VR</strong> düğmesine dokunun. Karta <strong>bakarak</strong> ya da kumanda ışınıyla seçin.</li>
+      <li><strong>Bilgisayar:</strong> Fareyle doğru karta tıklayın.</li>
+      <li><strong>Tablet/Telefon:</strong> Alttaki butonlardan doğru olana dokunun.</li>
+      <li>🔁 ile İngilizce okunuşu tekrar dinleyebilirsiniz.</li>
+    </ol>
+    <div class="row"><button id="guide-close" class="big-btn">Anladım</button></div>
+  </div></div>
+
+  <!-- Tamamlama ekranı -->
+  <div id="complete" class="overlay" style="display:none"><div class="panel">
+    <h1>🏆 Tebrikler!</h1>
+    <p id="complete-text"></p>
+    <div class="row">
+      <button id="complete-again" class="ghost">Baştan Oyna</button>
+      <button id="complete-menu" class="big-btn">Kategoriler</button>
+    </div>
+  </div></div>
+
+  <!-- ===================== 3D SAHNE ===================== -->
+  <a-scene id="scene" background="color:#0b1026" renderer="colorManagement:true; antialias:true"
+           webxr="optionalFeatures: hand-tracking" vr-mode-ui="enterVRButton: #placeholder-vr">
+    <a-sky color="#0b1026"></a-sky>
+    <a-circle position="0 0 -2" rotation="-90 0 0" radius="6" color="#141d3e"></a-circle>
+    <a-entity light="type:ambient; intensity:1.0; color:#cfe3ff"></a-entity>
+    <a-entity light="type:directional; intensity:0.5" position="1 3 2"></a-entity>
+
+    <a-text value="TORBALI BİLSEM" color="#38bdf8" align="center" width="5" position="0 3 -2.6"></a-text>
+
+    <!-- Yönerge afişi -->
+    <a-entity id="banner" quiz-banner position="0 2.25 -2.4"></a-entity>
+
+    <!-- 4 kart -->
+    <a-entity id="card-0" quiz-card position="-1.3 1.45 -2.2"></a-entity>
+    <a-entity id="card-1" quiz-card position="-0.45 1.45 -2.2"></a-entity>
+    <a-entity id="card-2" quiz-card position="0.45 1.45 -2.2"></a-entity>
+    <a-entity id="card-3" quiz-card position="1.3 1.45 -2.2"></a-entity>
+
+    <!-- Oyuncu -->
+    <a-entity id="rig" position="0 0 0">
+      <a-entity camera look-controls="pointerLockEnabled:false" wasd-controls="enabled:false" position="0 1.6 0">
+        <!-- Bakarak seçim (yalnızca VR'da fuse açılır) -->
+        <a-entity id="gaze" cursor="fuse:false; fuseTimeout:900"
+                  position="0 0 -1.4" geometry="primitive:ring; radiusInner:0.012; radiusOuter:0.02"
+                  material="color:#ffcc48; shader:flat" raycaster="objects:.card; far:6"></a-entity>
+      </a-entity>
+      <!-- Fare (masaüstü) ve dokunuş -->
+      <a-entity id="mouse" cursor="rayOrigin:mouse" raycaster="objects:.card; far:12"></a-entity>
+      <!-- Kumandalar (Quest) -->
+      <a-entity laser-controls="hand:left"  raycaster="objects:.card; far:6" line="color:#ff5a6a"></a-entity>
+      <a-entity laser-controls="hand:right" raycaster="objects:.card; far:6" line="color:#4aa8ff"></a-entity>
+    </a-entity>
+  </a-scene>
+
+  <!-- Bakarak seçimi yalnızca VR'da aç (masaüstünde istenmeyen otomatik seçim olmasın) -->
+  <script>
+    (function () {
+      var scene = document.getElementById('scene');
+      var gaze = document.getElementById('gaze');
+      if (scene && gaze) {
+        scene.addEventListener('enter-vr', function () { gaze.setAttribute('cursor', 'fuse', true); });
+        scene.addEventListener('exit-vr',  function () { gaze.setAttribute('cursor', 'fuse', false); });
+      }
+    })();
+  </script>
+
+  <script src="words.js"></script>
+  <script src="game.js"></script>
 </body>
-
 </html>
