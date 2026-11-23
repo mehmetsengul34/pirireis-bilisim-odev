@@ -214,6 +214,7 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
   const [generating, setGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState('');
   const [generatedQuestions, setGeneratedQuestions] = useState([]);
+  const [generationReport, setGenerationReport] = useState(null);
   const [editingIndex, setEditingIndex] = useState(null);
   const [savingExam, setSavingExam] = useState(false);
 
@@ -293,7 +294,7 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
 
     try {
       setTimeout(() => {
-        setGenerationStatus('Matematik formülleri ve Türkçe karakter güvenlik filtreleri uygulanıyor...');
+        setGenerationStatus('Sorular küçük partiler halinde yazılıyor ve her biri bağımsız olarak çözülüp doğrulanıyor. Bu işlem birkaç dakika sürebilir...');
       }, 1500);
 
       const resp = await examService.generateQuestions({
@@ -326,9 +327,10 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
       }
 
       if (normalized.length < requestedCount) {
-        alert(`Bilgilendirme: Seçtiğiniz konuda tekrar eden veya birbirine çok yakın soruların yer almaması için ${normalized.length} adet tamamen özgün soru üretildi.`);
+        alert(`Bilgilendirme: İstenen ${requestedCount} sorudan ${normalized.length} tanesi kalite ve tekrar denetiminden geçti.`);
       }
 
+      setGenerationReport(resp.generation_report || null);
       setGeneratedQuestions(normalized);
       setStep(2);
     } catch (err) {
@@ -689,8 +691,16 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                     {title} ({examType} • {subject})
                   </h3>
                   <p className="text-xs text-indigo-700 dark:text-indigo-400 mt-0.5">
-                    Yapay zeka {generatedQuestions.length} adet yeni nesil soru üretti. Soruları aşağıda inceleyebilir, formül ve metinlerini düzenleyebilir, onayladıktan sonra yayınlayabilirsiniz.
+                    {generationReport
+                      ? `${generatedQuestions.length} soru hazır: ${generationReport.verified_count ?? 0} tanesi Gemini ile üretilip bağımsız çözümle doğrulandı${(generationReport.gemini_count ?? 0) - (generationReport.verified_count ?? 0) > 0 ? `, ${(generationReport.gemini_count ?? 0) - (generationReport.verified_count ?? 0)} tanesi doğrulanamadı` : ''}${generationReport.template_count ? `, ${generationReport.template_count} tanesi şablondan` : ''}.`
+                      : `${generatedQuestions.length} soru hazır.`}
+                    {' '}Soruları inceleyip düzenleyebilir, onayladıktan sonra yayınlayabilirsiniz.
                   </p>
+                  {generationReport && (generationReport.rejected_local > 0 || generationReport.rejected_verification > 0) && (
+                    <p className="text-[11px] text-indigo-600/80 dark:text-indigo-400/80 mt-0.5">
+                      Elenen sorular: {generationReport.rejected_local} yapı denetiminde, {generationReport.rejected_verification} cevap doğrulamasında.
+                    </p>
+                  )}
                 </div>
 
                 <button
@@ -702,6 +712,14 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                   Ayarlara Dön
                 </button>
               </div>
+
+              {generationReport?.warning && (
+                <div className="p-4 rounded-2xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 text-xs leading-relaxed">
+                  <strong className="block mb-1">⚠️ Bazı sorular yeni nesil değil</strong>
+                  {generationReport.warning}
+                  <span className="block mt-1">"Şablon" etiketli soruları silebilir, düzenleyebilir veya ayarlara dönüp tekrar üretebilirsiniz.</span>
+                </div>
+              )}
 
               {/* Soru Kartları */}
               <div className="space-y-4">
@@ -722,6 +740,30 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                           <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
                             {q.topic} {q.subtopic ? `• ${q.subtopic}` : ''}
                           </span>
+                          {q.source === 'sablon' && (
+                            <span
+                              title="Hazır kalıptan rastgele sayılarla üretildi; yeni nesil değildir."
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700"
+                            >
+                              Şablon
+                            </span>
+                          )}
+                          {q.source === 'gemini' && q.verified && (
+                            <span
+                              title="Gemini ile üretildi; cevap anahtarı görülmeden ayrıca çözülüp doğrulandı."
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700"
+                            >
+                              Doğrulandı
+                            </span>
+                          )}
+                          {q.source === 'gemini' && !q.verified && (
+                            <span
+                              title="Gemini ile üretildi ancak doğrulama adımı tamamlanamadı; cevabı kontrol edin."
+                              className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-600"
+                            >
+                              Doğrulanmadı
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-1.5">

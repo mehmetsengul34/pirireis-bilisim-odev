@@ -245,6 +245,37 @@ function renderPlainTextWithMathSymbols(rawStr) {
 }
 
 /**
+ * Markdown tablo yardımcıları: "| a | b |" satırlarını hücrelere ayırır.
+ * $...$ içindeki | karakterleri (ör. mutlak değer) hücre ayırıcı sayılmaz.
+ */
+function isTableRow(line) {
+  const t = (line || '').trim();
+  return t.startsWith('|') && t.endsWith('|') && t.length > 2;
+}
+
+function isTableSeparator(line) {
+  return /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(line || '');
+}
+
+function splitTableRow(line) {
+  const t = line.trim().replace(/^\|/, '').replace(/\|$/, '');
+  const cells = [];
+  let current = '';
+  let inMath = false;
+  for (const ch of t) {
+    if (ch === '$') inMath = !inMath;
+    if (ch === '|' && !inMath) {
+      cells.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  cells.push(current.trim());
+  return cells;
+}
+
+/**
  * MathRenderer:
  * Matematik formüllerini ($...$ ve $$...$$), üs (kare, küp), derece işaretlerini
  * ve Türkçe karakterleri kusursuz ve estetik olarak render eder.
@@ -261,7 +292,7 @@ export default function MathRenderer({ text, content, value, children, className
     // Metni satırlara ayır
     const lines = normalized.split('\n');
 
-    return lines.map((line, lineIdx) => {
+    const renderLine = (line, lineIdx) => {
       // Satır içi parçalama: Önce $$...$$ (display math), sonra $...$ (inline math), sonra **...** (bold)
       const tokenRegex = /(\$\$[\s\S]*?\$\$|\$[^\$]+?\$|\*\*[^*]+?\*\*|<u>[\s\S]*?<\/u>|<ins>[\s\S]*?<\/ins>)/g;
       const tokens = [];
@@ -382,7 +413,53 @@ export default function MathRenderer({ text, content, value, children, className
           })}
         </span>
       );
-    });
+    };
+
+    // Markdown tabloları (| a | b |) gruplanarak gerçek tabloya çevrilir; diğer satırlar aynen işlenir.
+    const output = [];
+    let i = 0;
+    while (i < lines.length) {
+      if (isTableRow(lines[i]) && i + 1 < lines.length && isTableSeparator(lines[i + 1])) {
+        const header = splitTableRow(lines[i]);
+        const rows = [];
+        let j = i + 2;
+        while (j < lines.length && isTableRow(lines[j])) {
+          rows.push(splitTableRow(lines[j]));
+          j++;
+        }
+        output.push(
+          <div key={`tbl-${i}`} className="my-3 overflow-x-auto">
+            <table className="min-w-full text-sm border-collapse border border-zinc-300 dark:border-zinc-600 print:!border-black">
+              <thead className="bg-zinc-100 dark:bg-zinc-800 print:!bg-white">
+                <tr>
+                  {header.map((cell, cIdx) => (
+                    <th key={cIdx} className="border border-zinc-300 dark:border-zinc-600 px-2 py-1 font-semibold text-left print:!border-black">
+                      {renderLine(cell, `h-${i}-${cIdx}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, rIdx) => (
+                  <tr key={rIdx}>
+                    {header.map((_, cIdx) => (
+                      <td key={cIdx} className="border border-zinc-300 dark:border-zinc-600 px-2 py-1 align-top print:!border-black">
+                        {renderLine(row[cIdx] ?? '', `c-${i}-${rIdx}-${cIdx}`)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+        i = j;
+      } else {
+        output.push(renderLine(lines[i], i));
+        i++;
+      }
+    }
+    return output;
   }, [rawText]);
 
   return <div className={`math-content select-text print:!text-black ${className}`}>{renderedContent}</div>;

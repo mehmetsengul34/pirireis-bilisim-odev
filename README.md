@@ -41,6 +41,14 @@ Gizli bilgiler (veritabanı adresi, API anahtarları, şifreler) **koda veya Git
 | `LAB_TEACHER_PASS` | İlk kurulumda oluşturulan `pirireis` yönetici hesabının şifresi |
 | `LAB_DESKTOP_MASTER_KEY` | Masaüstü Lab uygulaması anahtarı (isteğe bağlı) |
 | `CORS_ORIGINS` | İzin verilen web adresleri (virgülle ayrılmış) |
+| `GEMINI_MODELS` | (İsteğe bağlı) Soru üretiminde sırayla denenecek modeller, virgülle ayrılmış. Varsayılan: `gemini-3.8-flash,gemini-3.6-flash,gemini-3-flash-preview,gemini-flash-latest` |
+| `GEMINI_VERIFY_MODELS` | (İsteğe bağlı) Soruları bağımsız çözerek doğrulayan modeller. Varsayılan: `GEMINI_MODELS` |
+| `GEMINI_BATCH_SIZE` | (İsteğe bağlı) Tek çağrıda istenen soru sayısı. Varsayılan: 4 |
+| `GEMINI_MAX_CONCURRENCY` | (İsteğe bağlı) Aynı anda çalışan çağrı sayısı. Ücretsiz Gemini kotasında hata alırsanız 1-2'ye düşürün. Varsayılan: 3 |
+| `GEMINI_TIMEOUT_SECONDS` | (İsteğe bağlı) Tek çağrı süre sınırı. Varsayılan: 120 |
+| `GEMINI_VERIFY` | (İsteğe bağlı) `0` verilirse doğrulama adımı atlanır. Varsayılan: açık |
+
+**Yeni nesil soru üretimi nasıl çalışır?** Sorular 4'lük partiler halinde Gemini'den istenir; istemde yerleşik örnek yeni nesil sorular ve öğretmenin aynı ders için yüklediği PDF'lerden ayrıştırılan soru blokları örnek olarak verilir. Her soru bağlam + veri (tablo / öncüller / şekil) + kök yapısında üretilir, yapı denetiminden geçer ve ayrı bir çağrıda cevap anahtarı görülmeden çözülür; cevabı tutmayan sorular elenir. Gemini yetişemezse eksikler şablon sorularla tamamlanır, bu sorular arayüzde **Şablon** etiketiyle ve uyarıyla gösterilir. Ajanların bankaya eklediği sorularda şablon doldurma yapılmaz. Testler: `cd backend && python -m pytest tests -q`.
 
 - **Yönetici hesabı:** `pirireis` — şifre `LAB_TEACHER_PASS` ile belirlenir. Tanımlı değilse ilk açılışta rastgele bir şifre üretilip sunucu loguna yazılır.
 - **Öğrenciler:** Öğretmen panelinden veya e-Okul PDF'i ile eklenir; ilk girişten sonra öğrencilerin şifrelerini değiştirmesi önerilir.
