@@ -13,8 +13,12 @@
 
   // ---------- Ses dosyalarının taban yolu (taşınabilir) ----------
   // /vr/ içinde de, başka bir yolda da doğru çalışsın diye konumdan türetilir.
-  const DIR = location.pathname.replace(/[^/]*$/, ""); // sonda "/" ile biter
-  const AUDIO_BASE = DIR + "audio/";
+  // Taban yol, bu script'in (game.js) kendi adresinden türetilir; böylece sayfa
+  // "/vr" (sonda eğik çizgi olmadan) açılsa bile doğru çalışır.
+  const SELF = document.currentScript ||
+    Array.prototype.slice.call(document.scripts).find(function (x) { return /\/game\.js(\?|$)/.test(x.src); });
+  const BASE = SELF ? SELF.src.replace(/[^/]*$/, "") : "/vr/";
+  const AUDIO_BASE = BASE + "audio/";
 
   // ---------- İlerleme kaydı ----------
   const STORE_KEY = "vr_lang_progress_v1";
