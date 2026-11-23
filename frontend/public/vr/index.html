@@ -7,6 +7,32 @@
   <title>İzmir Torbalı BİLSEM - VR Duyu & Dil Atölyesi (Meta Quest 3)</title>
   <script type="module" crossorigin src="/vr/assets/index-BXmjIAdT.js"></script>
   <link rel="stylesheet" crossorigin href="/vr/assets/index-BuLgXoWb.css">
+  <!-- Mobil/tablet uyum kuralları (paket CSS'ine dokunmadan, üzerine yazar) -->
+  <style>
+    /* Telefon ve küçük tabletlerde HUD öğeleri çakışmasın, dokunma hedefleri yeterli kalsın */
+    @media (max-width: 680px) {
+      .hud-top, .hud-bottom { flex-wrap: wrap; gap: 8px; padding: 8px; }
+      .quest-badge { padding: 6px 12px; gap: 8px; }
+      .quest-title { font-size: 12px; }
+      /* Ortadaki başlık mutlak konumdan çıkıp kendi satırına insin, çakışma biter */
+      .center-canopy {
+        position: static; transform: none; order: 3; width: 100%;
+        padding: 6px 16px 8px; border-radius: 16px; text-align: center;
+      }
+      .center-canopy-title { font-size: 13px; white-space: normal; }
+      .hud-btn { width: 42px; height: 42px; font-size: 18px; }
+      .guide-trigger { font-size: 12.5px; padding: 7px 14px; }
+    }
+    @media (max-width: 400px) {
+      .center-canopy-title { font-size: 12px; }
+      .guide-trigger span { font-size: 11.5px; }
+      .hud-btn { width: 40px; height: 40px; }
+    }
+    /* Rehber penceresi küçük ekranda taşmasın */
+    @media (max-width: 680px) {
+      #quest-modal { width: 92vw !important; max-width: 92vw !important; max-height: 86vh !important; overflow-y: auto; }
+    }
+  </style>
 </head>
 
 <body>
