@@ -14,7 +14,7 @@ import json
 import random
 import math
 import httpx
-from typing import List, Dict, Any, Optional, Set
+from typing import List, Dict, Any, Optional, Set, Tuple
 
 # ================= GÜNCEL MEB & ÖSYM YKS MÜFREDAT KATALOĞU =================
 
@@ -2604,164 +2604,44 @@ async def generate_questions_with_gemini(
     include_diagrams: bool = True,
     custom_prompt: Optional[str] = None,
     api_key: Optional[str] = None,
-    training_guidelines: Optional[str] = None
-) -> List[Dict[str, Any]]:
+    training_guidelines: Optional[str] = None,
+    teacher_examples: Optional[List[str]] = None,
+    avoid_texts: Optional[List[str]] = None,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
-    Google Gemini API ile MEB müfredatı ve ÖSYM geçmiş sınav kalıplarına tam uyumlu,
-    %100 özgün yeni nesil YKS soruları üretir.
+    Gemini ile yeni nesil soru üretir (bkz. new_gen_engine). Sorular küçük partiler halinde
+    üretilir, yapısal denetimden ve bağımsız çözüm doğrulamasından geçer.
+    (sorular, rapor) döndürür.
     """
+    from app.services.new_gen_engine import generate_new_gen_questions
+
     key = api_key or os.getenv("GEMINI_API_KEY")
     if not key:
-        print("[AI Exam Service] GEMINI_API_KEY bulunamadı. Prosedürel motora yönlendiriliyor.")
-        return []
+        return [], {"requested": question_count, "error": "GEMINI_API_KEY tanımlı değil", "log": []}
 
-    unique_session_seed = f"{time.time()}_{uuid.uuid4().hex[:8]}"
-
-    is_lgs = (str(exam_type).upper() == "LGS")
-    opt_count_str = "4 seçenekli (A, B, C, D)" if is_lgs else "5 seçenekli (A, B, C, D, E)"
-    comm_title = "Millî Eğitim Bakanlığı (MEB) 8. Sınıf LGS Soru Hazırlama Komisyonu" if is_lgs else f"ÖSYM ve MEB YKS ({exam_type}) Soru Hazırlama Komisyonu"
-
-    system_instruction = f"""Sen Türkiye'nin en seçkin {comm_title} Başkanısın.
-Sınav Türü: {exam_type}
-Ders: {subject}
-Konu: {topic}
-Zorluk Seviyesi: {difficulty}
-İstenen Soru Sayısı: {question_count} ({opt_count_str})
-Oturum Benzersizlik Kodu: {unique_session_seed}
-
-PEDAGOJİK VE MÜFREDAT ESASLARI (ÖSYM & MEB STANDARTLARI):
-1. MEB güncel müfredat kazanımlarına ve ÖSYM geçmiş YKS (TYT/AYT) soru üslubuna KESİNLİKLE SADIK KAL.
-2. Basit ezberden kaçın; soru kökleri gerçek yaşam senaryosu, bilimsel deney/düzenek, veri/tablo yorumlama, harita/grafik muhakemesi ve adım adım çıkarım gerektirsin.
-3. Din Kültürü ve Ahlak Bilgisi için: Ayet, hadis ve paragraf metinlerinden yola çıkan, kavramsal derinliği olan (İhsan, İhlas, Tevekkül, Adalet, Bilgi Kaynakları vb.) ÖSYM kalıbında sorular üret. Asla tekdüze 1-2 soru kalıbına sıkışma.
-4. Felsefe, Tarih ve Coğrafya için: Paragraf analizi, kavram eşleştirme, harita/iklim ve neden-sonuç örgülü yeni nesil sorular kurgula.
-5. Matematik ve Fen (Fizik, Kimya, Biyoloji) için: Formül ezberletmek yerine formülü problem bağlamında uygulatan yeni nesil akıl yürütme soruları üret.
-
-GÖRSEL VE VEKTÖREL ŞEKİL DESTEĞİ:
-- Geometri (üçgen, çember, analitik), Fizik (devre, kuvvet, prizma/optik), Kimya (kap, periyodik sistem), Biyoloji (soyağacı, besin piramidi) ve Coğrafya (izohips, iklim grafiği) gibi derslerde soru bir görsel gerektiriyorsa:
-- SÖZEL DERSLERDE (Türkçe, Edebiyat, Tarih, Coğrafya, Felsefe, Din Kültürü, İnkılap) 'visual_svg' KESİNLİKLE null olmalıdır! Sayısal/şekilli görsel eklenemez.
-- 'visual_svg' alanına temiz, inline, viewBox'lı modern bir SVG stringi ekle (örneğin: <svg viewBox="0 0 380 200" ...>...</svg>).
-- Eğer uygun SVG üretemiyorsan 'visual_svg': null bırak; sistem otomatik vektörel diyagram bağlayacaktır.
-
-MATEMATİK VE KATEX STANDARDI:
-- Matematik, fen ve derece sembolleri her zaman standart LaTeX $ ... $ içine alınmalıdır.
-- Derece için DAİMA $30^\\circ$, $45^\\circ$, $60^\\circ$ yaz.
-- Şıklarda tek bir sayı veya formül olsa bile MUTLAKA $ ... $ içine al (örn. $36\\pi$, $x^2 + 1$).
-- Türkçe karakterleri temiz UTF-8 olarak doğrudan yaz (ç, ğ, ı, İ, ö, ş, ü).
-
-TÜRKÇE VE PARAGRAF KESİN KURALLARI (MEB/ÖSYM FORMATI):
-1. ALTI ÇİZİLİ SÖZCÜK KURALI:
-   - Eğer soru kökünde veya şıklarda 'altı çizili sözcük', 'altı çizili ifade', 'altı çizili söz öbeği' ifadesi geçiyorsa, paragraftaki veya şıktaki ilgili hedef sözcüklerin altı KESİNLİKLE <u>...</u> HTML etiketi içine alınmalıdır!
-   - Örnek: "Yazar bu yapıtında <u>hayatın nabzını tutmayı</u> başarmıştır." veya A şıkkı: "Olaylara her zaman <u>ön yargılı</u> yaklaşıyordu."
-   - 'Altı çizili' deyip sözcüğün altını çizmemek (<u> etiketi koymamak) KESİNLİKLE YASAKTIR!
-
-2. EN KAPSAMLI YARGI / ANA DÜŞÜNCE ŞIK KURALI:
-   - Paragraftan çıkarılabilecek 'en kapsamlı yargı', 'ana düşünce', 'ana fikir' veya 'asıl anlatılmak istenen' sorularında; şıklardan birine 'Bu yargıya metinden ulaşılamaz', 'Metinden böyle bir sonuca varılamaz', 'Metinden çıkarılamaz' gibi geçersiz, saçma ve hatalı şıklar YAZMAK KESİNLİKLE YASAKTIR!
-   - Tüm 5 şık da (A, B, C, D, E) metnin konusuna dair alternatif birer fikir veya iddia cümlesi olmalıdır."""
-
-    if training_guidelines:
-        system_instruction += f"""
-
-ÖĞRETMENİN YÜKLEDİĞİ ÖRNEK VE TAM SINAV PDF'LERİNDEN ÇIKARILAN SORU TARZI REHBERİ:
-{training_guidelines}
-ÖNEMLİ: Bu dökümanlar tamamen stil, soru derinliği ve dil eğitimi içindir. Soruları ASLA birebir kopyalama; bu soru köklerini ve zorluk düzeyini rehber alarak YEPYENİ ve ÖZGÜN sorular türet!"""
-
-    opt_rule = "LGS soruları KESİNLİKLE 4 şıklıdır (A, B, C, D). 'option_e' alanı null olmalı, doğru cevap yalnızca A, B, C veya D olmalıdır." if is_lgs else "TYT/AYT soruları 5 dengeli şıktan oluşur (option_a, option_b, option_c, option_d, option_e)."
-    opt_e_sample = "null" if is_lgs else '"E şıkkı"'
-
-    system_instruction += f"""
-
-KATI KURALLAR:
-1. Üreteceğin {question_count} sorunun TAMAMI birbirinden KESİNLİKLE FARKLI ve ÖZGÜN olmalıdır.
-2. {opt_rule}
-3. Her soru için resmî MEB kazanım kodu ('learning_outcome_code'), bilişsel beceri ('cognitive_domain': 'Hatırlama', 'Kavrama', 'Uygulama', 'Analiz / Muhakeme') ve her seçeneğin temsil ettiği öğrenci yanılgısını içeren çeldirici analizini ('distractor_analysis') üret.
-4. Çıktı SADECE ve SADECE geçerli bir JSON dizisi olmalıdır.
-
-Örnek JSON Formatı:
-[
-  {{
-    "question_number": 1,
-    "question_text": "Özgün soru metni...",
-    "option_a": "A şıkkı",
-    "option_b": "B şıkkı",
-    "option_c": "C şıkkı",
-    "option_d": "D şıkkı",
-    "option_e": {opt_e_sample},
-    "correct_answer": "C",
-    "explanation": "Adım adım gerekçeli pedagojik çözüm...",
-    "learning_outcome_code": "Kazanım Kodu",
-    "cognitive_domain": "Analiz / Muhakeme",
-    "distractor_analysis": "{{\"A\": \"Öncül hatası\", \"B\": \"İşlem yanılgısı\", \"C\": \"Doğru çözüm\", \"D\": \"Ters bağıntı\"}}",
-    "topic": "{topic}",
-    "subtopic": "Alt Konu",
-    "visual_svg": null
-  }}
-]"""
-
-    user_msg = (
-        f"{exam_type} - {subject} dersi, '{topic}' konusu için {difficulty} zorluk seviyesinde {question_count} adet "
-        f"tamamen birbirinden farklı, özgün MEB/ÖSYM tarzı yeni nesil soru üret."
+    verbal = is_verbal_branch(subject, topic)
+    questions, report = await generate_new_gen_questions(
+        exam_type=exam_type,
+        subject=subject,
+        topic=topic,
+        difficulty=difficulty,
+        question_count=question_count,
+        api_key=key,
+        verbal=verbal,
+        custom_prompt=custom_prompt,
+        training_guidelines=training_guidelines,
+        teacher_examples=teacher_examples,
+        avoid_texts=avoid_texts,
     )
-    if custom_prompt:
-        user_msg += f" Öğretmenin özel notu: {custom_prompt}"
-
-    candidate_models = [
-        "gemini-3-flash-preview",
-        "gemini-flash-lite-latest",
-        "gemini-3.1-flash-lite-preview",
-        "gemini-flash-latest"
-    ]
-
-    payload = {
-        "contents": [{"parts": [{"text": f"{system_instruction}\n\nTalep: {user_msg}"}]}],
-        "safetySettings": [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_CIVIC_INTEGRITY", "threshold": "BLOCK_NONE"},
-        ],
-        "generationConfig": {
-            "temperature": 0.85,
-            "topP": 0.95,
-            "responseMimeType": "application/json"
-        }
-    }
-
-    async with httpx.AsyncClient(timeout=35.0) as client:
-        for model_name in candidate_models:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-            try:
-                print(f"[AI Exam Service] Gemini API çağrılıyor... Model: {model_name}, Soru Sayısı: {question_count}")
-                res = await client.post(url, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
-                        raw_text = candidates[0]["content"]["parts"][0]["text"].strip()
-                        if raw_text.startswith("```"):
-                            raw_text = re.sub(r"^```(?:json)?", "", raw_text)
-                            raw_text = re.sub(r"```$", "", raw_text).strip()
-                        parsed = json.loads(raw_text)
-                        if isinstance(parsed, dict) and "questions" in parsed:
-                            parsed = parsed["questions"]
-                        if isinstance(parsed, list) and len(parsed) > 0:
-                            for q in parsed:
-                                q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""), is_option=False)
-                                q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""), is_option=False)
-                                for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
-                                    if opt_k in q:
-                                        q[opt_k] = sanitize_math_and_turkish(q[opt_k], is_option=True)
-                            if is_verbal_branch(subject, topic):
-                                for q in parsed:
-                                    q["visual_svg"] = None
-                            print(f"[AI Exam Service] {model_name} ile {len(parsed)} adet özgün soru başarıyla üretildi.")
-                            return parsed
-                else:
-                    print(f"[AI Exam Service] {model_name} yanıt kodu: {res.status_code}, alternatif model deneniyor...")
-            except Exception as e:
-                print(f"[AI Exam Service] {model_name} çağrısında hata: {e}")
-
-    return []
+    for q in questions:
+        q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""), is_option=False)
+        q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""), is_option=False)
+        for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
+            if q.get(opt_k):
+                q[opt_k] = sanitize_math_and_turkish(q[opt_k], is_option=True)
+        if verbal or not include_diagrams:
+            q["visual_svg"] = None
+    return questions, report
 
 # ================= KATI BENZERSİZLİK VE DENETİM SİSTEMİ =================
 
@@ -2874,7 +2754,8 @@ def enforce_strict_uniqueness(
     subject: str,
     topic: str,
     excluded_fingerprints: Optional[Set[str]] = None,
-    excluded_texts: Optional[List[str]] = None
+    excluded_texts: Optional[List[str]] = None,
+    allow_template_fill: bool = True
 ) -> List[Dict[str, Any]]:
     """Sıfır Tekrar Güvencesi: Hem parti içinde hem de sınıfa daha önce sorulmuş geçmiş sorulara karşı katı benzersizlik uygular."""
     unique_questions = []
@@ -2918,7 +2799,7 @@ def enforce_strict_uniqueness(
     max_attempts = target_count * 40
     attempts = 0
 
-    while len(unique_questions) < target_count and attempts < max_attempts:
+    while allow_template_fill and len(unique_questions) < target_count and attempts < max_attempts:
         attempts += 1
         gen_func = combined_pool[func_index % len(combined_pool)]
         func_index += 1
@@ -2928,6 +2809,10 @@ def enforce_strict_uniqueness(
             q_text = new_q.get("question_text", "").strip()
 
             if not is_candidate_duplicate(q_text):
+                # Şablon (kalıp) sorusu: sabit cümle + rastgele sayı. Yeni nesil DEĞİLDİR, açıkça etiketlenir.
+                new_q["source"] = "sablon"
+                new_q["verified"] = False
+                new_q["quality_review"] = "Şablon (kalıp) sorusu: yapay zekâ ile üretilmedi, yeni nesil değildir."
                 unique_questions.append(new_q)
                 seen_fps.add(compute_question_fingerprint(q_text))
         except Exception as e:
@@ -2948,7 +2833,8 @@ def enforce_strict_uniqueness(
         if not q.get("learning_outcome_code"):
             q["learning_outcome_code"] = generate_learning_outcome_code(exam_type, subject, q.get("topic") or topic)
         if not q.get("cognitive_domain"):
-            q["cognitive_domain"] = random.choice(["Uygulama", "Analiz / Muhakeme", "Üst Düzey Akıl Yürütme", "Kavrama"])
+            # Şablon sorulara rastgele "üst düzey" etiketi verilmez
+            q["cognitive_domain"] = "Uygulama" if q.get("source") == "sablon" else "Analiz / Muhakeme"
         if is_lgs:
             q["option_e"] = None
             if q["correct_option"] == "E":
@@ -2968,6 +2854,98 @@ def enforce_strict_uniqueness(
 
     return unique_questions[:target_count]
 
+async def generate_questions_smart_with_report(
+    exam_type: str,
+    subject: str,
+    topic: str,
+    difficulty: str,
+    question_count: int,
+    include_diagrams: bool = True,
+    custom_prompt: Optional[str] = None,
+    api_key: Optional[str] = None,
+    training_guidelines: Optional[str] = None,
+    excluded_fingerprints: Optional[Set[str]] = None,
+    excluded_texts: Optional[List[str]] = None,
+    teacher_examples: Optional[List[str]] = None,
+    allow_template_fill: bool = True
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """
+    Önce Gemini ile yeni nesil soru üretir. Eksik kalırsa ve allow_template_fill=True ise
+    şablon sorularla tamamlar; şablon sorular 'source': 'sablon' ile işaretlenir.
+    (sorular, rapor) döndürür. Rapor öğretmene gösterilmek üzere özet içerir.
+    """
+    effective_key = api_key or os.getenv("GEMINI_API_KEY")
+    candidates: List[Dict[str, Any]] = []
+    gemini_report: Dict[str, Any] = {}
+
+    if effective_key:
+        try:
+            candidates, gemini_report = await generate_questions_with_gemini(
+                exam_type=exam_type,
+                subject=subject,
+                topic=topic,
+                difficulty=difficulty,
+                question_count=question_count,
+                include_diagrams=include_diagrams,
+                custom_prompt=custom_prompt,
+                api_key=effective_key,
+                training_guidelines=training_guidelines,
+                teacher_examples=teacher_examples,
+                avoid_texts=excluded_texts,
+            )
+        except Exception as e:
+            print(f"[AI Exam Service] Gemini hatası: {e}")
+            gemini_report = {"error": f"Gemini hatası: {e}"}
+    else:
+        gemini_report = {"error": "Gemini API anahtarı yok (ne istekte ne de sunucuda GEMINI_API_KEY tanımlı)."}
+
+    questions = enforce_strict_uniqueness(
+        initial_questions=candidates,
+        target_count=question_count,
+        exam_type=exam_type,
+        subject=subject,
+        topic=topic,
+        excluded_fingerprints=excluded_fingerprints,
+        excluded_texts=excluded_texts,
+        allow_template_fill=allow_template_fill
+    )
+
+    for q in questions:
+        q.setdefault("source", "gemini")
+
+    gemini_count = sum(1 for q in questions if q.get("source") == "gemini")
+    template_count = sum(1 for q in questions if q.get("source") == "sablon")
+    verified_count = sum(1 for q in questions if q.get("source") == "gemini" and q.get("verified"))
+
+    warning = None
+    if template_count:
+        reason = gemini_report.get("error")
+        if not reason:
+            log_tail = "; ".join((gemini_report.get("log") or [])[-3:])
+            reason = (
+                f"Gemini {gemini_count} uygun soru üretebildi"
+                + (f" (son kayıtlar: {log_tail})" if log_tail else "")
+            )
+        warning = (
+            f"{template_count} soru şablondan (hazır kalıptan) üretildi ve yeni nesil değildir. "
+            f"Neden: {reason}"
+        )
+
+    report = {
+        "requested": question_count,
+        "returned": len(questions),
+        "gemini_count": gemini_count,
+        "verified_count": verified_count,
+        "template_count": template_count,
+        "rejected_local": gemini_report.get("rejected_local", 0),
+        "rejected_verification": gemini_report.get("rejected_verification", 0),
+        "rejection_reasons": gemini_report.get("rejection_reasons", [])[:8],
+        "models_used": gemini_report.get("models_used", []),
+        "warning": warning,
+    }
+    return questions, report
+
+
 async def generate_questions_smart(
     exam_type: str,
     subject: str,
@@ -2979,35 +2957,22 @@ async def generate_questions_smart(
     api_key: Optional[str] = None,
     training_guidelines: Optional[str] = None,
     excluded_fingerprints: Optional[Set[str]] = None,
-    excluded_texts: Optional[List[str]] = None
+    excluded_texts: Optional[List[str]] = None,
+    allow_template_fill: bool = True
 ) -> List[Dict[str, Any]]:
-    effective_key = api_key or os.getenv("GEMINI_API_KEY")
-    candidates = []
-
-    if effective_key:
-        try:
-            candidates = await generate_questions_with_gemini(
-                exam_type=exam_type,
-                subject=subject,
-                topic=topic,
-                difficulty=difficulty,
-                question_count=question_count,
-                include_diagrams=include_diagrams,
-                custom_prompt=custom_prompt,
-                api_key=effective_key,
-                training_guidelines=training_guidelines
-            )
-        except Exception as e:
-            print(f"[AI Exam Service] Gemini API hatası: {str(e)}. Prosedürel dinamik motora geçiliyor...")
-
-    guaranteed_unique_questions = enforce_strict_uniqueness(
-        initial_questions=candidates,
-        target_count=question_count,
+    """Geriye dönük uyumluluk: yalnızca soru listesini döndürür."""
+    questions, _report = await generate_questions_smart_with_report(
         exam_type=exam_type,
         subject=subject,
         topic=topic,
+        difficulty=difficulty,
+        question_count=question_count,
+        include_diagrams=include_diagrams,
+        custom_prompt=custom_prompt,
+        api_key=api_key,
+        training_guidelines=training_guidelines,
         excluded_fingerprints=excluded_fingerprints,
-        excluded_texts=excluded_texts
+        excluded_texts=excluded_texts,
+        allow_template_fill=allow_template_fill
     )
-
-    return guaranteed_unique_questions
+    return questions

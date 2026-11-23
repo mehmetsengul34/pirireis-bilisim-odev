@@ -183,6 +183,7 @@ class GenerateQuestionsRequest(BaseModel):
     gemini_api_key: Optional[str] = None
     classroom_id: Optional[int] = None # Sıfır tekrar garantisi için sınıfın geçmiş sorularını tarar
     enforce_zero_duplicate: bool = True
+    allow_template_fill: bool = True # Gemini yetmezse şablon sorularla tamamla (şablon sorular etiketlenir)
 
 class ExamCreateRequest(BaseModel):
     classroom_id: Optional[int] = None

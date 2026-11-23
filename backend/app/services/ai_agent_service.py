@@ -437,7 +437,8 @@ class NightlyPoolSynthesizer:
                     topic=topic,
                     difficulty="ÖSYM / Yeni Nesil",
                     question_count=gen_count,
-                    training_guidelines=learned_guidelines
+                    training_guidelines=learned_guidelines,
+                    allow_template_fill=False  # Bankaya şablon soru doldurma; yalnızca Gemini soruları
                 )
 
                 for q in raw_questions:
@@ -894,7 +895,8 @@ class HighVolumeDailySynthesizerAgent:
                             difficulty="ÖSYM / Yeni Nesil",
                             question_count=batch_alloc,
                             custom_prompt=maarif_prompt,
-                            excluded_fingerprints=existing_fps
+                            excluded_fingerprints=existing_fps,
+                            allow_template_fill=False  # Bankaya şablon soru doldurma; yalnızca Gemini soruları
                         )
 
                         for q in raw_questions:

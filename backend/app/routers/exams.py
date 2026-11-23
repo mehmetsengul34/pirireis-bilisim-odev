@@ -25,10 +25,11 @@ from app.schemas import (
 )
 from app.auth import get_current_user, require_teacher
 from app.services.ai_exam_service import (
-    YKS_CURRICULUM, generate_questions_smart, sanitize_math_and_turkish,
+    YKS_CURRICULUM, generate_questions_smart, generate_questions_smart_with_report, sanitize_math_and_turkish,
     is_verbal_branch, compute_question_fingerprint,
     get_grade_level_for_exam, generate_learning_outcome_code, generate_distractor_analysis
 )
+from app.services.new_gen_engine import extract_question_blocks
 from app.services.ai_agent_service import (
     AutonomousCoordinator, JudgeAgent, NightlyPoolSynthesizer,
     DistractorAuditAgent, ContinuousLearningAgent
@@ -168,6 +169,7 @@ async def generate_questions_endpoint(
     try:
         # Öğretmenin yüklediği eğitim PDF'lerinden çıkarılmış üslup ve soru kalıplarını çek
         training_guidelines = None
+        teacher_examples = []
         try:
             training_docs = db.query(AIQuestionTrainingDoc).filter(
                 AIQuestionTrainingDoc.is_active == True,
@@ -198,15 +200,15 @@ async def generate_questions_endpoint(
                         except Exception:
                             pass
                     
-                    # Eğer tam sınav ise veya branş uyuşuyorsa metinden ilgili örnek pasaj ekle
-                    try:
-                        d_text = doc.extracted_text or ""
-                        # İlgili derse ait başlık veya soru bloğu bulmaya çalış
-                        m_sec = re.search(rf"(?:{req.subject}[^\n]*\n)([\s\S]{{100,1000}})", d_text, re.IGNORECASE)
-                        if m_sec:
-                            style_notes.append(f"  [Örnek {req.subject} Soru Bloğu]:\n{m_sec.group(1).strip()[:600]}")
-                    except Exception:
-                        pass
+                    # PDF metnini soru numaralarına göre ayırıp yeni nesil örnek soru bloklarını topla
+                    # Yalnızca aynı derse ait dokümanlardan örnek al (tam denemelerde başka dersin sorusu karışmasın)
+                    if len(teacher_examples) < 3 and (doc.subject or "").strip().lower() == (req.subject or "").strip().lower():
+                        try:
+                            for block in extract_question_blocks(doc.extracted_text or "", max_blocks=2):
+                                if len(teacher_examples) < 3:
+                                    teacher_examples.append(block)
+                        except Exception:
+                            pass
 
                 if style_notes:
                     training_guidelines = "\n".join(style_notes)
@@ -226,7 +228,7 @@ async def generate_questions_endpoint(
                         excluded_fingerprints.add(compute_question_fingerprint(pq.question_text))
                         excluded_texts.append(pq.question_text)
 
-        questions = await generate_questions_smart(
+        questions, generation_report = await generate_questions_smart_with_report(
             exam_type=req.exam_type,
             subject=req.subject,
             topic=req.topic,
@@ -237,7 +239,9 @@ async def generate_questions_endpoint(
             api_key=req.gemini_api_key,
             training_guidelines=training_guidelines,
             excluded_fingerprints=excluded_fingerprints,
-            excluded_texts=excluded_texts
+            excluded_texts=excluded_texts,
+            teacher_examples=teacher_examples or None,
+            allow_template_fill=req.allow_template_fill
         )
         try:
             save_questions_to_bank(db, questions, req.exam_type, req.subject, req.topic, current_user.id)
@@ -247,7 +251,8 @@ async def generate_questions_endpoint(
             "questions": questions,
             "zero_duplicate_guaranteed": True,
             "excluded_past_count": len(excluded_fingerprints),
-            "maarif_model_compliant": True
+            "teacher_examples_used": len(teacher_examples),
+            "generation_report": generation_report
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Soru üretim hatası: {str(e)}")
