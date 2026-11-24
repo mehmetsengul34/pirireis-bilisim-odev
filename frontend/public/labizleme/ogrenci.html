@@ -372,10 +372,14 @@
         demoOverlay.classList.add('hidden');
       }
 
-      // 4. Open URL Command
-      if (data.openUrlCommand && data.openUrlCommand.id && data.openUrlCommand.id !== lastExecutedUrlId) {
-        lastExecutedUrlId = data.openUrlCommand.id;
-        window.open(data.openUrlCommand.url, '_blank');
+      // 4. Open URL Command (Sonsuz tekrar ve yenileme korumalı)
+      if (data.openUrlCommand && data.openUrlCommand.id) {
+        const urlIdKey = 'lab_executed_url_' + data.openUrlCommand.id;
+        if (data.openUrlCommand.id !== lastExecutedUrlId && !sessionStorage.getItem(urlIdKey)) {
+          lastExecutedUrlId = data.openUrlCommand.id;
+          sessionStorage.setItem(urlIdKey, '1');
+          window.open(data.openUrlCommand.url, '_blank');
+        }
       }
     }
 

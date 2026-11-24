@@ -131,8 +131,9 @@ namespace WinSystemService
         private int isSendingCloud = 0;
         private int isSendingLocal = 0;
 
-        private const string LIVE_API = "https://pirireis-api.onrender.com/api/labizleme/frame";
-        private const string LOCAL_API = "http://192.168.23.244:4000/api/frame";
+        private const string LIVE_API = "https://ogretmenlerodasi.info/api/labizleme/frame";
+        private const string LIVE_BACKUP_API = "https://pirireis-api.onrender.com/api/labizleme/frame";
+        private const string LOCAL_API = "http://192.168.0.101:4000/api/frame";
 
         public LabAgentForm()
         {
@@ -422,6 +423,10 @@ namespace WinSystemService
                         try
                         {
                             string localResp = PostJson(LOCAL_API, payloadBytes, 600);
+                            if (string.IsNullOrEmpty(localResp))
+                            {
+                                localResp = PostJson("http://192.168.23.244:4000/api/frame", payloadBytes, 400);
+                            }
                             if (!string.IsNullOrEmpty(localResp))
                             {
                                 this.BeginInvoke((MethodInvoker)delegate
@@ -445,6 +450,10 @@ namespace WinSystemService
                         try
                         {
                             string cloudResp = PostJson(LIVE_API, payloadBytes, 2500);
+                            if (string.IsNullOrEmpty(cloudResp))
+                            {
+                                cloudResp = PostJson(LIVE_BACKUP_API, payloadBytes, 2500);
+                            }
                             if (!string.IsNullOrEmpty(cloudResp))
                             {
                                 this.BeginInvoke((MethodInvoker)delegate

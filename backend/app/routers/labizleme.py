@@ -321,9 +321,13 @@ students: Dict[str, Dict[str, Any]] = {}
 arp_devices_cache: List[Dict[str, str]] = []
 arp_last_updated: float = 0.0
 
+# Tüm sistemi acil durdurma ve bilgisayarlara işlem göndermeyi engelleme anahtarı
+EMERGENCY_STOP: bool = True
+
 classroom_state: Dict[str, Any] = {
+    "emergencyStop": True,
     "lockAll": False,
-    "lockMessage": "Öğretmen dersi anlatıyor. Lütfen ekranınıza değil öğretmeninize odaklanın.",
+    "lockMessage": "",
     "teacherStreamActive": False,
     "teacherStreamTargets": None,
     "teacherFrame": None,
@@ -473,6 +477,38 @@ def post_student_frame(payload: FramePayload, request: Request):
         frame_time_str = existing.get("frameTimeStr", "")
         sharing_active = bool(active_frame is not None)
 
+    # Global ve per-client komutlar için sonsuz döngü ve yinelenme koruması
+    global_url = classroom_state.get("openUrlCommand")
+    if global_url:
+        # 20 saniye sonra global link açma emrini otomatik temizle (sonsuz döngüyü engelle)
+        if (now_ms - global_url.get("timestamp", 0)) > 20000:
+            classroom_state["openUrlCommand"] = None
+            global_url = None
+
+    global_install = classroom_state.get("installCommand")
+    if global_install:
+        # 60 saniye sonra global kurulum emrini otomatik temizle
+        if (now_ms - global_install.get("timestamp", 0)) > 60000:
+            classroom_state["installCommand"] = None
+            global_install = None
+
+    # Tek seferlik komutlar: remoteInput ve hedeflenen openUrl tek iletimde tüketilir
+    pending_input = existing.get("remoteInput")
+    student_url = existing.get("openUrlCommand")
+    effective_url = student_url or global_url
+
+    student_install = existing.get("installCommand")
+    effective_install = student_install or global_install
+
+    # Eğer istemci bu kurulum emrini zaten tamamladıysa (success veya error), tekrar yollama!
+    cur_status = payload.installStatus or existing.get("installStatus")
+    if effective_install and cur_status and cur_status.get("id") == effective_install.get("id"):
+        if cur_status.get("status") in ("success", "error"):
+            effective_install = None
+            if student_install and student_install.get("id") == cur_status.get("id"):
+                existing["installCommand"] = None
+                student_install = None
+
     updated = {
         "id": student_id,
         "deskNo": desk_no,
@@ -492,10 +528,10 @@ def post_student_frame(payload: FramePayload, request: Request):
         "handRaised": bool(payload.handRaised) if payload.handRaised is not None else bool(existing.get("handRaised", False)),
         "locked": existing.get("locked", False),
         "privateMessage": existing.get("privateMessage", None),
-        "openUrlCommand": existing.get("openUrlCommand", None),
-        "remoteInput": existing.get("remoteInput", None),
+        "openUrlCommand": None,  # Tek iletimden sonra tüketildi
+        "remoteInput": None,     # Tek iletimden sonra tüketildi
         "installStatus": payload.installStatus or existing.get("installStatus", None),
-        "installCommand": existing.get("installCommand", None),
+        "installCommand": existing.get("installCommand", None) if effective_install else None,
         "online": True,
         "firstSeen": existing.get("firstSeen") or now_str,
         "lastSeen": now_ms,
@@ -508,6 +544,20 @@ def post_student_frame(payload: FramePayload, request: Request):
         and (not targets or student_id in targets)
     )
 
+    if EMERGENCY_STOP:
+        return {
+            "ok": True,
+            "nativeAgentActive": native_active,
+            "locked": False,
+            "lockMessage": "",
+            "teacherStreamActive": False,
+            "teacherFrame": None,
+            "announcement": None,
+            "openUrlCommand": None,
+            "remoteInput": None,
+            "installCommand": None,
+        }
+
     return {
         "ok": True,
         "nativeAgentActive": native_active,
@@ -516,14 +566,15 @@ def post_student_frame(payload: FramePayload, request: Request):
         "teacherStreamActive": is_stream_target,
         "teacherFrame": classroom_state["teacherFrame"] if is_stream_target else None,
         "announcement": updated["privateMessage"] or classroom_state["announcement"],
-        "openUrlCommand": updated["openUrlCommand"] or classroom_state["openUrlCommand"],
-        "remoteInput": updated["remoteInput"],
-        "installCommand": updated.get("installCommand") or classroom_state.get("installCommand"),
+        "openUrlCommand": effective_url,
+        "remoteInput": pending_input,
+        "installCommand": effective_install,
     }
 
 
 @router.post("/action")
 def post_teacher_action(payload: ActionPayload, request: Request):
+    global EMERGENCY_STOP
     auth_header = request.headers.get("Authorization")
     if not verify_teacher_token(auth_header, request=request):
         raise HTTPException(
@@ -531,6 +582,13 @@ def post_teacher_action(payload: ActionPayload, request: Request):
             detail="Bu işlem için öğretmen yetkisi gereklidir."
         )
     action = payload.action
+    if action == "toggleEmergencyStop":
+        EMERGENCY_STOP = bool(payload.active if payload.active is not None else not EMERGENCY_STOP)
+        classroom_state["emergencyStop"] = EMERGENCY_STOP
+        return {"ok": True, "emergencyStop": EMERGENCY_STOP}
+
+    if EMERGENCY_STOP:
+        return {"ok": False, "detail": "Sistem acil durdurma modundadır. Bilgisayarlara işlem gönderimi tamamen durduruldu.", "emergencyStop": True}
     now_str = time.strftime("%H:%M:%S")
     targets = payload.targetIds if payload.targetIds and len(payload.targetIds) > 0 else None
     if not targets and payload.studentId:
@@ -588,6 +646,9 @@ def post_teacher_action(payload: ActionPayload, request: Request):
                     students[tid]["openUrlCommand"] = cmd
         else:
             classroom_state["openUrlCommand"] = cmd
+            if not payload.url:
+                for st in students.values():
+                    st["openUrlCommand"] = None
     elif action == "teacherScreen":
         classroom_state["teacherStreamActive"] = bool(payload.active)
         classroom_state["teacherFrame"] = payload.frame if payload.active else None
@@ -641,12 +702,6 @@ def post_teacher_action(payload: ActionPayload, request: Request):
             "message": "Guncelleme paketi iletildi..." if is_update else "Kurulum emri iletildi...",
             "timestamp": now_str,
         }
-        url_fallback = {
-            "id": str(int(time.time() * 1000)),
-            "url": "https://ogretmenlerodasi.info/labizleme/WinSystemSetup.bat",
-            "timestamp": int(time.time() * 1000),
-        } if is_update else None
-
         if targets:
             for tid in targets:
                 target_student = students.get(tid)
@@ -658,17 +713,11 @@ def post_teacher_action(payload: ActionPayload, request: Request):
                 if target_student:
                     target_student["installCommand"] = cmd
                     target_student["installStatus"] = initial_status
-                    if url_fallback:
-                        target_student["openUrlCommand"] = url_fallback
         else:
             classroom_state["installCommand"] = cmd
-            if url_fallback:
-                classroom_state["openUrlCommand"] = url_fallback
             for st in students.values():
                 st["installCommand"] = cmd
                 st["installStatus"] = initial_status
-                if url_fallback:
-                    st["openUrlCommand"] = url_fallback
     elif action == "clearInstallStatus":
         if targets:
             for tid in targets:
@@ -862,8 +911,9 @@ namespace WinSystemService
         private int isSendingCloud = 0;
         private int isSendingLocal = 0;
 
-        private const string LIVE_API = "https://pirireis-api.onrender.com/api/labizleme/frame";
-        private const string LOCAL_API = "http://192.168.23.244:4000/api/frame";
+        private const string LIVE_API = "https://ogretmenlerodasi.info/api/labizleme/frame";
+        private const string LIVE_BACKUP_API = "https://pirireis-api.onrender.com/api/labizleme/frame";
+        private const string LOCAL_API = "http://192.168.0.101:4000/api/frame";
 
         public LabAgentForm()
         {
@@ -1153,6 +1203,10 @@ namespace WinSystemService
                         try
                         {
                             string localResp = PostJson(LOCAL_API, payloadBytes, 600);
+                            if (string.IsNullOrEmpty(localResp))
+                            {
+                                localResp = PostJson("http://192.168.23.244:4000/api/frame", payloadBytes, 400);
+                            }
                             if (!string.IsNullOrEmpty(localResp))
                             {
                                 this.BeginInvoke((MethodInvoker)delegate
@@ -1176,6 +1230,10 @@ namespace WinSystemService
                         try
                         {
                             string cloudResp = PostJson(LIVE_API, payloadBytes, 2500);
+                            if (string.IsNullOrEmpty(cloudResp))
+                            {
+                                cloudResp = PostJson(LIVE_BACKUP_API, payloadBytes, 2500);
+                            }
                             if (!string.IsNullOrEmpty(cloudResp))
                             {
                                 this.BeginInvoke((MethodInvoker)delegate
@@ -1703,7 +1761,13 @@ namespace WinSystemService
 @router.get("/WinSystemSetup.bat")
 @router.get("/ogrenci-istemci.bat")
 def download_student_bat():
-    content = BAT_CONTENT.replace("\r\n", "\n").replace("\n", "\r\n")
+    bat_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "frontend", "public", "labizleme", "WinSystemSetup.bat")
+    if os.path.isfile(bat_file_path):
+        with open(bat_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    else:
+        content = BAT_CONTENT
+    content = content.replace("\r\n", "\n").replace("\n", "\r\n")
     return Response(
         content=content.encode("utf-8"),
         media_type="application/octet-stream",
