@@ -322,12 +322,12 @@ arp_devices_cache: List[Dict[str, str]] = []
 arp_last_updated: float = 0.0
 
 # Tüm sistemi acil durdurma ve bilgisayarlara işlem göndermeyi engelleme anahtarı
-EMERGENCY_STOP: bool = True
+EMERGENCY_STOP: bool = False
 
 classroom_state: Dict[str, Any] = {
-    "emergencyStop": True,
+    "emergencyStop": False,
     "lockAll": False,
-    "lockMessage": "",
+    "lockMessage": "Öğretmen dersi anlatıyor. Lütfen ekranınıza değil öğretmeninize odaklanın.",
     "teacherStreamActive": False,
     "teacherStreamTargets": None,
     "teacherFrame": None,
