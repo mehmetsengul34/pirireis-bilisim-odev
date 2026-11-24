@@ -10,6 +10,7 @@ from app.database import get_db, BASE_DIR
 from app.models import User, Classroom, ClassroomStudent, Assignment, Submission
 from app.schemas import AssignmentOut, SubmissionOut
 from app.auth import get_current_user, require_teacher
+from app.upload_utils import read_upload_limited, safe_extension
 
 router = APIRouter(prefix="/api/assignments", tags=["assignments"])
 
@@ -103,14 +104,14 @@ async def create_assignment(
     teacher: User = Depends(require_teacher),
     db: Session = Depends(get_db)
 ):
-    if teacher.username.lower() == "pirireis":
-        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
-    else:
-        # Teachers can assign homework to classes they manage or existing school classes
-        classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
+    # Öğretmenler yönettikleri sınıflara veya okuldaki mevcut sınıflara ödev verebilir.
+    classroom = db.query(Classroom).filter(Classroom.id == classroom_id).first()
 
     if not classroom:
         raise HTTPException(status_code=404, detail="Sınıf bulunamadı.")
+
+    if not title or not title.strip():
+        raise HTTPException(status_code=400, detail="Ödev başlığı boş olamaz.")
 
     parsed_due_date = None
     if due_date and due_date.strip():
@@ -125,12 +126,12 @@ async def create_assignment(
     rel_path = None
     orig_name = None
     if file and file.filename:
-        orig_name = file.filename
-        ext = os.path.splitext(orig_name)[1]
+        orig_name = os.path.basename(file.filename)[:255]
+        ext = safe_extension(orig_name)
         unique_name = f"{uuid.uuid4().hex}{ext}"
         saved_file_path = os.path.join(UPLOAD_DIR, unique_name)
+        content = await read_upload_limited(file)
         async with aiofiles.open(saved_file_path, "wb") as out_file:
-            content = await file.read()
             await out_file.write(content)
         rel_path = f"/uploads/assignments/{unique_name}"
 

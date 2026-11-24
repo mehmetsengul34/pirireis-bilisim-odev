@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -10,19 +10,35 @@ from app.schemas import (
 )
 from app.auth import (
     verify_password, hash_password, create_access_token,
-    get_current_user, require_admin_teacher
+    get_current_user, require_admin_teacher,
+    check_login_rate_limit, record_login_failure, clear_login_failures
 )
+
+MIN_PASSWORD_LENGTH = 6
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "bilinmiyor"
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/login", response_model=TokenResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.username == request.username.strip().lower()).first()
+def login(request: LoginRequest, http_request: Request, db: Session = Depends(get_db)):
+    username = request.username.strip().lower()
+    rate_key = f"{_client_ip(http_request)}|{username}"
+    check_login_rate_limit(rate_key)
+
+    user = db.query(User).filter(User.username == username).first()
     if not user or not verify_password(request.password, user.password_hash):
+        record_login_failure(rate_key)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Kullanıcı adı veya şifre hatalı!"
         )
+    clear_login_failures(rate_key)
 
     access_token = create_access_token(data={"sub": str(user.id), "role": user.role})
     return {
@@ -47,13 +63,23 @@ def change_password(
             detail="Mevcut şifreniz hatalı!"
         )
 
-    if len(request.new_password.strip()) < 1:
+    new_pwd = request.new_password.strip()
+    if len(new_pwd) < MIN_PASSWORD_LENGTH:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Yeni şifreniz boş olamaz."
+            detail=f"Yeni şifreniz en az {MIN_PASSWORD_LENGTH} karakter olmalıdır."
+        )
+    if new_pwd == request.current_password.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Yeni şifreniz mevcut şifrenizle aynı olamaz."
         )
 
-    current_user.password_hash = hash_password(request.new_password.strip())
+    current_user.password_hash = hash_password(new_pwd)
+    # GÜVENLİK: Kullanıcının kendi belirlediği şifre açık metin olarak saklanmaz.
+    # Öğretmen panelinde "öğrenci özel şifre belirlemiş" olarak görünür;
+    # gerekirse öğretmen şifreyi sıfırlayabilir.
+    current_user.plain_password = None
     db.commit()
     return {"message": "Şifreniz başarıyla değiştirildi."}
 
@@ -76,6 +102,11 @@ def create_teacher(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Tüm alanları doldurmanız gerekmektedir."
+        )
+    if len(request.password.strip()) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Öğretmen şifresi en az {MIN_PASSWORD_LENGTH} karakter olmalıdır."
         )
 
     existing = db.query(User).filter(User.username == username).first()

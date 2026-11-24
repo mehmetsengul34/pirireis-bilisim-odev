@@ -1,5 +1,7 @@
 import os
+import secrets
 import asyncio
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -72,9 +74,18 @@ def ensure_schema_compatibility():
                     if "item_discrimination_d" not in eq_cols:
                         conn.execute(text("ALTER TABLE exam_questions ADD COLUMN item_discrimination_d FLOAT"))
 
+                # users tablosu plain_password kontrolü
+                u_cols_result = conn.execute(text("PRAGMA table_info(users)"))
+                u_cols = [row[1] for row in u_cols_result.fetchall()]
+                if u_cols and "plain_password" not in u_cols:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN plain_password TEXT"))
+
                 conn.commit()
 
             elif engine.dialect.name == "postgresql":
+                # users tablosu
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS plain_password VARCHAR(255)"))
+
                 # question_bank tablosu
                 conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS quality_score INTEGER DEFAULT 92"))
                 conn.execute(text("ALTER TABLE question_bank ADD COLUMN IF NOT EXISTS quality_review TEXT"))
@@ -106,49 +117,20 @@ def ensure_schema_compatibility():
 
 ensure_schema_compatibility()
 
-app = FastAPI(
-    title="Torbalı Piri Reis MTAL - Bilişim Teknolojileri & YKS Test LMS",
-    description="Ödev, YKS Test ve Sınav Yönetim Sistemi API",
-    version="1.1.0"
-)
-
-# CORS Middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Ensure uploads directory exists and mount static files
-UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
-os.makedirs(os.path.join(UPLOADS_DIR, "assignments"), exist_ok=True)
-os.makedirs(os.path.join(UPLOADS_DIR, "submissions"), exist_ok=True)
-os.makedirs(os.path.join(UPLOADS_DIR, "curriculum"), exist_ok=True)
-os.makedirs(os.path.join(UPLOADS_DIR, "modules"), exist_ok=True)
-os.makedirs(os.path.join(UPLOADS_DIR, "presentations"), exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
-
-# Include Routers
-app.include_router(auth.router)
-app.include_router(classrooms.router)
-app.include_router(assignments.router)
-app.include_router(submissions.router)
-app.include_router(exams.router)
-app.include_router(notifications.router)
-app.include_router(system.router)
-app.include_router(bilisim.router)
-app.include_router(labizleme.router)
-
-@app.on_event("startup")
 def startup_seed_data():
     db = SessionLocal()
     try:
         # Check / Create pirireis admin teacher
         pirireis_teacher = db.query(User).filter(User.username == "pirireis").first()
         if not pirireis_teacher:
-            default_seed_pass = os.getenv("LAB_TEACHER_PASS", "20262027")
+            default_seed_pass = (os.getenv("LAB_TEACHER_PASS") or "").strip()
+            if not default_seed_pass:
+                # GÜVENLİK: Sabit/varsayılan şifre yerine rastgele şifre üretilir.
+                default_seed_pass = secrets.token_urlsafe(9)
+                print(
+                    "[KURULUM] 'pirireis' yönetici hesabı oluşturuldu. "
+                    f"Geçici şifre: {default_seed_pass}  (ilk girişte değiştirin)"
+                )
             pirireis_teacher = User(
                 username="pirireis",
                 password_hash=hash_password(default_seed_pass),
@@ -161,7 +143,10 @@ def startup_seed_data():
         else:
             # Preserve existing user password upon restart; only assign if missing
             if not pirireis_teacher.password_hash:
-                pirireis_teacher.password_hash = hash_password(os.getenv("LAB_TEACHER_PASS", "20262027"))
+                reset_pass = (os.getenv("LAB_TEACHER_PASS") or "").strip() or secrets.token_urlsafe(9)
+                pirireis_teacher.password_hash = hash_password(reset_pass)
+                if not os.getenv("LAB_TEACHER_PASS"):
+                    print(f"[KURULUM] 'pirireis' hesabına geçici şifre atandı: {reset_pass}")
             pirireis_teacher.role = "teacher"
             db.commit()
 
@@ -184,6 +169,7 @@ def startup_seed_data():
                 student = User(
                     username="ogrenci",
                     password_hash=hash_password("123"),
+                    plain_password="123",
                     full_name="Ali Yılmaz",
                     student_number="1024",
                     role="student"
@@ -260,12 +246,6 @@ def startup_seed_data():
         except Exception as sync_err:
             print(f"[UYARI] Başlangıç soru bankası eşitleme uyarısı: {sync_err}")
 
-        # Otonom Arka Plan Ajan Döngüsünü Başlat
-        try:
-            asyncio.create_task(autonomous_agent_background_loop())
-        except Exception as loop_err:
-            print(f"[UYARI] Ajan arka plan döngüsü başlatılamadı: {loop_err}")
-
     finally:
         db.close()
 
@@ -288,6 +268,92 @@ async def autonomous_agent_background_loop():
 
         # Her 6 saatte bir (21600 sn) periyodik tekrar
         await asyncio.sleep(21600)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. Başlangıç tohumlama ve veritabanı eşitleme
+    try:
+        startup_seed_data()
+    except Exception as e:
+        print(f"[Startup] Tohumlama uyarısı: {e}")
+
+    # 2. Otonom arka plan ajan döngüsü (Event loop içinde başlatılır)
+    agent_task = None
+    try:
+        agent_task = asyncio.create_task(autonomous_agent_background_loop())
+    except Exception as loop_err:
+        print(f"[UYARI] Ajan arka plan döngüsü başlatılamadı: {loop_err}")
+
+    yield
+
+    # 3. Kapanışta arka plan görevlerini nazikçe sonlandır
+    if agent_task and not agent_task.done():
+        agent_task.cancel()
+        try:
+            await agent_task
+        except asyncio.CancelledError:
+            pass
+
+app = FastAPI(
+    title="Torbalı Piri Reis MTAL - Bilişim Teknolojileri & YKS Test LMS",
+    description="Ödev, YKS Test ve Sınav Yönetim Sistemi API",
+    version="1.1.0",
+    lifespan=lifespan
+)
+
+# CORS Middleware
+# Kimlik doğrulama çerez değil "Authorization: Bearer" başlığı ile yapıldığı için
+# allow_credentials kapalıdır. İzin verilen adresler CORS_ORIGINS ile daraltılabilir
+# (örn: "https://ogretmenlerodasi.online,https://pirireis-bilisim-odev.vercel.app").
+_cors_env = (os.getenv("CORS_ORIGINS") or "*").strip()
+_cors_origins = ["*"] if _cors_env == "*" else [o.strip() for o in _cors_env.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Ensure uploads directory exists and mount static files
+UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
+os.makedirs(os.path.join(UPLOADS_DIR, "assignments"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "submissions"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "curriculum"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "modules"), exist_ok=True)
+os.makedirs(os.path.join(UPLOADS_DIR, "presentations"), exist_ok=True)
+
+class SafeStaticFiles(StaticFiles):
+    """Yüklenen dosyaları güvenli başlıklarla sunar.
+
+    HTML/SVG/JS gibi tarayıcıda çalışabilen dosyalar sayfada açılmak yerine
+    indirilir; böylece öğrencinin yüklediği bir dosya API alan adında
+    komut çalıştıramaz (XSS). Resimler ve PDF'ler normal şekilde görüntülenir.
+    """
+
+    _FORCE_DOWNLOAD = (".html", ".htm", ".xhtml", ".svg", ".js", ".mjs", ".xml", ".php")
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        if path.lower().endswith(self._FORCE_DOWNLOAD):
+            response.headers["Content-Disposition"] = "attachment"
+            response.headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
+        return response
+
+
+app.mount("/uploads", SafeStaticFiles(directory=UPLOADS_DIR), name="uploads")
+
+# Include Routers
+app.include_router(auth.router)
+app.include_router(classrooms.router)
+app.include_router(assignments.router)
+app.include_router(submissions.router)
+app.include_router(exams.router)
+app.include_router(notifications.router)
+app.include_router(system.router)
+app.include_router(bilisim.router)
+app.include_router(labizleme.router)
 
 
 @app.get("/api/health")

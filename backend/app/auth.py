@@ -1,3 +1,8 @@
+import os
+import secrets
+import threading
+import time
+from collections import defaultdict, deque
 from datetime import datetime, timedelta
 from typing import Optional
 import bcrypt
@@ -9,7 +14,16 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
 
-SECRET_KEY = "piri-reis-mtal-bilisim-guvenli-anahtar-2026"
+# GÜVENLİK: JWT imzalama anahtarı yalnızca ortam değişkeninden okunur.
+# Tanımlı değilse her açılışta rastgele bir anahtar üretilir (sunucu yeniden
+# başladığında oturumlar düşer). Kalıcı olması için SECRET_KEY tanımlayın.
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_urlsafe(48)
+    print(
+        "[GÜVENLİK UYARISI] SECRET_KEY ortam değişkeni tanımlı değil. "
+        "Geçici rastgele anahtar kullanılıyor; sunucu yeniden başlayınca tüm oturumlar kapanır."
+    )
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 
@@ -24,6 +38,50 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
     except Exception:
         return False
+
+# ---------------------------------------------------------------------------
+# Basit kaba kuvvet (brute-force) koruması: aynı IP + kullanıcı adı için
+# belirli süre içinde çok fazla hatalı giriş denemesi engellenir.
+# ---------------------------------------------------------------------------
+LOGIN_MAX_ATTEMPTS = int(os.getenv("LOGIN_MAX_ATTEMPTS", "10"))
+LOGIN_WINDOW_SECONDS = int(os.getenv("LOGIN_WINDOW_SECONDS", "600"))
+_login_failures: dict = defaultdict(deque)
+_login_lock = threading.Lock()
+
+
+def _prune(attempts: deque, now: float) -> None:
+    while attempts and now - attempts[0] > LOGIN_WINDOW_SECONDS:
+        attempts.popleft()
+
+
+def check_login_rate_limit(key: str) -> None:
+    now = time.time()
+    with _login_lock:
+        attempts = _login_failures[key]
+        _prune(attempts, now)
+        if len(attempts) >= LOGIN_MAX_ATTEMPTS:
+            wait_min = int((attempts[0] + LOGIN_WINDOW_SECONDS - now) / 60) + 1
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Çok fazla hatalı giriş denemesi. Lütfen {wait_min} dakika sonra tekrar deneyin.",
+            )
+
+
+def record_login_failure(key: str) -> None:
+    with _login_lock:
+        attempts = _login_failures[key]
+        _prune(attempts, time.time())
+        attempts.append(time.time())
+
+
+def clear_login_failures(key: str) -> None:
+    with _login_lock:
+        _login_failures.pop(key, None)
+
+
+def is_admin(user: User) -> bool:
+    return bool(user) and user.role == "teacher" and (user.username or "").lower() == "pirireis"
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()

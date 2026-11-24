@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const apiBase = import.meta.env.VITE_API_URL || '';
+const apiBase = import.meta.env.VITE_API_URL || 'https://pirireis-api-v3ku.onrender.com';
 
 const api = axios.create({
   baseURL: apiBase ? `${apiBase.replace(/\/$/, '')}/api` : '/api',
@@ -123,6 +123,12 @@ export const classroomService = {
   },
   removeStudent: async (classroomId, studentId) => {
     const response = await api.delete(`/classrooms/${classroomId}/students/${studentId}`);
+    return response.data;
+  },
+  resetStudentPassword: async (classroomId, studentId, newPassword) => {
+    const response = await api.put(`/classrooms/${classroomId}/students/${studentId}/password`, {
+      new_password: newPassword
+    });
     return response.data;
   },
   delete: async (classroomId) => {

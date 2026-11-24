@@ -13,6 +13,7 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     student_number: Optional[str] = None
+    plain_password: Optional[str] = None
     created_at: Optional[datetime] = None
 
     class Config:
@@ -25,6 +26,9 @@ class TokenResponse(BaseModel):
 
 class ChangePasswordRequest(BaseModel):
     current_password: str
+    new_password: str
+
+class ResetStudentPasswordRequest(BaseModel):
     new_password: str
 
 class CreateTeacherRequest(BaseModel):

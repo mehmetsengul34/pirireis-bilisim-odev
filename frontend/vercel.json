@@ -1,8 +1,24 @@
 {
   "rewrites": [
     {
+      "source": "/piyano",
+      "destination": "/piyano/index.html"
+    },
+    {
+      "source": "/piyano/:path*",
+      "destination": "/piyano/:path*"
+    },
+    {
       "source": "/api/labizleme/:path*",
-      "destination": "https://pirireis-api.onrender.com/api/labizleme/:path*"
+      "destination": "https://pirireis-bilisim-odev-8vhq.onrender.com/api/labizleme/:path*"
+    },
+    {
+      "source": "/bilsemlab",
+      "destination": "/bilsemlab/index.html"
+    },
+    {
+      "source": "/bilsemlab/:path*",
+      "destination": "/bilsemlab/:path*"
     },
     {
       "source": "/labizleme",
@@ -63,6 +79,14 @@
     {
       "source": "/vr7/:path*",
       "destination": "/vr7/:path*"
+    },
+    {
+      "source": "/vr6",
+      "destination": "/vr6/index.html"
+    },
+    {
+      "source": "/vr6/:path*",
+      "destination": "/vr6/:path*"
     },
     {
       "source": "/(.*)",

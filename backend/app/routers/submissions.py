@@ -7,9 +7,10 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, s
 from sqlalchemy.orm import Session
 
 from app.database import get_db, BASE_DIR
-from app.models import User, Classroom, Assignment, Submission
+from app.models import User, Classroom, ClassroomStudent, Assignment, Submission
 from app.schemas import SubmissionOut, SubmissionGradeRequest
 from app.auth import get_current_user, require_teacher, require_student
+from app.upload_utils import read_upload_limited, safe_extension
 
 router = APIRouter(prefix="/api/submissions", tags=["submissions"])
 
@@ -28,6 +29,22 @@ async def submit_assignment(
     if not assignment:
         raise HTTPException(status_code=404, detail="Ödev bulunamadı.")
 
+    # GÜVENLİK: Öğrenci yalnızca kayıtlı olduğu sınıfın ödevine teslim yapabilir.
+    enrolled = db.query(ClassroomStudent).filter(
+        ClassroomStudent.classroom_id == assignment.classroom_id,
+        ClassroomStudent.student_id == student.id
+    ).first()
+    if not enrolled:
+        raise HTTPException(status_code=403, detail="Bu ödev sizin sınıfınıza ait değil.")
+
+    if not (file and file.filename) and not (student_note and student_note.strip()):
+        existing = db.query(Submission).filter(
+            Submission.assignment_id == assignment_id,
+            Submission.student_id == student.id
+        ).first()
+        if not existing:
+            raise HTTPException(status_code=400, detail="Lütfen bir dosya yükleyin veya teslim notu yazın.")
+
     # Check existing submission
     submission = db.query(Submission).filter(
         Submission.assignment_id == assignment_id,
@@ -38,12 +55,12 @@ async def submit_assignment(
     orig_name = submission.file_name if submission else None
 
     if file and file.filename:
-        orig_name = file.filename
-        ext = os.path.splitext(orig_name)[1]
+        orig_name = os.path.basename(file.filename)[:255]
+        ext = safe_extension(orig_name)
         unique_name = f"{uuid.uuid4().hex}{ext}"
         saved_file_path = os.path.join(UPLOAD_DIR, unique_name)
+        content = await read_upload_limited(file)
         async with aiofiles.open(saved_file_path, "wb") as out_file:
-            content = await file.read()
             await out_file.write(content)
         rel_path = f"/uploads/submissions/{unique_name}"
 

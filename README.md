@@ -26,14 +26,26 @@ npm.cmd run dev
 
 ---
 
-## 🔑 Varsayılan Giriş Hesapları
+## 🔐 Yapılandırma ve Giriş Hesapları
 
-| Rol | Kullanıcı Adı | Şifre | Açıklama |
-| :--- | :--- | :--- | :--- |
-| **Master Öğretmen** | `pirireis` | `20262027` | Ana Yönetici (Yeni öğretmenler tanımlayabilir) |
-| **Öğrenci** | `ogrenci` | `123` | Örnek Öğrenci (Ali Yılmaz - 11-B Bilişim) |
+Gizli bilgiler (veritabanı adresi, API anahtarları, şifreler) **koda veya GitHub'a yazılmaz**.
 
-> **Not:** Öğretmenler ve öğrenciler diledikleri zaman üst menüdeki **"Şifre Değiştir"** seçeneği ile şifrelerini güncelleyebilirler.
+1. `backend/.env.example` dosyasını `backend/.env` olarak kopyalayın ve değerleri doldurun.
+2. Render / sunucu ortamında aynı değerleri **Environment** sekmesinden girin.
+
+| Değişken | Açıklama |
+| :--- | :--- |
+| `DATABASE_URL` | PostgreSQL bağlantı adresi (boşsa yerel SQLite) |
+| `SECRET_KEY` | Oturum (JWT) imzalama anahtarı — uzun ve rastgele olmalı |
+| `GEMINI_API_KEY` | Yapay zekâ soru üretimi için Google Gemini anahtarı |
+| `LAB_TEACHER_PASS` | İlk kurulumda oluşturulan `pirireis` yönetici hesabının şifresi |
+| `LAB_DESKTOP_MASTER_KEY` | Masaüstü Lab uygulaması anahtarı (isteğe bağlı) |
+| `CORS_ORIGINS` | İzin verilen web adresleri (virgülle ayrılmış) |
+
+- **Yönetici hesabı:** `pirireis` — şifre `LAB_TEACHER_PASS` ile belirlenir. Tanımlı değilse ilk açılışta rastgele bir şifre üretilip sunucu loguna yazılır.
+- **Öğrenciler:** Öğretmen panelinden veya e-Okul PDF'i ile eklenir; ilk girişten sonra öğrencilerin şifrelerini değiştirmesi önerilir.
+
+> **Not:** Öğretmenler ve öğrenciler üst menüdeki **"Şifre Değiştir"** seçeneği ile şifrelerini güncelleyebilir (en az 6 karakter).
 
 ---
 

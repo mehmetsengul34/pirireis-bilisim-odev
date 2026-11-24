@@ -1,98 +1,1009 @@
 <!DOCTYPE html>
 <html lang="tr">
-
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Özel Neşeli Minikler - VR Akustik Gitar Atölyesi (Meta Quest 3 Hand Tracking)</title>
-  <script type="module" crossorigin src="/vr7/assets/index-DOn0ym0t.js"></script>
-  <link rel="stylesheet" crossorigin href="/vr7/assets/index-TpvOSPO4.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klasik Gitar VR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: full-bleed 3D stage; name and VR entry on top, chord dock at the bottom. Single night-stage theme. */
+  --night: #0b121d;
+  --panel: rgba(14, 24, 38, 0.82);
+  --line: rgba(214, 228, 245, 0.16);
+  --text: #eef2f6;
+  --muted: #a3b3c4;
+  --accent: #f2b84b;
+  --accent-ink: #1d1503;
+  --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--night);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.4;
+  overflow: hidden;
+}
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+.overlay { position: fixed; left: 0; right: 0; pointer-events: none; padding: 16px; }
+.bar { top: 0; display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.brand { max-width: 46ch; }
+.brand h1 { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; margin: 0 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
+.brand p { margin: 0; color: var(--muted); }
+#hint { color: var(--text); margin-top: 6px; }
+button { font: inherit; color: inherit; cursor: pointer; pointer-events: auto; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.primary {
+  background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px;
+  padding: 12px 20px; font-weight: 600; font-size: 16px;
+}
+.primary:disabled { background: transparent; color: var(--muted); border: 1px solid var(--line); cursor: default; }
+.dock { bottom: 0; display: flex; gap: 12px 24px; align-items: flex-end; flex-wrap: wrap; }
+.group { display: flex; flex-direction: column; gap: 6px; pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; backdrop-filter: blur(8px); }
+.label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 44px;
+  font-weight: 600; display: inline-flex; gap: 6px; align-items: baseline; justify-content: center;
+}
+.chip kbd { font: inherit; font-size: 11px; font-weight: 400; color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip[aria-pressed="true"] kbd { color: var(--accent-ink); opacity: 0.7; }
+.chip:hover { border-color: var(--accent); }
+@media (max-width: 520px) {
+  .brand h1 { font-size: 21px; }
+  .overlay { padding: 12px 16px; }
+  .chip kbd { display: none; }
+}
+</style>
 </head>
-
 <body>
-  <!-- 2D HUD Visor Overlay -->
-  <div id="hud-visor">
-    <div class="hud-top">
-      <div class="island-title-badge">
-        <span>🏫</span>
-        <span>Özel Neşeli Minikler • VR Gitar Kulübü</span>
-      </div>
+<canvas id="stage"></canvas>
 
-      <div class="hud-stars-capsule">
-        <span id="hud-song-label">🌈 Serbest Çalma & Akor Pratiği</span>
-      </div>
+<header class="overlay bar">
+  <div class="brand">
+    <h1>Klasik Gitar VR</h1>
+    <p id="status">VR desteği kontrol ediliyor.</p>
+    <p id="hint">Ses için bir kez tıklayın, sonra fareyi tellerin üzerinden geçirin.</p>
+  </div>
+  <button id="vrBtn" class="primary" type="button" disabled>VR'a gir</button>
+</header>
 
-      <div class="hud-inst-badge">
-        <span>🎸 Model: <strong id="hud-current-type">Akustik Gitar</strong> • Akor: <strong id="hud-current-chord">C (Do Majör)</strong></span>
-      </div>
-
-      <div class="hud-controls">
-        <button class="hud-btn" id="btn-toggle-mode" title="Gitar Askısı / Sabit Mod">🎸</button>
-        <button class="hud-btn" id="btn-sound" title="Ses Aç/Kapat">🔊</button>
-        <button class="hud-btn" id="btn-freeplay" title="Serbest Mod">🎵</button>
-      </div>
-    </div>
-
-    <div class="hud-bottom">
-      <!-- 2D Quick Chord Bar for PC/Tablet -->
-      <div class="chord-quick-bar" id="chord-quick-bar">
-        <!-- Rendered dynamically -->
-      </div>
-
-      <div class="hud-action-row">
-        <button class="strum-btn" id="btn-strum-down">🎸 Telleri Tara (Akor Vur)</button>
-        <button class="guide-trigger" id="btn-open-guide">
-          <span>🥽 Meta Quest 3 El Takibi Rehberi</span>
-        </button>
-      </div>
+<footer class="overlay dock">
+  <div class="group">
+    <span class="label">Akor (sol el)</span>
+    <div id="chords" class="chips"></div>
+  </div>
+  <div class="group">
+    <span class="label">VR'da sol el</span>
+    <div class="chips">
+      <button id="modeChord" class="chip" type="button" aria-pressed="true">Akor bölgeleri</button>
+      <button id="modeFree" class="chip" type="button" aria-pressed="false">Serbest parmak</button>
     </div>
   </div>
-
-  <!-- Meta Quest 3 Hand Tracking Guide Modal -->
-  <div id="quest-modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <div class="modal-title">
-          <span>🥽</span> Meta Quest 3 El Takibi (Hand Tracking) Rehberi
-        </div>
-        <button class="modal-close" id="btn-close-quest">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="guide-item">
-          <div class="guide-icon">✋</div>
-          <div class="guide-text">
-            <h4>Kontrolcüsüz Gerçek El Takibi</h4>
-            <p>Meta Quest kontrolcülerini masaya bırakın. Başlık ellerinizi otomatik algılar ve 3D sevimli müzik eldivenlerine dönüştürür.</p>
-          </div>
-        </div>
-
-        <div class="guide-item">
-          <div class="guide-icon">🎸</div>
-          <div class="guide-text">
-            <h4>Sağ El: Telleri Tarama ve Çalma</h4>
-            <p>Sağ elinizi ses deliğinin üzerinden yukarıdan aşağıya (Down-strum) veya aşağıdan yukarıya (Up-strum) süpürerek akoru çalın. Parmağınızla tek bir tele dokunarak solo melodi çalabilirsiniz.</p>
-          </div>
-        </div>
-
-        <div class="guide-item">
-          <div class="guide-icon">👆</div>
-          <div class="guide-text">
-            <h4>Sol El: Sap Üzerinden Akor Basma</h4>
-            <p>Sol elinizin parmaklarıyla gitar sapı boyunca yer alan renkli akor butonlarına (C, G, Am, F, Em, D, Dm, A) dokunun. Klavye üzerinde gerçek parmak noktaları parıldar!</p>
-          </div>
-        </div>
-
-        <div class="guide-item">
-          <div class="guide-icon">💻</div>
-          <div class="guide-text">
-            <h4>Bilgisayar & Dokunmatik Kontroller</h4>
-            <p>Fareyle telleri sürükleyerek veya <strong>Boşluk (Space)</strong> tuşuna basarak çalabilirsiniz. <strong>1 - 8</strong> tuşlarıyla akorları değiştirin, <strong>Q, W, E, R, T, Y</strong> tuşlarıyla telleri tek tek tınlatın.</p>
-          </div>
-        </div>
-      </div>
+  <div class="group">
+    <span class="label">VR'da tutuş</span>
+    <div class="chips">
+      <button id="holdFree" class="chip" type="button" aria-pressed="true">Serbest</button>
+      <button id="holdStrap" class="chip" type="button" aria-pressed="false">Askılı</button>
     </div>
   </div>
+  <div class="group">
+    <span class="label">Dinle</span>
+    <div class="chips">
+      <button id="demoBtn" class="chip" type="button" aria-pressed="false">Örnek çal</button>
+    </div>
+  </div>
+</footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+'use strict';
+
+/* ---------- Guitar geometry constants (metres, guitar-local frame) ----------
+   +X: bridge -> headstock, +Y: toward bass strings, +Z: out of the soundboard.
+   Origin sits at the soundhole. */
+var L = 0.65;                       // scale length of a classical guitar
+var X_NUT = 0.50, X_BRIDGE = X_NUT - L;
+function fretX(n) { return X_NUT - L * (1 - Math.pow(2, -n / 12)); }
+var X_JOINT = fretX(12), X_FB_END = fretX(19);
+var FB_TOP = 0.006;
+var NUT_SP = 0.0086, BR_SP = 0.0116;
+function spacing(x) { return NUT_SP + (BR_SP - NUT_SP) * ((X_NUT - x) / L); }
+function stringY(i, x) { return (2.5 - i) * spacing(x); }
+function stringZ(x) { return 0.0078 + 0.0047 * ((X_NUT - x) / L); }
+function fbHalf(x) { return 0.026 + 0.005 * ((X_NUT - x) / (X_NUT - X_JOINT)); }
+function fretAt(x) {
+  var d = X_NUT - x;
+  if (d <= 0) return 0;
+  return Math.max(1, Math.min(19, Math.ceil(12 * Math.log(L / (L - d)) / Math.LN2 - 1e-6)));
+}
+function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+
+var OPEN_MIDI = [40, 45, 50, 55, 59, 64];   // E2 A2 D3 G3 B3 E4
+var CHORDS = {
+  'Açık': [0, 0, 0, 0, 0, 0],
+  'Em': [0, 2, 2, 0, 0, 0],
+  'Am': [-1, 0, 2, 2, 1, 0],
+  'C':  [-1, 3, 2, 0, 1, 0],
+  'G':  [3, 2, 0, 0, 0, 3],
+  'D':  [-1, -1, 0, 2, 3, 2],
+  'F':  [1, 3, 3, 2, 1, 1],
+  'Dm': [-1, -1, 0, 2, 3, 1],
+  'E':  [0, 2, 2, 1, 0, 0],
+  'A':  [-1, 0, 2, 2, 2, 0]
+};
+var CHORD_ORDER = ['Açık', 'Em', 'Am', 'C', 'G', 'D', 'F', 'Dm', 'E', 'A'];
+var ZONE_CHORDS = ['C', 'G', 'Am', 'F', 'Em', 'Dm'];   // from the nut toward the body
+var ZONE_START = X_NUT + 0.03, ZONE_LEN = (ZONE_START - X_JOINT) / ZONE_CHORDS.length;
+
+var frets = [0, 0, 0, 0, 0, 0];
+var chordName = 'Açık';
+var vrMode = 'chord';               // 'chord' | 'free'
+var holdMode = 'free';              // 'free': pick it up with your hands | 'strap': always worn
+var state = 'rest';                 // 'rest' | 'carry' | 'play'
+var standReady = false;
+
+/* ---------- Audio: Karplus-Strong plucked nylon string ---------- */
+var ctx = null, bodyIn = null;
+var noteCache = {};
+var voices = [null, null, null, null, null, null];
+
+function initAudio() {
+  if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+  var AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  try { ctx = new AC(); } catch (e) { ctx = null; return; }
+  bodyIn = ctx.createGain();
+  var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 70;
+  var pk1 = ctx.createBiquadFilter(); pk1.type = 'peaking'; pk1.frequency.value = 105; pk1.Q.value = 1.2; pk1.gain.value = 5;
+  var pk2 = ctx.createBiquadFilter(); pk2.type = 'peaking'; pk2.frequency.value = 215; pk2.Q.value = 1.5; pk2.gain.value = 3;
+  var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
+  var comp = ctx.createDynamicsCompressor();
+  var out = ctx.createGain(); out.gain.value = 0.9;
+  bodyIn.connect(hp); hp.connect(pk1); pk1.connect(pk2); pk2.connect(lp);
+  lp.connect(comp);
+  // Small-room tail
+  var conv = ctx.createConvolver();
+  var sr = ctx.sampleRate, n = Math.floor(sr * 1.3);
+  var ir = ctx.createBuffer(2, n, sr);
+  for (var c = 0; c < 2; c++) {
+    var d = ir.getChannelData(c);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2);
+  }
+  conv.buffer = ir;
+  var wet = ctx.createGain(); wet.gain.value = 0.2;
+  lp.connect(conv); conv.connect(wet); wet.connect(comp);
+  comp.connect(out); out.connect(ctx.destination);
+  var hint = document.getElementById('hint');
+  if (hint) hint.textContent = 'Fareyi gövdedeki tellerin üzerinden geçirin. Perdeye tıklayarak nota değiştirin. Boşluk: tüm tellere vur.';
+}
+
+function noteBuffer(midi) {
+  if (noteCache[midi]) return noteCache[midi];
+  var sr = ctx.sampleRate, f = 440 * Math.pow(2, (midi - 69) / 12);
+  var dur = midi < 52 ? 4.0 : (midi < 64 ? 3.2 : 2.6);
+  var len = Math.floor(sr * dur);
+  var buf = ctx.createBuffer(1, len, sr), out = buf.getChannelData(0);
+  var s = 0.5 - 0.14 * clamp((midi - 52) / 28, 0, 1);       // loop damping filter
+  var P = sr / f, N = Math.floor(P - s), fr = P - s - N;
+  if (fr < 0.1) { N -= 1; fr += 1; }
+  var C = (1 - fr) / (1 + fr);                               // all-pass for fine tuning
+  var dl = new Float32Array(N), i;
+  var a = midi < 55 ? 0.42 : 0.3, v1 = 0, v2 = 0, mean = 0;
+  for (i = 0; i < N; i++) { var w = Math.random() * 2 - 1; v1 += a * (w - v1); v2 += a * (v1 - v2); dl[i] = v2; mean += v2; }
+  mean /= N;
+  var off = Math.max(1, Math.floor(N * 0.2)), tmp = new Float32Array(N), peak = 0;
+  for (i = 0; i < N; i++) { tmp[i] = (dl[i] - mean) - 0.55 * (dl[(i + off) % N] - mean); if (Math.abs(tmp[i]) > peak) peak = Math.abs(tmp[i]); }
+  for (i = 0; i < N; i++) dl[i] = tmp[i] / (peak || 1) * 0.9;
+  var t60 = 4.6 - 2.6 * clamp((midi - 40) / 40, 0, 1);
+  var g = Math.pow(10, -3 / (t60 * f));
+  var ptr = 0, x1 = 0, apx = 0, apy = 0, fade = Math.floor(sr * 0.06);
+  for (var n = 0; n < len; n++) {
+    var x0 = dl[ptr];
+    var lpf = g * ((1 - s) * x0 + s * x1); x1 = x0;
+    var y = C * lpf + apx - C * apy; apx = lpf; apy = y;
+    dl[ptr] = y;
+    out[n] = n > len - fade ? x0 * (len - n) / fade : x0;
+    ptr++; if (ptr >= N) ptr = 0;
+  }
+  noteCache[midi] = buf;
+  return buf;
+}
+
+function playString(i, vel, delay) {
+  if (!ctx || ctx.state !== 'running') return;
+  var t = ctx.currentTime + (delay || 0);
+  var old = voices[i];
+  if (old) {
+    try { old.g.gain.cancelScheduledValues(t); old.g.gain.setTargetAtTime(0, t, 0.012); old.src.stop(t + 0.12); } catch (e) {}
+  }
+  var src = ctx.createBufferSource(); src.buffer = noteBuffer(OPEN_MIDI[i] + frets[i]);
+  var flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 900 + vel * 5200;
+  var g = ctx.createGain(); g.gain.value = Math.pow(vel, 1.3) * 0.55;
+  src.connect(flt); flt.connect(g); g.connect(bodyIn);
+  src.start(t);
+  voices[i] = { src: src, g: g };
+}
+
+/* ---------- Scene ---------- */
+var canvas = document.getElementById('stage');
+var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.xr.enabled = true;
+
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b121d);
+var camera = new THREE.PerspectiveCamera(50, 1, 0.01, 60);
+
+function canvasTex(w, h, draw) {
+  var c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  var t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
+}
+
+// Sky dome and floor pool of light
+scene.add(new THREE.Mesh(
+  new THREE.SphereGeometry(25, 24, 16),
+  new THREE.MeshBasicMaterial({ side: THREE.BackSide, map: canvasTex(8, 256, function (g, w, h) {
+    var gr = g.createLinearGradient(0, 0, 0, h);
+    gr.addColorStop(0, '#070c14'); gr.addColorStop(0.48, '#1b3044'); gr.addColorStop(0.56, '#16222f'); gr.addColorStop(1, '#090d13');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  }) })
+));
+var floor = new THREE.Mesh(
+  new THREE.CircleGeometry(4.5, 48),
+  new THREE.MeshBasicMaterial({ map: canvasTex(256, 256, function (g, w, h) {
+    var gr = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2);
+    gr.addColorStop(0, '#6a4a2e'); gr.addColorStop(0.35, '#3a2a1d'); gr.addColorStop(1, '#0c1017');
+    g.fillStyle = gr; g.fillRect(0, 0, w, h);
+  }) })
+);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+scene.add(new THREE.HemisphereLight(0xd3e2ff, 0x3a2a1c, 0.85));
+var key = new THREE.DirectionalLight(0xffe6c4, 0.95); key.position.set(0.8, 2.2, 1.5); scene.add(key);
+var rim = new THREE.DirectionalLight(0x8fb0ff, 0.45); rim.position.set(-1.5, 1.2, -1.2); scene.add(rim);
+
+/* ---------- Guitar model ---------- */
+var guitar = new THREE.Group(); scene.add(guitar);
+var V3 = THREE.Vector3;
+
+function cyl(a, b, r, mat, seg) {
+  var d = new V3().subVectors(b, a);
+  var m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), seg || 8, 1), mat);
+  m.position.copy(a).addScaledVector(d, 0.5);
+  m.quaternion.setFromUnitVectors(new V3(0, 1, 0), d.clone().normalize());
+  return m;
+}
+function box(sx, sy, sz, x, y, z, mat) {
+  var m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat); m.position.set(x, y, z); return m;
+}
+
+var matTop = new THREE.MeshStandardMaterial({ roughness: 0.42, metalness: 0, map: (function () {
+  var t = canvasTex(256, 256, function (g, w, h) {
+    g.fillStyle = '#d9a75e'; g.fillRect(0, 0, w, h);
+    for (var i = 0; i < 110; i++) {
+      g.strokeStyle = 'rgba(' + (110 + Math.random() * 40 | 0) + ',' + (62 + Math.random() * 25 | 0) + ',18,' + (0.05 + Math.random() * 0.16) + ')';
+      g.lineWidth = 1 + Math.random() * 1.5;
+      var y = Math.random() * h; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+    }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 9); return t;
+})() });
+var matSide = new THREE.MeshStandardMaterial({ color: 0x4d2515, roughness: 0.4 });
+var matNeck = new THREE.MeshStandardMaterial({ color: 0x6e3c20, roughness: 0.5 });
+var matEbony = new THREE.MeshStandardMaterial({ color: 0x1c1310, roughness: 0.6 });
+var matFret = new THREE.MeshStandardMaterial({ color: 0xcfd2d4, roughness: 0.3, metalness: 0.85 });
+var matBone = new THREE.MeshStandardMaterial({ color: 0xf2ead6, roughness: 0.5 });
+var matDark = new THREE.MeshStandardMaterial({ color: 0x0e0907, roughness: 0.9 });
+
+(function buildBody() {
+  var half = [[0.175, 0], [0.171, 0.055], [0.15, 0.112], [0.09, 0.14], [0.03, 0.128], [-0.02, 0.118],
+              [-0.08, 0.146], [-0.17, 0.185], [-0.26, 0.158], [-0.305, 0.085], [-0.315, 0]];
+  var pts = [], i;
+  for (i = 0; i < half.length; i++) pts.push(new V3(half[i][0], half[i][1], 0));
+  for (i = half.length - 2; i > 0; i--) pts.push(new V3(half[i][0], -half[i][1], 0));
+  var loop = new THREE.CatmullRomCurve3(pts, true, 'catmullrom', 0.5).getPoints(180);
+  var shape = new THREE.Shape(loop.map(function (p) { return new THREE.Vector2(p.x, p.y); }));
+  var depth = 0.095, bev = 0.004;
+  var geo = new THREE.ExtrudeGeometry(shape, { depth: depth, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 2, curveSegments: 1 });
+  geo.translate(0, 0, -(depth + bev));
+  guitar.add(new THREE.Mesh(geo, [matTop, matSide]));
+  var back = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshStandardMaterial({ color: 0x4d2515, roughness: 0.4, side: THREE.BackSide }));
+  back.position.z = -(depth + 2 * bev) - 0.0004; guitar.add(back);
+
+  // Rosette and soundhole
+  var ros = new THREE.Mesh(new THREE.CircleGeometry(0.062, 64), new THREE.MeshStandardMaterial({
+    transparent: true, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    map: canvasTex(256, 256, function (g, w) {
+      var c = w / 2, k;
+      g.clearRect(0, 0, w, w);
+      g.fillStyle = '#3a1d10'; g.beginPath(); g.arc(c, c, 125, 0, 7); g.fill();
+      var cols = ['#e8c67a', '#7b2d1c', '#f3e6c4', '#27412f'];
+      for (k = 0; k < 64; k++) {
+        g.fillStyle = cols[k % 4]; g.beginPath(); g.moveTo(c, c);
+        g.arc(c, c, 116, k / 64 * Math.PI * 2, (k + 1) / 64 * Math.PI * 2); g.fill();
+      }
+      g.fillStyle = '#3a1d10'; g.beginPath(); g.arc(c, c, 100, 0, 7); g.fill();
+      g.strokeStyle = '#f3e6c4'; g.lineWidth = 2;
+      g.beginPath(); g.arc(c, c, 121, 0, 7); g.stroke(); g.beginPath(); g.arc(c, c, 95, 0, 7); g.stroke();
+      g.fillStyle = '#080504'; g.beginPath(); g.arc(c, c, 89, 0, 7); g.fill();
+    })
+  }));
+  ros.position.set(0.015, 0, 0.0006); guitar.add(ros);
+
+  // Bridge and saddle
+  guitar.add(box(0.028, 0.185, 0.009, X_BRIDGE - 0.006, 0, 0.0045, matSide));
+  guitar.add(box(0.003, 0.085, 0.004, X_BRIDGE, 0, 0.0105, matBone));
+})();
+
+(function buildNeck() {
+  function trap(x0, x1) {
+    var s = new THREE.Shape();
+    s.moveTo(x0, -fbHalf(x0)); s.lineTo(x1, -fbHalf(x1)); s.lineTo(x1, fbHalf(x1)); s.lineTo(x0, fbHalf(x0)); s.closePath();
+    return s;
+  }
+  guitar.add(new THREE.Mesh(new THREE.ExtrudeGeometry(trap(X_FB_END, X_NUT), { depth: FB_TOP, bevelEnabled: false }), matEbony));
+  var slab = new THREE.ExtrudeGeometry(trap(X_JOINT, X_NUT), { depth: 0.012, bevelEnabled: false }); slab.translate(0, 0, -0.012);
+  guitar.add(new THREE.Mesh(slab, matNeck));
+  var round = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.031, X_NUT - X_JOINT, 18), matNeck);
+  round.rotation.z = -Math.PI / 2; round.scale.z = 0.6; round.position.set((X_NUT + X_JOINT) / 2, 0, -0.010); guitar.add(round);
+  guitar.add(box(0.035, 0.05, 0.085, X_JOINT + 0.0175, 0, -0.0525, matNeck));
+  for (var n = 1; n <= 19; n++) guitar.add(box(0.0018, 2 * fbHalf(fretX(n)), 0.0012, fretX(n), 0, FB_TOP + 0.0006, matFret));
+  guitar.add(box(0.005, 0.052, 0.009, X_NUT + 0.0025, 0, 0.004, matBone));
+
+  // Headstock
+  var head = new THREE.Group(); head.position.set(X_NUT + 0.005, 0, -0.001); head.rotation.y = 0.21; guitar.add(head);
+  head.add(box(0.185, 0.07, 0.017, 0.0925, 0, -0.0085, matNeck));
+  var rx = [0.045, 0.085, 0.125], sgn, k;
+  for (sgn = -1; sgn <= 1; sgn += 2) {
+    head.add(box(0.105, 0.011, 0.018, 0.085, sgn * 0.018, -0.0085, matDark));
+    for (k = 0; k < 3; k++) {
+      head.add(cyl(new V3(rx[k], sgn * 0.0125, -0.0085), new V3(rx[k], sgn * 0.0235, -0.0085), 0.0032, matBone, 10));
+      head.add(cyl(new V3(rx[k], sgn * 0.035, -0.0085), new V3(rx[k], sgn * 0.052, -0.0085), 0.002, matFret, 6));
+      var knob = new THREE.Mesh(new THREE.SphereGeometry(0.008, 12, 8), matBone);
+      knob.scale.set(1, 0.5, 1.3); knob.position.set(rx[k], sgn * 0.055, -0.0085); head.add(knob);
+    }
+  }
+  head.updateMatrix();
+  buildNeck.head = head; buildNeck.rx = rx;
+})();
+
+// Strings
+var STR_R = [0.0011, 0.00095, 0.0008, 0.0007, 0.0006, 0.00055];
+var strings = [];
+(function buildStrings() {
+  // The headstock group was the last Group added to the guitar
+  var head = null;
+  guitar.children.forEach(function (c) { if (c.type === 'Group') head = c; });
+  var inv = new THREE.Matrix4().copy(head.matrix).invert();
+  var rx = [0.045, 0.085, 0.125];
+  for (var i = 0; i < 6; i++) {
+    var mat = i < 3
+      ? new THREE.MeshStandardMaterial({ color: 0xd8dbde, metalness: 0.85, roughness: 0.35, transparent: true })
+      : new THREE.MeshStandardMaterial({ color: 0xf7f2e3, roughness: 0.3, transparent: true, opacity: 0.92 });
+    var a = new V3(X_NUT, stringY(i, X_NUT), stringZ(X_NUT)), b = new V3(X_BRIDGE, stringY(i, X_BRIDGE), stringZ(X_BRIDGE));
+    var m = cyl(a, b, STR_R[i], mat, 6); guitar.add(m);
+    guitar.add(cyl(b, new V3(X_BRIDGE - 0.012, b.y, 0.008), STR_R[i], mat, 6));
+    var top = i < 3, slot = top ? i : 5 - i;
+    head.add(cyl(a.clone().applyMatrix4(inv), new V3(rx[slot], (top ? 1 : -1) * 0.018, -0.0055), STR_R[i], mat, 6));
+    strings.push({ mesh: m, mat: mat, baseY: m.position.y, baseOpacity: mat.opacity, amp: 0, last: -1 });
+  }
+})();
+
+// Finger dots that show the current left-hand shape
+var dots = [];
+(function () {
+  var geo = new THREE.SphereGeometry(0.0052, 14, 10);
+  var mat = new THREE.MeshStandardMaterial({ color: 0xf2b84b, emissive: 0x7a4a00, roughness: 0.4 });
+  for (var i = 0; i < 6; i++) { var d = new THREE.Mesh(geo, mat); d.scale.z = 0.55; d.visible = false; guitar.add(d); dots.push(d); }
+})();
+
+// Chord zone labels along the neck (shown in VR chord mode)
+var zoneGroup = new THREE.Group(); zoneGroup.visible = false; guitar.add(zoneGroup);
+var zoneSprites = [];
+function zoneTexture(name) {
+  return canvasTex(128, 128, function (g) {
+    g.clearRect(0, 0, 128, 128);
+    g.fillStyle = '#ffffff'; g.beginPath(); g.arc(64, 64, 58, 0, 7); g.fill();
+    g.fillStyle = '#101a28'; g.font = '700 54px "Bricolage Grotesque", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(name, 64, 68);
+  });
+}
+function buildZones() {
+  zoneSprites.forEach(function (s) { zoneGroup.remove(s); });
+  zoneSprites = ZONE_CHORDS.map(function (name, k) {
+    var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: zoneTexture(name), depthTest: false, transparent: true }));
+    s.position.set(ZONE_START - (k + 0.5) * ZONE_LEN, 0.062, 0.0); s.renderOrder = 5;
+    zoneGroup.add(s); return s;
+  });
+  paintZones();
+}
+function paintZones() {
+  zoneSprites.forEach(function (s, k) {
+    var on = ZONE_CHORDS[k] === chordName;
+    s.material.color.setHex(on ? 0xf2b84b : 0x8fa3b8);
+    s.material.opacity = on ? 1 : 0.75;
+    var sc = on ? 0.056 : 0.04; s.scale.set(sc, sc, 1);
+  });
+}
+
+/* ---------- Left-hand state ---------- */
+var chipEls = {};
+function applyFrets(arr, name) {
+  var changed = false, i;
+  for (i = 0; i < 6; i++) if (frets[i] !== arr[i]) { frets[i] = arr[i]; changed = true; }
+  if (name === chordName && !changed) return;
+  chordName = name;
+  for (i = 0; i < 6; i++) {
+    var f = frets[i], d = dots[i];
+    d.visible = f > 0;
+    if (f > 0) { var x = (fretX(f - 1) + fretX(f)) / 2 - 0.004; d.position.set(x, stringY(i, x), FB_TOP + 0.003); }
+    strings[i].mat.opacity = f < 0 ? 0.25 : strings[i].baseOpacity;
+  }
+  CHORD_ORDER.forEach(function (n) { if (chipEls[n]) chipEls[n].setAttribute('aria-pressed', n === chordName ? 'true' : 'false'); });
+  paintZones(); drawPanel();
+}
+function setChord(name) { applyFrets(CHORDS[name], name); }
+
+function pluck(i, vel, delay) {
+  if (frets[i] < 0) return;
+  strings[i].amp = 0.0006 + 0.0014 * vel;
+  playString(i, vel, delay);
+}
+function strum(down, vel) {
+  for (var k = 0; k < 6; k++) pluck(down ? k : 5 - k, vel, k * 0.028);
+}
+
+/* A moving point (fingertip or mouse) plucks a string when it crosses it. */
+var tips = {};
+var PLUCK_MAX_X = X_JOINT + 0.02;
+function processTip(id, p, t, zLo, zHi) {
+  var prev = tips[id];
+  tips[id] = { x: p.x, y: p.y, z: p.z, t: t };
+  if (!prev) return;
+  var dt = t - prev.t;
+  if (dt <= 0 || dt > 0.25) return;
+  var dx = p.x - prev.x, dy = p.y - prev.y, dz = p.z - prev.z;
+  if (dx * dx + dy * dy + dz * dz > 0.04) return;                 // tracking jump
+  for (var i = 0; i < 6; i++) {
+    var d0 = prev.y - stringY(i, prev.x), d1 = p.y - stringY(i, p.x);
+    if (d0 === 0 || d0 * d1 > 0 || d1 === 0 && d0 === 0) continue;
+    if (d0 * d1 === 0 && d1 === 0) continue;
+    var k = d0 / (d0 - d1);
+    var xc = prev.x + dx * k, zc = prev.z + dz * k - stringZ(xc);
+    if (xc < X_BRIDGE + 0.004 || xc > PLUCK_MAX_X || zc < zLo || zc > zHi) continue;
+    if (t - strings[i].last < 0.075) continue;
+    strings[i].last = t;
+    var speed = Math.abs(dy) / dt;
+    pluck(i, clamp(0.25 + speed / 1.4, 0.25, 1), k * dt * 0.5);
+  }
+}
+
+/* ---------- Desktop view and input ---------- */
+var deskX = new V3(0.975, 0.22, 0).normalize();
+var basis = new THREE.Matrix4(), bx = new V3(), by = new V3(), bz = new V3();
+var qT = new THREE.Quaternion();
+function orientGuitar(xDir, zRef, k) {
+  bx.copy(xDir).normalize();
+  by.crossVectors(zRef, bx).normalize();
+  bz.crossVectors(bx, by);
+  basis.makeBasis(bx, by, bz);
+  if (k) { qT.setFromRotationMatrix(basis); guitar.quaternion.slerp(qT, k); }
+  else guitar.quaternion.setFromRotationMatrix(basis);
+}
+function desktopPose() {
+  orientGuitar(deskX, new V3(-0.28, 0.14, 1));
+  guitar.position.set(0, 1.0, 0).addScaledVector(bx, -0.19);
+  guitar.updateMatrixWorld(true);
+  zoneGroup.visible = false;
+}
+function resize() {
+  if (renderer.xr.isPresenting) return;
+  var w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  var dist = Math.max(1.22 / camera.aspect, 0.86);
+  camera.position.set(0, 1.0, dist); camera.lookAt(0, 0.96, 0);
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+var ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), invM = new THREE.Matrix4(), lo = new V3(), ld = new V3();
+function pointerLocal(e) {
+  var r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  invM.copy(guitar.matrixWorld).invert();
+  lo.copy(ray.ray.origin).applyMatrix4(invM);
+  ld.copy(ray.ray.direction).transformDirection(invM);
+  if (Math.abs(ld.z) < 1e-5) return null;
+  var t = (0.010 - lo.z) / ld.z;
+  if (t < 0) return null;
+  return new V3().copy(lo).addScaledVector(ld, t);
+}
+canvas.addEventListener('pointermove', function (e) {
+  if (renderer.xr.isPresenting) return;
+  var p = pointerLocal(e);
+  if (!p) { tips.mouse = null; return; }
+  processTip('mouse', p, performance.now() / 1000, -1, 1);
+});
+canvas.addEventListener('pointerleave', function () { tips.mouse = null; });
+canvas.addEventListener('pointerup', function (e) { if (e.pointerType !== 'mouse') tips.mouse = null; });
+canvas.addEventListener('pointerdown', function (e) {
+  initAudio();
+  if (renderer.xr.isPresenting) return;
+  var p = pointerLocal(e);
+  if (!p) return;
+  tips.mouse = { x: p.x, y: p.y, z: p.z, t: performance.now() / 1000 };
+  if (p.x > X_FB_END && p.x < X_NUT && Math.abs(p.y) < fbHalf(p.x) + 0.003) {
+    var i = clamp(Math.round(2.5 - p.y / spacing(p.x)), 0, 5), n = fretAt(p.x);
+    var next = frets.slice(); next[i] = next[i] === n ? 0 : n;
+    applyFrets(next, 'özel');
+    pluck(i, 0.6, 0);
+  }
+});
+window.addEventListener('keydown', function (e) {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
+  var tag = document.activeElement && document.activeElement.tagName;
+  initAudio();
+  var di = '1234567890'.indexOf(e.key);
+  if (di >= 0) { setChord(CHORD_ORDER[di]); return; }
+  if (e.code === 'Space') { if (tag === 'BUTTON') document.activeElement.blur(); e.preventDefault(); strum(!e.shiftKey, 0.75); return; }
+  var si = 'asdfgh'.indexOf(e.key.toLowerCase());
+  if (si >= 0) pluck(si, 0.7, 0);
+});
+
+/* ---------- Dock ---------- */
+(function () {
+  var wrap = document.getElementById('chords');
+  CHORD_ORDER.forEach(function (n, k) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.id = 'chord-' + k;
+    b.setAttribute('aria-pressed', n === chordName ? 'true' : 'false');
+    b.innerHTML = '<span></span><kbd></kbd>';
+    b.firstChild.textContent = n; b.lastChild.textContent = '1234567890'[k];
+    b.addEventListener('click', function () { initAudio(); setChord(n); strum(true, 0.6); });
+    wrap.appendChild(b); chipEls[n] = b;
+  });
+  document.getElementById('modeChord').addEventListener('click', function () { setMode('chord'); });
+  document.getElementById('modeFree').addEventListener('click', function () { setMode('free'); });
+  document.getElementById('holdFree').addEventListener('click', function () { setHold('free'); });
+  document.getElementById('holdStrap').addEventListener('click', function () { setHold('strap'); });
+  document.getElementById('demoBtn').addEventListener('click', function () { initAudio(); toggleDemo(); });
+})();
+function setMode(m) {
+  vrMode = m;
+  document.getElementById('modeChord').setAttribute('aria-pressed', m === 'chord' ? 'true' : 'false');
+  document.getElementById('modeFree').setAttribute('aria-pressed', m === 'free' ? 'true' : 'false');
+  drawPanel();
+}
+function setHold(m) {
+  holdMode = m;
+  document.getElementById('holdFree').setAttribute('aria-pressed', m === 'free' ? 'true' : 'false');
+  document.getElementById('holdStrap').setAttribute('aria-pressed', m === 'strap' ? 'true' : 'false');
+  if (renderer.xr.isPresenting && m === 'free' && standReady) toStand();
+  drawPanel();
+}
+
+var demoTimer = null;
+function toggleDemo() {
+  var btn = document.getElementById('demoBtn');
+  if (demoTimer) { clearInterval(demoTimer); demoTimer = null; btn.setAttribute('aria-pressed', 'false'); btn.textContent = 'Örnek çal'; return; }
+  var prog = [['Am', 1], ['C', 1], ['G', 0], ['Em', 0]], step = 0;
+  btn.setAttribute('aria-pressed', 'true'); btn.textContent = 'Durdur';
+  function tick() {
+    var bar = Math.floor(step / 12) % prog.length, k = step % 6;
+    if (step % 12 === 0) setChord(prog[bar][0]);
+    pluck([prog[bar][1], 3, 4, 5, 4, 3][k], k === 0 ? 0.8 : 0.55, 0);
+    step++;
+  }
+  tick(); demoTimer = setInterval(tick, 240);
+}
+
+/* ---------- VR: hands, anchor, floating panel ---------- */
+var JOINTS = ['wrist'];
+var BONES = [];
+['thumb', 'index-finger', 'middle-finger', 'ring-finger', 'pinky-finger'].forEach(function (f) {
+  var parts = f === 'thumb' ? ['metacarpal', 'phalanx-proximal', 'phalanx-distal', 'tip']
+                            : ['metacarpal', 'phalanx-proximal', 'phalanx-intermediate', 'phalanx-distal', 'tip'];
+  var prev = 0;
+  parts.forEach(function (p) { JOINTS.push(f + '-' + p); BONES.push([prev, JOINTS.length - 1]); prev = JOINTS.length - 1; });
+});
+var JI = {}; JOINTS.forEach(function (n, i) { JI[n] = i; });
+
+function makeHand(color) {
+  var h = { kind: null, j: [], ok: [], q: new THREE.Quaternion(), qok: false, squeeze: false, closed: false, group: new THREE.Group(), balls: [], lines: null };
+  var geo = new THREE.SphereGeometry(0.0065, 10, 8);
+  var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5 });
+  for (var i = 0; i < JOINTS.length; i++) {
+    h.j.push(new V3()); h.ok.push(false);
+    var b = new THREE.Mesh(geo, mat); b.frustumCulled = false; h.group.add(b); h.balls.push(b);
+  }
+  var lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(BONES.length * 6), 3));
+  h.lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: color }));
+  h.lines.frustumCulled = false; h.group.add(h.lines);
+  h.group.visible = false; scene.add(h.group);
+  return h;
+}
+var hands = { left: makeHand(0xbcd0e6), right: makeHand(0xf4dcc0) };
+
+function drawHand(h) {
+  h.group.visible = !!h.kind;
+  if (!h.kind) return;
+  var i, pos = h.lines.geometry.attributes.position;
+  for (i = 0; i < JOINTS.length; i++) {
+    h.balls[i].visible = h.ok[i];
+    if (h.ok[i]) h.balls[i].position.copy(h.j[i]);
+  }
+  h.lines.visible = h.kind === 'hand';
+  if (h.kind !== 'hand') return;
+  for (i = 0; i < BONES.length; i++) {
+    var a = BONES[i][0], b = BONES[i][1], good = h.ok[a] && h.ok[b];
+    var pa = good ? h.j[a] : h.j[0], pb = good ? h.j[b] : h.j[0];
+    pos.setXYZ(i * 2, pa.x, pa.y, pa.z); pos.setXYZ(i * 2 + 1, pb.x, pb.y, pb.z);
+  }
+  pos.needsUpdate = true;
+}
+
+// Floating panel
+var panelCanvas = document.createElement('canvas'); panelCanvas.width = 560; panelCanvas.height = 400;
+var panelTex = new THREE.CanvasTexture(panelCanvas); panelTex.encoding = THREE.sRGBEncoding;
+var panel = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.20), new THREE.MeshBasicMaterial({ map: panelTex, transparent: true }));
+panel.visible = false; scene.add(panel);
+function rr(g, x, y, w, h, r) {
+  g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
+  g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h);
+  g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
+}
+function drawPanel() {
+  var g = panelCanvas.getContext('2d');
+  g.clearRect(0, 0, 560, 400);
+  g.fillStyle = 'rgba(14,24,38,0.9)'; rr(g, 0, 0, 560, 400, 28); g.fill();
+  g.textBaseline = 'middle'; g.textAlign = 'left';
+  g.fillStyle = '#a3b3c4'; g.font = '500 23px "Figtree", sans-serif';
+  var tip = state === 'rest' ? 'Gitarı sapından ya da gövdesinden kavra'
+          : state === 'carry' ? 'Çalmak için gövdeyi karnına getir'
+          : (holdMode === 'free' ? 'Çıkarmak için sapı kavrayıp uzağa çek' : 'Sol el sapta, sağ el tellerde');
+  g.fillText(tip, 36, 42);
+  g.fillStyle = '#eef2f6'; g.font = '700 56px "Bricolage Grotesque", sans-serif';
+  g.fillText(chordName === 'özel' ? 'Serbest' : chordName, 36, 106);
+  g.textAlign = 'center';
+  var rows = [[170, vrMode === 'chord' ? 'Sol el: akor bölgeleri' : 'Sol el: serbest parmak'],
+              [285, holdMode === 'free' ? 'Tutuş: serbest' : 'Tutuş: askılı']];
+  rows.forEach(function (r) {
+    g.fillStyle = '#f2b84b'; rr(g, 40, r[0], 480, 100, 20); g.fill();
+    g.fillStyle = '#1d1503'; g.font = '600 34px "Figtree", sans-serif'; g.fillText(r[1], 280, r[0] + 52);
+  });
+  panelTex.needsUpdate = true;
+}
+
+var anchorPos = new V3(), anchorYaw = 0, anchorReady = false, yawFollowing = false, lastYaw = 0;
+var headPos = new V3(), headQ = new THREE.Quaternion(), fwd = new V3();
+var aF = new V3(), aR = new V3(), UP = new V3(0, 1, 0);
+function fromAnchor(out, r, u, f) { return out.set(0, 0, 0).addScaledVector(aR, r).addScaledVector(UP, u).addScaledVector(aF, f); }
+var neckDir = new V3(), defDir = new V3(), tgtDir = new V3(), zRef = new V3(), pivot = new V3();
+var held = false, grip = new V3(), tmp = new V3(), tmp2 = new V3();
+var panelInside = [false, false], panelLast = -9, zoneIdx = -1;
+var floorDropped = false;
+
+function readInputs(frame, session, ref) {
+  hands.left.kind = null; hands.right.kind = null;
+  var srcs = session.inputSources;
+  for (var s = 0; s < srcs.length; s++) {
+    var src = srcs[s], h = hands[src.handedness];
+    if (!h) continue;
+    var i, pose;
+    if (src.hand && frame.getJointPose) {
+      var any = false;
+      for (i = 0; i < JOINTS.length; i++) {
+        var sp = src.hand.get(JOINTS[i]);
+        pose = sp ? frame.getJointPose(sp, ref) : null;
+        h.ok[i] = !!pose;
+        if (pose) { var q = pose.transform.position; h.j[i].set(q.x, q.y, q.z); any = true; }
+        if (i === 0) { h.qok = !!pose; if (pose) { var o = pose.transform.orientation; h.q.set(o.x, o.y, o.z, o.w); } }
+      }
+      if (any) h.kind = 'hand';
+    } else if (src.gripSpace || src.targetRaySpace) {
+      pose = frame.getPose(src.gripSpace || src.targetRaySpace, ref);
+      for (i = 0; i < JOINTS.length; i++) h.ok[i] = false;
+      h.qok = !!pose;
+      if (pose) {
+        var c = pose.transform.position, co = pose.transform.orientation;
+        h.j[0].set(c.x, c.y, c.z); h.q.set(co.x, co.y, co.z, co.w); h.ok[0] = true; h.kind = 'ctrl';
+      }
+      var bt = src.gamepad && src.gamepad.buttons;
+      h.squeeze = !!(bt && ((bt[1] && bt[1].pressed) || (bt[0] && bt[0].pressed)));
+    }
+  }
+}
+function gripPoint(h, out) {
+  if (h.kind === 'ctrl') return out.copy(h.j[0]);
+  if (h.kind !== 'hand') return null;
+  var a = JI['thumb-tip'], b = JI['index-finger-phalanx-proximal'], c = JI['middle-finger-phalanx-proximal'];
+  if (!(h.ok[a] && h.ok[b] && h.ok[c])) return null;
+  return out.copy(h.j[a]).add(h.j[b]).add(h.j[c]).multiplyScalar(1 / 3);
+}
+// A hand counts as closed when its fingertips curl in toward the wrist (or the controller grip is squeezed).
+var CURL_TIPS = ['index-finger-tip', 'middle-finger-tip', 'ring-finger-tip', 'pinky-finger-tip'];
+function gripClosed(h) {
+  if (h.kind === 'ctrl') return h.squeeze;
+  if (h.kind !== 'hand') return false;
+  var m = JI['middle-finger-phalanx-proximal'];
+  if (!h.ok[0] || !h.ok[m]) return h.closed;
+  var palm = h.j[0].distanceTo(h.j[m]), sum = 0, n = 0;
+  for (var i = 0; i < 4; i++) { var k = JI[CURL_TIPS[i]]; if (h.ok[k]) { sum += h.j[k].distanceTo(h.j[0]); n++; } }
+  if (n < 3 || palm < 0.03) return h.closed;
+  var r = sum / n / palm;
+  return h.closed ? r < 1.72 : r < 1.42;
+}
+function nearGuitar(h) {
+  var p = gripPoint(h, tmp2) || (h.ok[0] ? tmp2.copy(h.j[0]) : null);
+  if (!p) return false;
+  guitar.worldToLocal(p);
+  if (p.x > 0.16 && p.x < 0.70 && Math.hypot(p.y, p.z) < 0.09) return true;
+  return p.x > -0.36 && p.x <= 0.2 && Math.abs(p.y) < 0.22 && p.z > -0.16 && p.z < 0.08;
+}
+
+/* Free hold: the guitar waits on a stand, a closed hand picks it up and carries it,
+   and it settles against the body once its soundbox reaches the belly. */
+var stand = new THREE.Group(); stand.visible = false; scene.add(stand);
+(function () {
+  var m = new THREE.MeshStandardMaterial({ color: 0x20262e, roughness: 0.5, metalness: 0.6 });
+  var base = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.014, 32), m); base.position.set(0, 0.007, -0.1); stand.add(base);
+  stand.add(cyl(new V3(0, 0.01, -0.13), new V3(0, 0.98, -0.2), 0.009, m, 10));
+  stand.add(cyl(new V3(-0.07, 0.25, -0.15), new V3(0.07, 0.25, -0.15), 0.007, m, 8));
+  stand.add(cyl(new V3(-0.07, 0.25, -0.15), new V3(-0.07, 0.27, 0.04), 0.007, m, 8));
+  stand.add(cyl(new V3(0.07, 0.25, -0.15), new V3(0.07, 0.27, 0.04), 0.007, m, 8));
+})();
+var standPivot = new V3(), standQ = new THREE.Quaternion();
+var playSpot = new V3(), pivotCur = new V3(), blockPlay = false;
+var carryHand = null, carryOff = new THREE.Matrix4(), handM = new THREE.Matrix4(), gM = new THREE.Matrix4();
+var ONE = new V3(1, 1, 1), scl = new V3();
+function setState(s) { if (state !== s) { state = s; drawPanel(); } }
+function placeStand() {
+  fromAnchor(standPivot, 0.4, 0, 0.6).add(anchorPos);
+  var fy = floor.position.y;
+  stand.position.set(standPivot.x, fy, standPivot.z);
+  tmp.set(headPos.x - standPivot.x, 0, headPos.z - standPivot.z).normalize();
+  stand.rotation.set(0, Math.atan2(tmp.x, tmp.z), 0);
+  standPivot.y = fy + 0.6;
+  tmp2.copy(UP).addScaledVector(tmp, -0.1);
+  orientGuitar(tmp2, tmp);
+  standQ.copy(guitar.quaternion);
+  stand.visible = true; standReady = true;
+  toStand();
+}
+function toStand() { guitar.position.copy(standPivot); guitar.quaternion.copy(standQ); held = false; setState('rest'); }
+function startCarry(h) {
+  if (!h.ok[0] || !h.qok) return;
+  handM.compose(h.j[0], h.q, ONE);
+  carryOff.copy(handM).invert().multiply(guitar.matrixWorld);
+  carryHand = h; held = false; setState('carry');
+}
+function enterPlay() {
+  pivotCur.copy(guitar.position);
+  neckDir.set(1, 0, 0).applyQuaternion(guitar.quaternion);
+  held = false; zoneIdx = -1; setState('play');
+}
+
+function updateXR(frame, now, dt) {
+  var session = renderer.xr.getSession(), ref = renderer.xr.getReferenceSpace();
+  if (!session || !ref) return;
+  var vp = frame.getViewerPose(ref);
+  if (!vp) return;
+  var tp = vp.transform.position, to = vp.transform.orientation;
+  headPos.set(tp.x, tp.y, tp.z); headQ.set(to.x, to.y, to.z, to.w);
+  fwd.set(0, 0, -1).applyQuaternion(headQ);
+  if (Math.hypot(fwd.x, fwd.z) > 0.3) lastYaw = Math.atan2(-fwd.x, -fwd.z);
+
+  // Body anchor: follows the head position, turns only after a clear turn of the head
+  if (!anchorReady) { anchorPos.copy(headPos); anchorYaw = lastYaw; anchorReady = true; }
+  anchorPos.lerp(headPos, 1 - Math.exp(-dt * 2.5));
+  var dy = Math.atan2(Math.sin(lastYaw - anchorYaw), Math.cos(lastYaw - anchorYaw));
+  if (Math.abs(dy) > 0.75) yawFollowing = true;
+  if (yawFollowing) { anchorYaw += dy * (1 - Math.exp(-dt * 3)); if (Math.abs(dy) < 0.08) yawFollowing = false; }
+  aF.set(-Math.sin(anchorYaw), 0, -Math.cos(anchorYaw));
+  aR.set(Math.cos(anchorYaw), 0, -Math.sin(anchorYaw));
+
+  readInputs(frame, session, ref);
+  drawHand(hands.left); drawHand(hands.right);
+
+  fromAnchor(playSpot, 0.08, -0.42, 0.22).add(anchorPos);
+  fromAnchor(defDir, -0.86, 0.38, 0.2).normalize();
+  fromAnchor(zRef, 0, 0.6, 1);
+  var LH = hands.left, RH = hands.right;
+  var cl = gripClosed(LH), cr = gripClosed(RH);
+  var riseL = cl && !LH.closed, riseR = cr && !RH.closed;
+  LH.closed = cl; RH.closed = cr;
+
+  if (holdMode === 'strap') { if (state !== 'play') enterPlay(); }
+  else {
+    if (!standReady) placeStand();
+    var dSpot = guitar.position.distanceTo(playSpot);
+    if (blockPlay && dSpot > 0.32) blockPlay = false;
+    if (state === 'rest') {
+      if (riseL && nearGuitar(LH)) startCarry(LH);
+      else if (riseR && nearGuitar(RH)) startCarry(RH);
+    } else if (state === 'carry') {
+      var ch = carryHand;
+      if (!ch.kind) setState('rest');
+      else {
+        if (ch.ok[0] && ch.qok) {
+          handM.compose(ch.j[0], ch.q, ONE); gM.multiplyMatrices(handM, carryOff);
+          gM.decompose(guitar.position, guitar.quaternion, scl);
+        }
+        dSpot = guitar.position.distanceTo(playSpot);
+        if (!blockPlay && dSpot < 0.2) enterPlay();
+        else if (!ch.closed) {
+          if (dSpot < 0.28) enterPlay();
+          else if (guitar.position.distanceTo(standPivot) < 0.3) toStand();
+          else setState('rest');
+        }
+      }
+    }
+  }
+
+  // Playing position: soundbox rests at the belly, neck aims at the left hand while it holds the neck
+  var g = null;
+  if (state === 'play') {
+    pivotCur.lerp(playSpot, 1 - Math.exp(-dt * 12));
+    g = gripPoint(LH, grip);
+    if (g) {
+      tmp.copy(g).sub(pivotCur);
+      var dist = tmp.length(), ang = tmp.angleTo(defDir);
+      if (!held) {
+        tmp2.copy(g); guitar.worldToLocal(tmp2);
+        held = ang < 0.87 && tmp2.x > 0.16 && tmp2.x < 0.62 && Math.hypot(tmp2.y, tmp2.z) < 0.09;
+      } else if (dist < 0.14 || dist > 0.68 || ang > 0.96) {
+        held = false;
+        // Pulling the neck far away with a closed hand lifts the guitar off the body
+        if (holdMode === 'free' && cl) { blockPlay = true; startCarry(LH); }
+      }
+    } else held = false;
+  }
+  if (state === 'play') {
+    if (held) {
+      tgtDir.copy(g).sub(pivotCur).normalize();
+      var a = tgtDir.angleTo(defDir);
+      if (a > 0.87) tgtDir.lerp(defDir, 1 - 0.87 / a).normalize();
+    } else tgtDir.copy(defDir);
+    neckDir.lerp(tgtDir, 1 - Math.exp(-dt * (held ? 18 : 6))).normalize();
+    orientGuitar(neckDir, zRef, 1 - Math.exp(-dt * 25));
+    guitar.position.copy(pivotCur);
+  }
+  guitar.updateMatrixWorld(true);
+  zoneGroup.visible = vrMode === 'chord' && state === 'play';
+
+  // Left hand: chord zones or free fretting
+  var lh = hands.left, i;
+  if (vrMode === 'chord') {
+    var name = 'Açık';
+    if (state === 'play' && held) {
+      tmp2.copy(g); guitar.worldToLocal(tmp2);
+      var u = (ZONE_START - tmp2.x) / ZONE_LEN;
+      if (zoneIdx < 0 || Math.abs(u - (zoneIdx + 0.5)) > 0.64) zoneIdx = clamp(Math.floor(u), 0, ZONE_CHORDS.length - 1);
+      name = ZONE_CHORDS[zoneIdx];
+    } else zoneIdx = -1;
+    setChord(name);
+  } else {
+    var next = [0, 0, 0, 0, 0, 0];
+    if (state === 'play' && lh.kind === 'hand') {
+      ['index-finger-tip', 'middle-finger-tip', 'ring-finger-tip', 'pinky-finger-tip'].forEach(function (n) {
+        var k = JI[n]; if (!lh.ok[k]) return;
+        tmp2.copy(lh.j[k]); guitar.worldToLocal(tmp2);
+        var z = tmp2.z - FB_TOP;
+        if (tmp2.x < X_FB_END || tmp2.x > X_NUT || Math.abs(tmp2.y) > fbHalf(tmp2.x) + 0.006 || z < -0.02 || z > 0.03) return;
+        var si = clamp(Math.round(2.5 - tmp2.y / spacing(tmp2.x)), 0, 5);
+        next[si] = Math.max(next[si], fretAt(tmp2.x));
+      });
+    }
+    applyFrets(next, 'özel');
+  }
+
+  // Right hand: fingertips pluck
+  var rh = hands.right;
+  var rightTips = rh.kind === 'hand' ? ['thumb-tip', 'index-finger-tip', 'middle-finger-tip'] : (rh.kind === 'ctrl' ? ['wrist'] : []);
+  ['thumb-tip', 'index-finger-tip', 'middle-finger-tip', 'wrist'].forEach(function (n) {
+    var k = JI[n];
+    if (state === 'carry' || rightTips.indexOf(n) < 0 || !rh.ok[k]) { tips['r-' + n] = null; return; }
+    tmp2.copy(rh.j[k]); guitar.worldToLocal(tmp2);
+    processTip('r-' + n, tmp2, now, -0.022, 0.035);
+  });
+
+  // Panel: up and to the right, poke the button with an index finger to switch mode
+  fromAnchor(panel.position, 0.44, -0.16, 0.5).add(anchorPos);
+  panel.lookAt(headPos);
+  panel.updateMatrixWorld(true);
+  var inside = [false, false];
+  [hands.left, hands.right].forEach(function (h) {
+    var k = h.kind === 'hand' ? JI['index-finger-tip'] : 0;
+    if (!h.kind || !h.ok[k] || (state === 'carry' && h === carryHand)) return;
+    tmp2.copy(h.j[k]); panel.worldToLocal(tmp2);
+    if (Math.abs(tmp2.x) > 0.12 || Math.abs(tmp2.z) > 0.025) return;
+    if (tmp2.y < 0.015 && tmp2.y > -0.035) inside[0] = true;
+    else if (tmp2.y < -0.0425 && tmp2.y > -0.0925) inside[1] = true;
+  });
+  for (var b = 0; b < 2; b++) {
+    if (inside[b] && !panelInside[b] && now - panelLast > 0.7) {
+      panelLast = now;
+      if (b === 0) setMode(vrMode === 'chord' ? 'free' : 'chord'); else setHold(holdMode === 'free' ? 'strap' : 'free');
+    }
+    panelInside[b] = inside[b];
+  }
+}
+
+/* ---------- VR session ---------- */
+var vrBtn = document.getElementById('vrBtn'), statusEl = document.getElementById('status');
+var xrSession = null;
+function vrUnavailable(msg) { vrBtn.disabled = true; vrBtn.textContent = 'VR kullanılamıyor'; statusEl.textContent = msg; }
+var NO_VR = 'Bu pencerede VR oturumu açılamıyor. Masaüstü önizlemesi çalışır; VR için sayfayı gözlüğün tarayıcısında açın.';
+if (navigator.xr && navigator.xr.isSessionSupported) {
+  navigator.xr.isSessionSupported('immersive-vr').then(function (ok) {
+    if (!ok) { vrUnavailable(NO_VR); return; }
+    vrBtn.disabled = false;
+    statusEl.textContent = 'VR hazır. Kumandaları bırakıp ellerinizi kullanın; gitar sağ önünüzdeki standda bekler.';
+  }).catch(function () { vrUnavailable(NO_VR); });
+} else vrUnavailable(NO_VR);
+
+function startSession(session, floorSpace) {
+  xrSession = session;
+  renderer.xr.setReferenceSpaceType(floorSpace ? 'local-floor' : 'local');
+  return renderer.xr.setSession(session);
+}
+vrBtn.addEventListener('click', function () {
+  initAudio();
+  if (xrSession) { xrSession.end(); return; }
+  if (demoTimer) toggleDemo();
+  navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'hand-tracking'] }).then(function (session) {
+    session.addEventListener('end', function () {
+      xrSession = null; vrBtn.textContent = "VR'a gir";
+      hands.left.group.visible = hands.right.group.visible = false; panel.visible = false; stand.visible = false;
+      if (floorDropped) { floor.position.y = 0; floorDropped = false; }
+      setChord('Açık'); desktopPose(); resize();
+    });
+    anchorReady = false; held = false; tips = {}; state = 'rest'; standReady = false; blockPlay = false;
+    hands.left.closed = hands.right.closed = false;
+    vrBtn.textContent = "VR'dan çık";
+    panel.visible = true; drawPanel();
+    return startSession(session, true).catch(function () {
+      floor.position.y = -1.5; floorDropped = true;
+      return startSession(session, false);
+    });
+  }).catch(function (err) {
+    statusEl.textContent = 'VR oturumu başlatılamadı: ' + (err && err.message ? err.message : 'bilinmeyen hata') + '.';
+  });
+});
+
+/* ---------- Loop ---------- */
+var lastT = 0;
+renderer.setAnimationLoop(function (ms, frame) {
+  var now = ms / 1000, dt = Math.min(0.05, Math.max(0.001, now - lastT)); lastT = now;
+  if (renderer.xr.isPresenting && frame) updateXR(frame, performance.now() / 1000, dt);
+  for (var i = 0; i < 6; i++) {
+    var s = strings[i];
+    if (s.amp > 0.00002) { s.amp *= Math.exp(-dt * 2.4); s.mesh.position.y = s.baseY + s.amp * Math.sin(now * (150 + i * 23)); }
+    else if (s.amp !== 0) { s.amp = 0; s.mesh.position.y = s.baseY; }
+  }
+  renderer.render(scene, camera);
+});
+
+buildZones(); drawPanel(); desktopPose(); resize();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { buildZones(); drawPanel(); });
+window.__guitar = { renderer: renderer, updateXR: updateXR, guitar: guitar, hands: hands, getState: function () { return state + '/' + chordName + '/' + held; }, strum: strum, setChord: setChord, frets: frets, tips: tips, processTip: processTip, strings: strings };
+})();
+</script>
 </body>
-
 </html>

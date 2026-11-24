@@ -22,7 +22,8 @@ def get_engine():
             pg_engine = create_engine(
                 target_url,
                 pool_pre_ping=True,
-                pool_recycle=300
+                pool_recycle=300,
+                connect_args={"connect_timeout": 10}
             )
             # Verify connection
             with pg_engine.connect() as conn:

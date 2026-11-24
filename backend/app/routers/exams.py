@@ -26,7 +26,8 @@ from app.schemas import (
 from app.auth import get_current_user, require_teacher
 from app.services.ai_exam_service import (
     YKS_CURRICULUM, generate_questions_smart, sanitize_math_and_turkish,
-    is_verbal_branch, compute_question_fingerprint
+    is_verbal_branch, compute_question_fingerprint,
+    get_grade_level_for_exam, generate_learning_outcome_code, generate_distractor_analysis
 )
 from app.services.ai_agent_service import (
     AutonomousCoordinator, JudgeAgent, NightlyPoolSynthesizer,
@@ -828,6 +829,18 @@ def delete_training_document(
     return {"message": "Eğitim dokümanı başarıyla kaldırıldı."}
 
 
+def _ensure_student_can_access_exam(exam: Exam, user: User, db: Session) -> None:
+    """GÜVENLİK: Öğrenci yalnızca kendi sınıfına veya tüm sınıflara açılmış sınavlara erişebilir."""
+    if user.role != "student" or exam.classroom_id is None:
+        return
+    enrolled = db.query(ClassroomStudent).filter(
+        ClassroomStudent.classroom_id == exam.classroom_id,
+        ClassroomStudent.student_id == user.id
+    ).first()
+    if not enrolled:
+        raise HTTPException(status_code=403, detail="Bu sınav sizin sınıfınıza ait değil.")
+
+
 @router.get("/{exam_id}", response_model=ExamDetailOut)
 def get_exam_detail(
     exam_id: int,
@@ -838,6 +851,7 @@ def get_exam_detail(
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Sınav bulunamadı.")
+    _ensure_student_can_access_exam(exam, current_user, db)
 
     questions = db.query(ExamQuestion).filter(ExamQuestion.exam_id == exam.id).order_by(ExamQuestion.question_number).all()
     q_count = len(questions)
@@ -949,9 +963,12 @@ def submit_exam_answers(
     db: Session = Depends(get_db)
 ):
     """Öğrenci sınav cevaplarını teslim eder, anında puanlanır ve analiz hesaplanır."""
+    if current_user.role != "student":
+        raise HTTPException(status_code=403, detail="Sınav cevaplarını yalnızca öğrenciler gönderebilir.")
     exam = db.query(Exam).filter(Exam.id == exam_id).first()
     if not exam:
         raise HTTPException(status_code=404, detail="Sınav bulunamadı.")
+    _ensure_student_can_access_exam(exam, current_user, db)
 
     existing_sub = db.query(ExamSubmission).filter(
         ExamSubmission.exam_id == exam.id,

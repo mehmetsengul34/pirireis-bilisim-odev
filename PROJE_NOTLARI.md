@@ -2,8 +2,8 @@
 
 > **Tarih:** 27 Ekim 2026  
 > **GitHub Deposu:** `mehmetsengul34/pirireis-bilisim-odev` (Branch: `main`)  
-> **Canlı Yayın (Vercel):** https://pirireis-bilisim-odev.vercel.app | https://ogretmenlerodasi.info  
-> **API Sunucusu (Render):** https://pirireis-api.onrender.com
+> **Canlı Yayın (Vercel):** https://pirireis-bilisim-odev.vercel.app | https://ogretmenlerodasi.online  
+> **API Sunucusu (Render):** https://pirireis-api-v3ku.onrender.com
 
 ---
 
@@ -71,8 +71,16 @@
 
 ---
 
-## 🔑 Varsayılan Giriş Bilgileri
+## 🔐 Giriş Bilgileri ve Gizli Anahtarlar
 
-- **Master Öğretmen (Yönetici):** `pirireis` / `20262027`
-- **Örnek Öğrenci:** `ogrenci` / `123`
-- **PDF ile Eklenen Öğrenciler:** `[OkulNo][Ad]` (Örn: `1042ahmet`) / Standart Şifre: `1234`
+- Şifreler ve API anahtarları artık bu dosyada veya kodda **tutulmuyor**. Ayrıntılar için `README.md` → "Yapılandırma" bölümüne ve `backend/.env.example` dosyasına bakın.
+- **PDF ile Eklenen Öğrenciler:** Kullanıcı adı `[OkulNo][Ad]` (örn: `1042ahmet`), başlangıç şifresi öğretmen panelinde gösterilir.
+
+## 🛡️ Güvenlik Güncellemesi (Kasım 2026)
+
+- `render.yaml`, `auth.py` ve masaüstü uygulamasındaki sabit şifre/anahtarlar kaldırıldı; tümü ortam değişkenine taşındı.
+- Giriş ekranlarına kaba kuvvet (brute-force) koruması eklendi.
+- Öğrenci yalnızca kendi sınıfının ödevine teslim yapabilir ve kendi sınıfının sınavına girebilir.
+- Öğrenci şifreleri yalnızca sınıfın sorumlu öğretmeni ve yönetici tarafından görülebilir; öğrencinin kendi belirlediği şifre açık metin olarak saklanmaz.
+- Dosya yüklemelerine 50 MB sınırı (`MAX_UPLOAD_MB`) ve güvenli indirme başlıkları eklendi.
+- Masaüstü uygulamasında kapatılmış olan SSL sertifika doğrulaması yeniden açıldı.
