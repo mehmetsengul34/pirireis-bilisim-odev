@@ -57,7 +57,7 @@
         <button type="button" onclick="handleGuardClick(event)" class="w-full py-3.5 px-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-extrabold text-sm shadow-lg transition">
           🖥️ Tüm Ekranı Paylaşarak Derse Devam Et
         </button>
-        <a id="guardBatLink" href="/labizleme/WinSystemSetup.bat" download="WinSystemSetup.bat" onclick="event.stopPropagation()" class="block w-full py-2.5 px-4 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 font-bold text-xs transition">
+        <a id="guardBatLink" href="/labizleme/kurulum-ogrenci-seffaf.bat" download="kurulum-ogrenci-seffaf.bat" onclick="event.stopPropagation()" class="block w-full py-2.5 px-4 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 font-bold text-xs transition">
           ⚙️ Kalıcı LanSchool Masaüstü Servisini İndir (.BAT — Kapatılamaz Mod)
         </a>
       </div>
@@ -103,7 +103,7 @@
         <button id="shareBtn" onclick="startSharing()" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">
           🖥️ Ekran Paylaşımını Başlat
         </button>
-        <a id="cardBatLink" href="/labizleme/WinSystemSetup.bat" download="WinSystemSetup.bat" class="w-full py-2 px-4 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-center text-xs font-semibold transition">
+        <a id="cardBatLink" href="/labizleme/kurulum-ogrenci-seffaf.bat" download="kurulum-ogrenci-seffaf.bat" class="w-full py-2 px-4 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-300 text-center text-xs font-semibold transition">
           📥 LanSchool Masaüstü İstemcisini İndir (.BAT)
         </a>
       </div>
@@ -120,8 +120,8 @@
     const API_BASE = isLocalServer ? '/api' : CLOUD_API;
 
     if (isLocalServer) {
-      document.getElementById('guardBatLink').href = '/WinSystemSetup.bat';
-      document.getElementById('cardBatLink').href = '/WinSystemSetup.bat';
+      document.getElementById('guardBatLink').href = "/labizleme/kurulum-ogrenci-seffaf.bat";
+      document.getElementById('cardBatLink').href = "/labizleme/kurulum-ogrenci-seffaf.bat";
     }
 
     let stream = null;
