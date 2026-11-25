@@ -18,9 +18,15 @@ if not "%errorLevel%"=="0" (
 
 set "INSTALL_DIR=%ProgramData%\PiriReisLabIzleme"
 set "TASK=PiriReisLabIzleme"
+set "SVC=PiriReisLabDeploy"
 
 echo  - Calisan uygulama durduruluyor...
 taskkill /f /im PiriReisLabIzleme.exe >nul 2>&1
+
+echo  - Dagitim hizmeti durduruluyor ve siliniyor...
+sc stop "%SVC%" >nul 2>&1
+taskkill /f /im PiriReisLabDeploy.exe >nul 2>&1
+sc delete "%SVC%" >nul 2>&1
 
 echo  - Otomatik baslatma gorevi siliniyor...
 schtasks /delete /tn "%TASK%" /f >nul 2>&1

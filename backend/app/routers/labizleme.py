@@ -1,6 +1,7 @@
 import time
 import os
 import secrets
+import hashlib
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, Request, Response, HTTPException, status, UploadFile, File
@@ -336,6 +337,36 @@ classroom_state: Dict[str, Any] = {
     "installCommand": None,
 }
 
+# Güvenli dağıtım kuyruğu: makine adına (büyük harf) göre bekleyen doğrulanmış kurulum işi
+# ve SYSTEM hizmetinin bildirdiği durum. Yalnızca "install_verified" tipli işler.
+deploy_jobs: Dict[str, Dict[str, Any]] = {}
+deploy_status: Dict[str, Dict[str, Any]] = {}
+DEPLOY_SVC_TOKEN = os.getenv("LABIZLE_DEPLOY_TOKEN", "").strip()
+
+
+def _mkey(name: Optional[str]) -> str:
+    return (name or "").strip().upper()
+
+
+def _resolve_machine_names(target_ids) -> List[str]:
+    """Hedef kimliklerini (id / deskNo / mac / name) makine adlarına çözer."""
+    names = []
+    if target_ids:
+        for tid in target_ids:
+            st = students.get(tid)
+            if not st:
+                for s_val in students.values():
+                    if tid in (s_val.get("id"), s_val.get("ip"), s_val.get("deskNo"), s_val.get("mac"), s_val.get("name")):
+                        st = s_val
+                        break
+            if st and st.get("deskNo"):
+                names.append(st["deskNo"])
+    else:
+        for st in students.values():
+            if st.get("online") and st.get("deskNo"):
+                names.append(st["deskNo"])
+    return names
+
 
 class FramePayload(BaseModel):
     id: Optional[str] = None
@@ -369,6 +400,8 @@ class ActionPayload(BaseModel):
     keys: Optional[str] = None
     installType: Optional[str] = None
     packageName: Optional[str] = None
+    installFile: Optional[str] = None      # güvenli dağıtım: /upload-installer'ın döndürdüğü dosya adı
+    installSha256: Optional[str] = None    # güvenli dağıtım: beklenen SHA-256
     installUrl: Optional[str] = None
     installArgs: Optional[str] = None
     installCommand: Optional[str] = None
@@ -682,42 +715,50 @@ def post_teacher_action(payload: ActionPayload, request: Request):
         for k in list(students.keys()):
             if not students[k].get("online") or not students[k].get("frame"):
                 students.pop(k, None)
-    elif action in ("remoteInstall", "batchCommand", "updateAgent", "updateAllAgents"):
-        is_update = action in ("updateAgent", "updateAllAgents")
+    elif action == "deployVerified":
+        # GÜVENLİ DAĞITIM: yalnızca sunucuya yüklenmiş, SHA-256 ile sabitlenmiş kurulum dosyası.
+        # Keyfi komut / PowerShell YOK. İşi SYSTEM dağıtım hizmeti indirip hash doğrulayıp
+        # kurulum dosyası olarak çalıştırır. İzleme ajanı bu işe hiç bakmaz.
+        safe_name = os.path.basename((payload.installFile or "").strip())
+        safe_name = "".join(c for c in safe_name if c.isalnum() or c in (".", "-", "_"))
+        sha = (payload.installSha256 or "").strip().lower()
+        if not safe_name or not os.path.isfile(os.path.join(INSTALLERS_DIR, safe_name)):
+            raise HTTPException(status_code=400, detail="Önce kurulum dosyasını yükleyin (geçerli installFile gerekli).")
+        if len(sha) != 64 or any(c not in "0123456789abcdef" for c in sha):
+            raise HTTPException(status_code=400, detail="Geçerli bir SHA-256 (installSha256) gerekli.")
+        if os.path.splitext(safe_name)[1].lower() not in (".exe", ".msi"):
+            raise HTTPException(status_code=400, detail="Yalnızca .exe veya .msi kurulum dosyası dağıtılabilir.")
         cmd_id = f"inst_{int(time.time() * 1000)}_{secrets.token_hex(4)}"
-        cmd = {
+        job = {
             "id": cmd_id,
-            "type": "update_agent" if is_update else (payload.installType or "download_exe"),
-            "name": "Ajan Guncellemesi" if is_update else (payload.packageName or "Yazılım Kurulumu"),
-            "url": "https://ogretmenlerodasi.info/labizleme/WinSystemSetup.bat" if is_update else (payload.installUrl or ""),
+            "type": "install_verified",
+            "name": payload.packageName or safe_name,
+            "url": f"/api/labizleme/installers/{safe_name}",
+            "fileName": safe_name,
+            "sha256": sha,
             "args": payload.installArgs or "",
-            "command": payload.installCommand or ("update" if is_update else ""),
             "timestamp": int(time.time() * 1000),
         }
         initial_status = {
-            "id": cmd_id,
-            "name": cmd["name"],
-            "status": "pending",
-            "progress": 0,
-            "message": "Guncelleme paketi iletildi..." if is_update else "Kurulum emri iletildi...",
-            "timestamp": now_str,
+            "id": cmd_id, "name": job["name"], "status": "pending", "progress": 0,
+            "message": "Doğrulanmış kurulum işi hizmete iletildi...", "timestamp": now_str,
         }
-        if targets:
-            for tid in targets:
-                target_student = students.get(tid)
-                if not target_student:
-                    for s_val in students.values():
-                        if s_val.get("id") == tid or s_val.get("ip") == tid or s_val.get("deskNo") == tid or s_val.get("mac") == tid or s_val.get("name") == tid:
-                            target_student = s_val
-                            break
-                if target_student:
-                    target_student["installCommand"] = cmd
-                    target_student["installStatus"] = initial_status
-        else:
-            classroom_state["installCommand"] = cmd
-            for st in students.values():
-                st["installCommand"] = cmd
-                st["installStatus"] = initial_status
+        machine_names = _resolve_machine_names(targets)
+        mkeys = {_mkey(m) for m in machine_names}
+        for mk in mkeys:
+            deploy_jobs[mk] = job.copy()
+            deploy_status[mk] = initial_status.copy()
+        for st in students.values():
+            if st.get("deskNo") and _mkey(st["deskNo"]) in mkeys:
+                st["installStatus"] = initial_status.copy()
+        return {"ok": True, "queued": len(mkeys), "jobId": cmd_id}
+    elif action in ("remoteInstall", "batchCommand", "updateAgent", "updateAllAgents"):
+        # Güvenlik: panodan keyfi komut / gizli PowerShell / ajan öz-güncellemesi KALDIRILDI.
+        # Yazılım dağıtımı yalnızca "deployVerified" (hash doğrulamalı kurulum dosyası) ile yapılır.
+        raise HTTPException(
+            status_code=410,
+            detail="Bu yöntem kaldırıldı. Güvenli dağıtım için önce dosyayı yükleyip 'deployVerified' kullanın.",
+        )
     elif action == "clearInstallStatus":
         if targets:
             for tid in targets:
@@ -760,13 +801,56 @@ async def upload_installer_file(request: Request, file: UploadFile = File(...)):
     with open(file_path, "wb") as f:
         f.write(content)
 
+    sha256 = hashlib.sha256(content).hexdigest()
     file_size_mb = round(len(content) / (1024 * 1024), 2)
     return {
         "ok": True,
         "filename": safe_name,
         "sizeMb": file_size_mb,
+        "sha256": sha256,
         "url": f"/api/labizleme/installers/{safe_name}"
     }
+
+
+def _check_deploy_svc(request: Request) -> None:
+    """SYSTEM dağıtım hizmeti kimliği (paylaşılan sır tanımlıysa zorunlu)."""
+    if DEPLOY_SVC_TOKEN:
+        if (request.headers.get("X-Deploy-Token") or "").strip() != DEPLOY_SVC_TOKEN:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Geçersiz hizmet anahtarı.")
+
+
+@router.get("/deploy-job/{machine}")
+def get_deploy_job(machine: str, request: Request):
+    """SYSTEM dağıtım hizmeti bu makine için bekleyen doğrulanmış işi alır (teslim edilince kuyruktan düşer)."""
+    _check_deploy_svc(request)
+    return {"job": deploy_jobs.pop(_mkey(machine), None)}
+
+
+class DeployStatusPayload(BaseModel):
+    machine: str
+    id: Optional[str] = None
+    status: Optional[str] = None
+    message: Optional[str] = None
+    progress: Optional[int] = None
+
+
+@router.post("/deploy-status")
+def post_deploy_status(payload: DeployStatusPayload, request: Request):
+    """Hizmet kurulum sonucunu bildirir; panonun durum sekmesinde görünür."""
+    _check_deploy_svc(request)
+    st_obj = {
+        "id": payload.id or "",
+        "name": deploy_status.get(_mkey(payload.machine), {}).get("name", "Kurulum"),
+        "status": payload.status or "unknown",
+        "progress": payload.progress if payload.progress is not None else 0,
+        "message": payload.message or "",
+        "timestamp": time.strftime("%H:%M:%S"),
+    }
+    deploy_status[_mkey(payload.machine)] = st_obj
+    for st in students.values():
+        if st.get("deskNo") and _mkey(st["deskNo"]) == _mkey(payload.machine):
+            st["installStatus"] = st_obj.copy()
+    return {"ok": True}
 
 
 @router.get("/installers/{filename}")
