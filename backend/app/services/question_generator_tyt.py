@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-TYT (Temel Yeterlilik Testi) Soru Üretim Motoru (MEB / ÖSYM Standartları)
+TYT (Temel Yeterlilik Testi) Yeni Nesil Beceri Temelli Soru Üretim Motoru (MEB Maarif Modeli & ÖSYM Standartları)
 Branşlar:
 1. Türkçe
 2. Temel Matematik
@@ -15,22 +15,22 @@ Branşlar:
 
 Standart:
 - 5 seçenek (A, B, C, D, E).
+- Gerçek yaşam senaryoları, tablo/grafik/deney yorumlama, öncüllü (I, II, III) muhakeme.
 - KaTeX formülleri $ ... $ biçiminde.
 - Altı çizili sözcüklerde <u>...</u> etiketi zorunlu.
-- Şıklarda 'ulaşılamaz' veya yapay meta çeldirici bulunmaz.
-- Bilişsel Düzey: Hatırlama, Kavrama, Uygulama, Analiz / Muhakeme.
 """
 
 import random
 import math
 from typing import Dict, Any, List
 
+
 def format_tyt_options(correct_text: str, distractors: List[str]) -> Dict[str, Any]:
     """TYT için 5 seçenek (A, B, C, D, E) oluşturur."""
     letters = ["A", "B", "C", "D", "E"]
     corr_idx = random.randint(0, 4)
-    clean_dist = [d for d in distractors if "ulaşılamaz" not in str(d).lower()][:4]
-    
+    clean_dist = [d for d in distractors if "ulaşılamaz" not in str(d).lower() and d != correct_text][:4]
+
     fillers = [
         "Kavramsal derinliğe sahip metinler dönemsel koşullarla doğrudan ilişkilidir.",
         "Sanatsal ve kültürel üretim çağın gereksinimlerinden bağımsız ele alınamaz.",
@@ -44,9 +44,9 @@ def format_tyt_options(correct_text: str, distractors: List[str]) -> Dict[str, A
         f_idx += 1
         if cand not in clean_dist and cand != correct_text:
             clean_dist.append(cand)
-            
+
     random.shuffle(clean_dist)
-    
+
     opts = {}
     d_ptr = 0
     for i, letter in enumerate(letters):
@@ -56,1366 +56,1063 @@ def format_tyt_options(correct_text: str, distractors: List[str]) -> Dict[str, A
         else:
             opts[key] = clean_dist[d_ptr]
             d_ptr += 1
-            
+
     opts["correct_option"] = letters[corr_idx]
+    opts["correct_answer"] = letters[corr_idx]
     return opts
 
 
-# ================= 1. TYT TÜRKÇE =================
+# ================= 1. TYT TÜRKÇE (ÖSYM YENİ NESİL MUHAKEME) =================
 
-def gen_tyt_turkce(index: int) -> Dict[str, Any]:
-    archetype = index % 7
-    
+def gen_tyt_turkce(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    if index is None:
+        index = random.randint(0, 999)
+    top_low = str(topic or "").lower()
+
+    if "sözcük" in top_low:
+        archetype = 1
+    elif "ses" in top_low:
+        archetype = 2
+    elif "yazım" in top_low:
+        archetype = 3
+    elif "noktalama" in top_low:
+        archetype = 4
+    elif "öge" in top_low or "cümle" in top_low:
+        archetype = 5
+    elif "paragraf" in top_low or "anlatım" in top_low:
+        archetype = random.choice([0, 6])
+    else:
+        archetype = index % 7
+
     if archetype == 0:
-        # Paragrafta Ana Düşünce
-        themes = [
-            ("Edebi Dil", "Bir şairin büyüklüğü, dili gündelik konuşmanın sıradanlığından kurtarıp ona yeni çağrışım alanları açabilme yeteneğinde gizlidir. Kelimeleri sözlük anlamlarına hapseden bir yazar, okuyucunun muhayyilesini asla harekete geçiremez.", "Şiirsel ve sanatsal değer, dile kazandırılan özgün çağrışımlar ve çok katmanlı anlam zenginliğiyle ölçülür.", [
-                "Şairler eserlerini herkesin kolayca anlayabileceği yalın bir dille oluşturmalıdır.",
-                "Sözlük anlamının dışına çıkan metinler okuyucuda anlamsal kargaşaya yol açar.",
-                "Edebi metinlerin başarısı yalnızca kelime dağarcığının genişliğine bağlıdır.",
-                "Gündelik konuşma dili edebiyatın yegane zenginlik kaynağıdır."
-            ]),
-            ("Roman ve Gerçeklik", "Roman bir ayna gibi sokakta gezdirilse de o aynayı tutan elin estetik tercihleri gerçekliği yeniden biçimlendirir. Dolayısıyla en katı realist yazar dahi dünyayı olduğu gibi değil, kendi duyarlılık süzgecinden geçirerek anlatır.", "Romandaki gerçeklik, yazarın öznel algısı ve sanatsal yorumuyla yeniden inşa edilmiş bir kurgudur.", [
-                "Realist romanlarda yazarın kişisel duyarlılığı ve yorumu kesinlikle yer almaz.",
-                "Kurgusal metinler toplumsal olayları belgesel niteliğinde aktarmalıdır.",
-                "Sanatçının özgünlüğü gerçek hayatı birebir kopyalama başarısına dayanır.",
-                "Okuyucu romanı okurken yazarın dünya görüşünü doğrudan benimsemelidir."
-            ])
+        # Yeni Nesil Paragrafta Ana Düşünce & İki Paragraf Karşılaştırma
+        passages = [
+            (
+                "Modern çağda bilgiye erişimin saniyelere inmesi, bilginin kendisini değersizleştirmedi; ancak bilgiyi <u>içselleştirme ve hikmete dönüştürme</u> sürecini sekteye uğrattı. "
+                "Eskiden bir kavramın peşinde kütüphane rafları arasında geçirilen haftalar, zihne o kavramla derin bir bağ kurma imkânı tanırdı. "
+                "Şimdi ise ekranlardan akan binlerce veri kırıntısı, derinleşemeyen bir zihinde yalnızca geçici birer gürültü yaratıyor.",
+                "Dijital çağda bilgiye zahmetsiz ve hızlı ulaşılması, bilginin zihinde derinlemesine işlenip kalıcı bir kavrayışa dönüşmesini zorlaştırmaktadır.",
+                [
+                    "İnternet teknolojileri kütüphanelerin tarihsel işlevini tamamen sona erdirmiştir.",
+                    "Bilgiye hızlı erişim, bireylerin bilimsel üretim kapasitesini her alanda artırmıştır.",
+                    "Geçmiş dönemlerde üretilen felsefi metinler günümüz sorunlarına çözüm üretmekte yetersizdir.",
+                    "Görsel medyanın yaygınlaşması yazılı kültürün tamamen unutulmasına yol açmıştır."
+                ]
+            ),
+            (
+                "Bir edebiyat yapıtını başka bir dile çevirmek, sadece kelimeleri sözlükteki karşılıklarıyla değiştirmek değildir; bir kültürün ruhunu, tarihsel belleğini ve mizahını başka bir dilin ikliminde <u>yeniden nefes alır hale</u> getirmektir. "
+                "Bu yüzdendir ki yetkin bir çevirmen, kaynak metnin sadık bir kopyacısı değil; o metni hedef dilde yeniden kuran görünmez bir eş yazardır.",
+                "Nitelikli edebi çeviri, dilsel aktarımın ötesinde eserin kültürel ve estetik ruhunu hedef dilde yeniden inşa eden yaratıcı bir süreçtir.",
+                [
+                    "Çevirmen kaynak metindeki sözcüklerin dışına çıktığında eserin edebi değerini zedeler.",
+                    "Farklı kültürlere ait edebi yapıtların başka bir dile eksiksiz çevrilmesi olanaksızdır.",
+                    "Bir eserin dünya edebiyatında tanınması yazarından çok çevirmeninin üslubuna bağlıdır.",
+                    "Şiir ve roman çevirilerinde dil bilgisi kuralları estetik kaygıların önünde tutulmalıdır."
+                ]
+            )
         ]
-        t = themes[index % len(themes)]
-        q_text = f"**Paragraf:**\n\"{t[1]}\"\n\nBu parçada yazarın **asıl anlatmak istediği düşünce (ana fikir)** aşağıdakilerden hangisidir?"
-        opts = format_tyt_options(t[2], t[3])
+        p = passages[index % len(passages)]
+        q_text = f"**Paragraf:**\n\"{p[0]}\"\n\nBu parçadan çıkarılabilecek **en kapsamlı yargı (ana düşünce)** aşağıdakilerden hangisidir?"
+        opts = format_tyt_options(p[1], p[2])
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Türkçe",
-            "topic": "Paragrafta Anlam",
-            "subtopic": "Ana Düşünce ve Vurgulanan Yargı",
-            "learning_outcome_code": "T.TYT.1.2",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": f"Yazarın savunduğu temel argüman: {t[2]}",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Türkçe",
+            "topic": "Paragrafta Anlam ve Ana Düşünce", "subtopic": "Ana Düşünce ve Bütüncül Çıkarım",
+            "learning_outcome_code": "TDE.TYT.1.4", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "explanation": f"Metnin merkezinde yer alan temel tez: {p[1]}",
             **opts
         }
 
     elif archetype == 1:
-        # Altı Çizili Sözcük / Söz Öbeği
-        phrases = [
-            ("kabuğuna çekilmek", "dış dünya ve toplumsal ilişkilerden soyutlanıp kendi içine kapanmak", "büyük bir borcun altına girmek", "yeni bir işe cesaretle atılmak", "fiziksel olarak sakatlanmak", "ailesiyle sorunlar yaşamak"),
-            ("zamanın eleğinden geçmek", "kalıcılığını kanıtlayıp çağlar boyu değerini koruyabilmek", "güncel olayları günü gününe takip etmek", "hızlıca unutulup gitmek", "tarihi eserleri restore etmek", "zamanı boşa harcamak"),
-            ("kendi sesini bulmak", "taklitçilikten kurtulup kendine özgü ve taklit edilemez bir üslup yakalamak", "yüksek sesle şiir okumak", "geleneksel tarzı aynen sürdürmek", "toplumun beklentilerine göre yazmak", "eleştirmenlerin beğenisini kazanmak")
+        # Altı Çizili Söz Öbeği (ÖSYM Tipi)
+        items = [
+            (
+                "Sanatçı, ilk öykülerinde döneminin baskın edebi rüzgârlarına kapılsa da olgunluk dönemi yapıtlarında <u>kendi sesinin coğrafyasını kurmayı</u> başarmış ve edebiyatımızda benzersiz bir iz bırakmıştır.",
+                "Başkalarına öykünmekten sıyrılarak tamamen özgün ve bağımsız bir sanat dünyası oluşturmak",
+                [
+                    "Doğup büyüdüğü yörenin coğrafi güzelliklerini eserlerinin tek konusu haline getirmek",
+                    "Geleneksel anlatım kalıplarını koruyarak geniş halk kitlelerinin beğenisini kazanmak",
+                    "Çağdaşlarının edebi yaklaşımlarını sert bir dille eleştirerek tartışma yaratmak",
+                    "Öykülerinde yerel ağız özelliklerini kullanarak gerçekçiliği artırmaya çalışmak"
+                ]
+            ),
+            (
+                "Tarih boyunca büyük medeniyetler, farklı kültürlerle karşılaştıklarında <u>kabuklarına çekilmek</u> yerine o kültürlerin birikimini kendi potalarında eriterek yeni sentezlere ulaşmışlardır.",
+                "Dış dünyayla ve farklı toplumlarla iletişimi keserek kendi içine kapanmak",
+                [
+                    "Askerî ve ekonomik gücünü korumak amacıyla sınır güvenliğini artırmak",
+                    "Başka toplumların kültürel değerlerini hiçbir elemeden geçirmeden taklit etmek",
+                    "Geçmişten gelen geleneksel kurumları çağın şartlarına göre yenilemek",
+                    "Bilimsel araştırmaları yalnızca kendi dilinde yayımlamaya özen göstermek"
+                ]
+            )
         ]
-        p = phrases[index % len(phrases)]
-        q_text = f"Sanat hayatının ilk yıllarında ustalara öykünen yazar, son eserlerinde artık <u>{p[0]}</u> başarısını göstermiştir.\n\nBu cümledeki altı çizili sözün cümleye kattığı anlam aşağıdakilerden hangisidir?"
-        opts = format_tyt_options(p[1], [p[2], p[3], p[4], p[5]])
+        it = items[index % len(items)]
+        q_text = f"**Parça:**\n\"{it[0]}\"\n\nBu parçadaki **altı çizili sözle** anlatılmak istenen aşağıdakilerden hangisidir?"
+        opts = format_tyt_options(it[1], it[2])
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Türkçe",
-            "topic": "Sözcükte Anlam",
-            "subtopic": "Söz Öbeklerinde Anlam",
-            "learning_outcome_code": "T.TYT.1.1",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": f"'{p[0]}' ifadesi cümlede mecazen '{p[1]}' durumunu karşılar.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Türkçe",
+            "topic": "Sözcükte Anlam", "subtopic": "Söz Öbeklerinde Bağlamsal Anlam",
+            "learning_outcome_code": "TDE.TYT.1.1", "cognitive_domain": "Kavrama / Analiz",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": f"Altı çizili ifade mecaz anlamıyla '{it[1]}' durumunu anlatmaktadır.",
             **opts
         }
 
     elif archetype == 2:
-        # Ses Bilgisi
-        sounds = [
-            ("Ayrılık", "Ünlü Düşmesi (ayır-ılık)", ["Ünsüz Benzeşmesi", "Ünlü Daralması", "Ünsüz Türemesi", "Büyük Ünlü Uyumu Bozulması"]),
-            ("Kitapçı", "Ünsüz Benzeşmesi (kitap-cı -> kitapçı)", ["Ünlü Düşmesi", "Ünsüz Yumuşaması", "Ünlü Daralması", "Ünsüz Düşmesi"]),
-            ("Ağacın", "Ünsüz Yumuşaması (ağaç-ın -> ağacın)", ["Ünsüz Benzeşmesi", "Ünlü Türemesi", "Ünsüz Türemesi", "Ünlü Düşmesi"]),
-            ("Söylüyor", "Ünlü Daralması (söyle-yor -> söylüyor)", ["Ünsüz Yumuşaması", "Ünsüz Benzeşmesi", "Ünlü Düşmesi", "Kaynaştırma Ünsüzü"])
+        # Ses Bilgisi: Çoklu Ses Olayı Tespiti
+        q_text = (
+            "\"Kasabanın dar sokaklarında <u>ilerledikçe</u> burnumuza gelen ıhlamur kokusu, çocukluğumuzun <u>kayıp</u> hatıralarını birer birer <u>canlandırıyordu</u>; "
+            "köşedeki yaşlı çınarın <u>ağaran</u> dalları altında <u>oturan</u> ihtiyarlar ise sessizce <u>etrafı</u> izliyordu.\"\n\n"
+            "Bu parçada aşağıdaki ses olaylarından hangisinin örneği **yoktur**?"
+        )
+        corr = "Ünsüz Türemesi (İkizleşme)"
+        dist = [
+            "Ünsüz Benzeşmesi (Sertleşme — ilerledik-çe)",
+            "Ünlü Düşmesi (Hece Düşmesi — ilerile-dikçe / kayıp)",
+            "Ünsüz Yumuşaması (Değişimi — ak-aran -> ağaran)",
+            "Ünlü Daralması (canlandırıyor-du / izle-yordu -> izliyordu)"
         ]
-        s = sounds[index % len(sounds)]
-        q_text = f"\"Sonbaharda dökülen sarı yapraklar, derin bir <u>{s[0].lower()}</u> hissi uyandırıyordu.\"\n\nBu cümledeki altı çizili sözcükte görülen **ses olayı** aşağıdakilerden hangisidir?"
-        corr = s[1].split(" (")[0]
-        opts = format_tyt_options(corr, s[2])
+        opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Türkçe",
-            "topic": "Ses Bilgisi",
-            "subtopic": "Ses Olayları ve Kuralları",
-            "learning_outcome_code": "T.TYT.2.1",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"'{s[0]}' sözcüğünde {s[1]} kuralı gerçekleşmiştir.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Türkçe",
+            "topic": "Ses Bilgisi", "subtopic": "Metin Üzerinde Çoklu Ses Olayı Analizi",
+            "learning_outcome_code": "TDE.TYT.2.1", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": "Parçada 'ilerledikçe' (ileri-le: ünlü düşmesi, -dik-çe: ünsüz benzeşmesi), 'ağaran' (ak-aran: ünsüz yumuşaması), 'izliyordu' (izle-yor: ünlü daralması) vardır; ancak ünsüz türemesi (affetmek, hissetmek, sırrı vb.) yoktur.",
             **opts
         }
 
     elif archetype == 3:
-        # Sözcük Türleri: Sıfat, Zamir, Zarf, Edat, Bağlaç
-        q_text = "\"<u>Yalnız</u> taş duvar olmaz.\" atasözündeki altı çizili sözcüğün türü ile;\n\"Bu zor günlerde <u>yalnız</u> sana güveniyorum.\"\ncümlesindeki altı çizili sözcüğün **türleri** sırasıyla hangisinde doğru verilmiştir?"
-        corr = "Sıfat — Edat (İlgeç)"
+        # Yazım Kuralları: ÖSYM Tarzı Öncüllü Metin
+        q_text = (
+            "(I) Anadolu'nun biyoçeşitliliği üzerine yapılan araştırmalarda **Toros Dağları'nın** endemik bitki örtüsü bakımından eşsiz bir hazine olduğu belirlendi. "
+            "(II) Bölgede çalışan botanikçiler, özellikle **meyan kökü** ve dağ çayı türlerinin koruma altına alınması gerektiğini vurguluyor. "
+            "(III) Araştırma ekibinin **14 Kasım 2026 Cumartesi** günü yayımladığı raporda iklim değişikliğinin etkileri tek tek sıralandı. "
+            "(IV) Rapora göre kuraklığın etkisiyle **ardarda** yaşanan su kayıpları, bölgedeki **bir çok** canlı türünü tehdit ediyor. "
+            "(V) Bilim insanları bu tehdidi önlemek için yerel yönetimlerle **iş birliği** yapılmasını öneriyor.\n\n"
+            "Bu parçadaki numaralanmış cümlelerin hangisinde **yazım yanlışı** yapılmıştır?"
+        )
+        corr = "IV. cümlede ('art arda' ayrı ve t ile, 'birçok' ise bitişik yazılmalıdır)"
         dist = [
-            "Zarf — Bağlaç",
-            "İsim — Sıfat",
-            "Zarf — Edat (İlgeç)",
-            "Sıfat — Bağlaç"
+            "I. cümlede ('Toros Dağları'nın' ifadesinde dağ adı küçük yazılmalıdır)",
+            "II. cümlede ('meyan kökü' bitişik yazılmalıdır)",
+            "III. cümlede ('Cumartesi' küçük harfle başlamalıdır)",
+            "V. cümlede ('iş birliği' bitişik yazılmalıdır)"
         ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Türkçe",
-            "topic": "Dil Bilgisi",
-            "subtopic": "Sözcük Türleri (Sıfat, Edat, Zarf)",
-            "learning_outcome_code": "T.TYT.2.3",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "İlkinde ismi nitelediği için Niteleme Sıfatı; ikincisinde 'sadece' anlamında kullanıldığı için Edat (İlgeç)'tir.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Türkçe",
+            "topic": "Yazım Kuralları", "subtopic": "İkilemeler ve Birleşik Sözcüklerin Yazımı",
+            "learning_outcome_code": "TDE.TYT.2.2", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": "IV. cümlede ikileme olan 'art arda' ayrı ve 't' ile yazılmalı, belgisiz sıfat olan 'birçok' ise bitişik yazılmalıdır.",
             **opts
         }
 
     elif archetype == 4:
-        # Yazım Kuralları: 'de' ve 'ki' Bağlaçları
-        q_text = "Aşağıdaki cümlelerin hangisinde **yazım yanlışı** yapılmıştır?"
-        corr = "Sende bizimle toplantıya gelseydin bu kararları birlikte tartışırdık."
+        # Noktalama İşaretleri
+        q_text = (
+            "Edebiyat dünyasında bazı yazarlar vardır ki tek bir romanıyla asırları aşar ( ) Cervantes, Don Kişot ile şövalye romanlarını ( ) Dostoyevski, Suç ve Ceza ile insan ruhunun karanlık dehlizlerini ( ) Kafka ise Dönüşüm ile modern bireyin yabancılaşmasını ölümsüzleştirmiştir ( )\n\n"
+            "Bu parçada yay ayraçlarla ( ) belirtilen yerlere aşağıdakilerin hangisinde verilen noktalama işaretleri sırasıyla getirilmelidir?"
+        )
+        corr = "(:) (;) (;) (.)"
         dist = [
-            "Evde ki hesap çarşıya uymayınca bütçeyi yeniden planlamak zorunda kaldık.",
-            "Yarınki sınav için kütüphanede sabaha kadar çalıştılar.",
-            "Oysaki her şey tam da planladığımız gibi ilerliyordu.",
-            "Türk Dil Kurumunun son yayımladığı kılavuzu incelediniz mi?"
+            "(;) (,) (,) (.)",
+            "(:) (,) (;) (...)",
+            "(.) (;) (,) (.)",
+            "(:) (,) (,) (!)"
         ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Türkçe",
-            "topic": "Yazım Kuralları",
-            "subtopic": "Bağlaç Olan 'de/da' ve 'ki'nin Yazımı",
-            "learning_outcome_code": "T.TYT.2.5",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Cümledeki 'de' bağlaçtır ve 'Sen de bizimle...' şeklinde ayrı yazılmalıdır.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Türkçe",
+            "topic": "Noktalama İşaretleri", "subtopic": "İki Nokta ve Noktalı Virgülün İşlevleri",
+            "learning_outcome_code": "TDE.TYT.2.3", "cognitive_domain": "Uygulama / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": "Kendisiyle ilgili örnek verilecek cümlenin sonuna iki nokta (:), kendi içinde virgül bulunan sıralı cümleleri birbirinden ayırmak için noktalı virgül (;) ve tamamlanmış cümlenin sonuna nokta (.) konur.",
             **opts
         }
 
     elif archetype == 5:
-        # Cümlenin Ögeleri
-        q_text = "\"Sanatçı, çocukluğunun en güzel anılarını biriktirdiği o sahil kasabasını romanında büyüleyici bir dille tasvir etmiştir.\"\n\nBu cümlenin **ögelerinin dizilişi** aşağıdakilerin hangisinde sırasıyla doğru verilmiştir?"
-        corr = "Özne — Belirtili Nesne — Yer Tamlayıcısı (Dolaylı Tümleç) — Zarf Tamlayıcısı — Yüklem"
+        # Cümlenin Ögeleri (ÖSYM Karmaşık Tamlama Cümlesi)
+        q_text = (
+            "\"İnsan zihninin sınırlarını zorlayan yapay zekâ teknolojileri, karmaşık tıbbi görüntülerin erken teşhis amacıyla analiz edilmesi sürecini son yıllarda büyük ölçüde hızlandırdı.\"\n\n"
+            "Bu cümlenin **ögelerinin doğru sıralanışı** aşağıdakilerin hangisinde verilmiştir?"
+        )
+        corr = "Özne — Belirtili Nesne — Zarf Tamlayıcısı — Zarf Tamlayıcısı — Yüklem"
         dist = [
-            "Özne — Zarf Tamlayıcısı — Belirtili Nesne — Yüklem",
-            "Özne — Belirtili Nesne — Zarf Tamlayıcısı — Yüklem",
-            "Belirtisiz Nesne — Özne — Yer Tamlayıcısı — Yüklem",
-            "Özne — Yer Tamlayıcısı — Belirtili Nesne — Zarf Tamlayıcısı — Yüklem"
+            "Özne — Yer Tamlayıcısı — Belirtili Nesne — Zarf Tamlayıcısı — Yüklem",
+            "Belirtisiz Nesne — Özne — Zarf Tamlayıcısı — Yüklem",
+            "Özne — Belirtili Nesne — Yer Tamlayıcısı — Yüklem",
+            "Zarf Tamlayıcısı — Özne — Belirtili Nesne — Yüklem"
         ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Türkçe",
-            "topic": "Cümlenin Ögeleri",
-            "subtopic": "Öge Dizilişi ve Çözümlemesi",
-            "learning_outcome_code": "T.TYT.2.4",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": "Tasvir etmiştir (Yüklem), Kim? Sanatçı (Özne), Neyi? o sahil kasabasını (Belirtili Nesne), Nerede? romanında (Yer Tamlayıcısı), Nasıl? büyüleyici bir dille (Zarf Tamlayıcısı).",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Türkçe",
+            "topic": "Cümlenin Ögeleri", "subtopic": "Uzun Tamlamalı Cümlelerde Öge Çözümlemesi",
+            "learning_outcome_code": "TDE.TYT.2.5", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": "Hızlandırdı (Yüklem) | Kim/Ne? İnsan zihninin sınırlarını zorlayan yapay zekâ teknolojileri (Özne) | Neyi? karmaşık tıbbi görüntülerin erken teşhis amacıyla analiz edilmesi sürecini (Belirtili Nesne) | Ne zaman? son yıllarda (Zarf T.) | Ne kadar? büyük ölçüde (Zarf T.).",
             **opts
         }
 
     else:
-        # Noktalama İşaretleri: Kesme İşareti ve Noktalı Virgül
-        q_text = "Türkiye'de [ ] özellikle edebiyat, felsefe ve sanat alanında yetkinleşmiş isimler [ ] genç kuşaklara yol göstermeli [ ] onların estetik beğenilerini geliştirmelidir [ ]\n\nBu parçada yay ayraçla gösterilen yerlere sırasıyla hangi noktalama işaretleri getirilmelidir?"
-        corr = ", (Virgül) — ; (Noktalı Virgül) — , (Virgül) — . (Nokta)"
-        dist = [
-            "; (Noktalı Virgül) — , (Virgül) — ; (Noktalı Virgül) — . (Nokta)",
-            ", (Virgül) — , (Virgül) — ; (Noktalı Virgül) — . (Nokta)",
-            ". (Nokta) — : (İki Nokta) — , (Virgül) — . (Nokta)",
-            ", (Virgül) — : (İki Nokta) — ; (Noktalı Virgül) — ! (Ünlem)"
-        ]
+        # Paragrafta Yapı ve Akışı Bozan Cümle
+        q_text = (
+            "(I) Uyku, beynin yalnızca dinlendiği pasif bir zaman dilimi değil; gün boyu edinilen bilgilerin ayıklanıp uzun süreli belleğe kaydedildiği aktif bir nörolojik onarım sürecidir. "
+            "(II) Özellikle derin uyku evresinde beyin omurilik sıvısı, sinir hücreleri arasında biriken metabolik atıkları temizleyerek nörodejeneratif hastalıklara karşı koruma sağlar. "
+            "(III) Uyku apnesi ve horlama gibi solunum yolu rahatsızlıkları ise cerrahi müdahalelerle veya özel maskelerle tedavi edilebilmektedir. "
+            "(IV) Bu temizlik ve bellek pekiştirme mekanizması aksadığında bireyin dikkat, problem çözme ve duygusal denge becerilerinde ciddi düşüşler gözlenir. "
+            "(V) Dolayısıyla kaliteli bir uyku, zihinsel performansın sürdürülebilirliği için beslenme kadar vazgeçilmez bir biyolojik ihtiyaçtır.\n\n"
+            "Bu parçadaki numaralanmış cümlelerden hangisi **düşüncenin akışını bozmaktadır**?"
+        )
+        corr = "III"
+        dist = ["I", "II", "IV", "V"]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Türkçe",
-            "topic": "Noktalama İşaretleri",
-            "subtopic": "Noktalı Virgül ve Virgül Kullanımı",
-            "learning_outcome_code": "T.TYT.2.6",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Ögeleri arasında virgül bulunan sıralı cümleleri birbirinden ayırmak için noktalı virgül kullanılır.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Türkçe",
+            "topic": "Paragrafta Yapı ve Akışı Bozan Cümle", "subtopic": "Anlam Bütünlüğü ve Akışı Bozan Cümle",
+            "learning_outcome_code": "TDE.TYT.1.5", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": "Parça uykunun beyin sağlığı, nörolojik temizlik ve bellek üzerindeki işlevini anlatmaktadır. III. cümle ise solunum yolu rahatsızlığı olan uyku apnesinin cerrahi tedavisine geçerek akışı bozmuştur.",
             **opts
         }
 
 
-# ================= 2. TYT TEMEL MATEMATİK =================
+# ================= 2. TYT TEMEL MATEMATİK (ÖSYM YENİ NESİL MUHAKEME) =================
 
-def gen_tyt_matematik(index: int) -> Dict[str, Any]:
-    archetype = index % 8
-    
+def gen_tyt_matematik(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    from app.services.ai_exam_service import generate_dynamic_chart_analysis_svg
+    if index is None:
+        index = random.randint(0, 999)
+    top_low = str(topic or "").lower()
+
+    if "sayı" in top_low or "kesir" in top_low or "problem" in top_low:
+        archetype = 0
+    elif "yaş" in top_low:
+        archetype = 1
+    elif "hız" in top_low or "hareket" in top_low:
+        archetype = 2
+    elif "yüzde" in top_low or "kâr" in top_low or "kar" in top_low:
+        archetype = 3
+    elif "grafik" in top_low or "tablo" in top_low or "veri" in top_low:
+        archetype = 4
+    elif "fonksiyon" in top_low:
+        archetype = 5
+    elif "küme" in top_low or "mantık" in top_low:
+        archetype = 6
+    elif "olasılık" in top_low or "permütasyon" in top_low or "kombinasyon" in top_low:
+        archetype = 7
+    else:
+        archetype = index % 8
+
     if archetype == 0:
-        # Yeni Nesil Problemler: Yaş Problemleri
-        diff = random.choice([4, 6, 8, 10])
-        ratio = random.choice([2, 3])
-        # Bir babanın yaşı oğlunun yaşının 3 katıdır. diff yıl sonra babanın yaşı...
-        son_age = random.randint(8, 15)
-        father_age = son_age * 3
-        q_text = f"Bir babanın şimdiki yaşı, oğlunun şimdiki yaşının $3$ katıdır. ${diff}$ yıl sonra babanın yaşı, oğlunun yaşının $2$ katından ${father_age + diff - 2*(son_age + diff)}$ fazla olacaktır.\n\nBuna göre babanın **şimdiki yaşı** kaçtır?"
-        corr = f"${father_age}$"
-        dist = [f"${father_age - 3}$", f"${father_age + 6}$", f"${father_age - 6}$", f"${father_age + 9}$"]
+        # Yeni Nesil Sayı & Kesir Problemi: Elektrikli Araç Batarya Şarj Tarifesi
+        cap_kwh = random.choice([60, 80, 100])
+        init_pct = random.choice([15, 20])
+        mid_pct = 80
+        final_pct = 95
+        price_fast = random.choice([8, 10])      # %80'e kadar kWh başı TL
+        price_slow = random.choice([12, 15])     # %80'den sonra kWh başı TL
+
+        kwh_stage1 = cap_kwh * (mid_pct - init_pct) // 100
+        kwh_stage2 = cap_kwh * (final_pct - mid_pct) // 100
+        total_bill = kwh_stage1 * price_fast + kwh_stage2 * price_slow
+
+        q_text = (
+            f"Tam kapasitesi **${cap_kwh}\\text{{ kWh}}$** olan bir elektrikli otomobilin bataryası, hızlı şarj istasyonunda iki kademeli fiyat tarifesiyle şarj edilmektedir:\n"
+            f"- **1. Kademe (%$0$ ile %$80$ doluluk arası):** Doldurulan her $1\\text{{ kWh}}$ enerji için **${price_fast}\\text{{ TL}}$**,\n"
+            f"- **2. Kademe (%$80$ ile %$100$ doluluk arası):** Batarya sağlığını korumak için akım düşürüldüğünden doldurulan her $1\\text{{ kWh}}$ enerji için **${price_slow}\\text{{ TL}}$** ücret alınmaktadır.\n\n"
+            f"İstasyona batarya doluluk oranı **%${init_pct}$** iken gelen bir sürücü, bataryasını **%${final_pct}$** doluluk oranına kadar şarj ettiğinde istasyona toplam **kaç TL** öder?"
+        )
+        corr = f"${total_bill}$"
+        dist = [
+            f"${(kwh_stage1 + kwh_stage2) * price_fast}$",
+            f"${total_bill + 45}$",
+            f"${total_bill - 30}$",
+            f"${(kwh_stage1 + kwh_stage2) * price_slow}$"
+        ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Temel Matematik",
-            "topic": "Problemler",
-            "subtopic": "Yaş Problemleri",
-            "learning_outcome_code": "MAT.TYT.3.2",
-            "cognitive_domain": "Uygulama / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": f"Oğul $x = {son_age}$, Baba $3x = {father_age}$ yaşındadır.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Temel Matematik",
+            "topic": "Yeni Nesil Sayı ve Kesir Problemleri", "subtopic": "Kademeli Tarife ve Yüzde Modelleme",
+            "learning_outcome_code": "MAT.TYT.3.1", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": (
+                f"1. Kademede (%${init_pct}$'den %$80$'e) %${mid_pct - init_pct}$ dolum yapılır: ${cap_kwh} \\times \\frac{{{mid_pct - init_pct}}}{{100}} = {kwh_stage1}\\text{{ kWh}} \\implies {kwh_stage1} \\times {price_fast} = {kwh_stage1 * price_fast}\\text{{ TL}}$. "
+                f"2. Kademede (%$80$'den %${final_pct}$'e) %${final_pct - mid_pct}$ dolum yapılır: ${cap_kwh} \\times \\frac{{{final_pct - mid_pct}}}{{100}} = {kwh_stage2}\\text{{ kWh}} \\implies {kwh_stage2} \\times {price_slow} = {kwh_stage2 * price_slow}\\text{{ TL}}$. "
+                f"Toplam ödenecek tutar $= {kwh_stage1 * price_fast} + {kwh_stage2 * price_slow} = {total_bill}\\text{{ TL}}$ bulunur."
+            ),
             **opts
         }
 
     elif archetype == 1:
-        # Hız - Hareket Problemleri
-        v1 = random.choice([60, 70, 80])
-        v2 = random.choice([80, 90, 100])
-        t_hours = random.choice([2, 3, 4])
-        distance = (v1 + v2) * t_hours
-        q_text = f"Aralarında ${distance}$ km mesafe bulunan iki şehirden aynı anda birbirlerine doğru hareket eden iki aracın hızları saatte ${v1}$ km ve ${v2}$ km'dir.\n\nBu iki araç hareket ettikten **kaç saat sonra** karşılaşırlar?"
-        corr = f"${t_hours}$ saat"
-        dist = [f"${t_hours + 1}$ saat", f"${max(1, t_hours - 1)}$ saat", f"${t_hours + 2}$ saat", f"${t_hours + 0.5}$ saat"]
+        # Yeni Nesil Yaş Problemi: Doğum Yılı ve Kimlik Kartı Kurgusu
+        base_year = 2026
+        child_age = random.choice([12, 14, 15])
+        mother_age = child_age * 3 - 4
+        father_age = mother_age + 4
+        # Çocuk doğduğunda anne ve babanın yaşları toplamı
+        sum_at_birth = (mother_age - child_age) + (father_age - child_age)
+
+        q_text = (
+            f"Bir ailede anne, baba ve çocukları Kerem'in **2026 yılındaki** yaşlarıyla ilgili şunlar bilinmektedir:\n"
+            f"- Annenin yaşı, Kerem'in yaşının $3$ katından $4$ eksiktir.\n"
+            f"- Babanın yaşı ise Kerem'in yaşının $3$ katına eşittir.\n"
+            f"- Kerem doğduğu yılda anne ve babasının yaşları toplamı **${sum_at_birth}$** idi.\n\n"
+            f"Buna göre Kerem **hangi yılda doğmuştur**?"
+        )
+        birth_year = base_year - child_age
+        corr = f"${birth_year}$"
+        dist = [
+            f"${birth_year - 2}$",
+            f"${birth_year + 2}$",
+            f"${birth_year - 4}$",
+            f"${birth_year + 3}$"
+        ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Temel Matematik",
-            "topic": "Problemler",
-            "subtopic": "Hız ve Hareket Problemleri",
-            "learning_outcome_code": "MAT.TYT.3.3",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": f"Zıt yönlü harekette $x = (V_1 + V_2) \\cdot t \\implies {distance} = ({v1} + {v2}) \\cdot t \\implies t = {t_hours}$ saattir.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Temel Matematik",
+            "topic": "Yaş Problemleri", "subtopic": "Yıl ve Yaş Farkı Korunumu Muhakemesi",
+            "learning_outcome_code": "MAT.TYT.3.2", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": (
+                f"Kerem'in 2026'daki yaşına $x$ dersek, Anne $= 3x-4$, Baba $= 3x$ olur. "
+                f"Kerem doğduğunda ($x$ yıl önce) Anne $= 2x-4$, Baba $= 2x$ yaşındadır. "
+                f"Toplamları: $4x - 4 = {sum_at_birth} \\implies 4x = {sum_at_birth + 4} \\implies x = {child_age}$. "
+                f"Doğum yılı $= 2026 - {child_age} = {birth_year}$ bulunur."
+            ),
             **opts
         }
 
     elif archetype == 2:
-        # Yüzde - Kâr - Zarar Problemleri
-        cost = random.choice([200, 300, 400, 500])
-        profit_pct = random.choice([20, 25, 30, 40])
-        sale_price = int(cost * (1 + profit_pct / 100))
-        discount_pct = 10
-        final_price = int(sale_price * (1 - discount_pct / 100))
-        net_profit = final_price - cost
-        q_text = f"Maliyeti ${cost}$ TL olan bir ürün, etiket fiyatı üzerinden %{profit_pct} kârla satışa sunulmuştur. Daha sonra etiket fiyatı üzerinden %{discount_pct} indirim yapılmıştır.\n\nBuna göre bu ürünün indirimli satışından elde edilen **net kâr kaç TL'dir**?"
-        corr = f"${net_profit}$ TL"
-        dist = [f"${net_profit + 12}$ TL", f"${net_profit - 8}$ TL", f"${net_profit + 20}$ TL", f"${cost * profit_pct // 100}$ TL"]
+        # Yeni Nesil Hız ve Hareket Problemi: Tünel ve Navigasyon Süresi
+        v1 = random.choice([80, 90, 100])
+        v2 = v1 + 30
+        t_planned = random.choice([4, 5])
+        total_dist = v1 * t_planned
+        # Yolu yarıladığında mola verip hızını artırıyor
+        half_dist = total_dist // 2
+        t_first_half = half_dist / v1  # saat
+        # Hızını v2 yapınca ikinci yarı süresi
+        # Dakika farkı
+        saved_minutes = int(round((half_dist / v1 - half_dist / v2) * 60))
+
+        q_text = (
+            f"A kentinden B kentine sabit **${v1}\\text{{ km/sa}}$** hızla gitmeyi planlayan bir sürücü, navigasyon ekranında toplam yolun **${total_dist}\\text{{ km}}$** olduğunu görüyor.\n"
+            f"- Sürücü yolun tam yarısına geldiğinde bir dinlenme tesisinde **$20$ dakika** mola veriyor.\n"
+            f"- Moladan sonra kalan yolu sabit **${v2}\\text{{ km/sa}}$** hızla tamamlayarak B kentine ulaşıyor.\n\n"
+            f"Buna göre sürücü B kentine, başlangıçta hiç mola vermeden planladığı varış saatine göre **kaç dakika farkla** ulaşmıştır?"
+        )
+        net_diff = saved_minutes - 20
+        if net_diff > 0:
+            corr = f"${net_diff}$ dakika erken varmıştır"
+        elif net_diff < 0:
+            corr = f"${abs(net_diff)}$ dakika geç varmıştır"
+        else:
+            corr = "Tam planladığı dakikada varmıştır"
+
+        dist = [
+            f"${saved_minutes}$ dakika erken varmıştır",
+            f"$20$ dakika geç varmıştır",
+            f"${abs(net_diff) + 10}$ dakika erken varmıştır",
+            f"${abs(net_diff) + 15}$ dakika geç varmıştır"
+        ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Temel Matematik",
-            "topic": "Problemler",
-            "subtopic": "Yüzde, Kâr ve Zarar Problemleri",
-            "learning_outcome_code": "MAT.TYT.3.4",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": f"Etiket fiyatı = ${cost} \\times {1 + profit_pct/100:.2f} = {sale_price}$ TL. İndirimli fiyat = ${sale_price} \\times 0.90 = {final_price}$ TL. Net kâr = ${final_price} - {cost} = {net_profit}$ TL.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Temel Matematik",
+            "topic": "Hız ve Hareket Problemleri", "subtopic": "Navigasyon ve Ortalama Hız Muhakemesi",
+            "learning_outcome_code": "MAT.TYT.3.5", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": (
+                f"Yolun ikinci yarısı ${half_dist}\\text{{ km}}$'dir. Normalde ${v1}\\text{{ km/sa}}$ ile ${int(half_dist/v1*60)}$ dakika sürecekken, "
+                f"${v2}\\text{{ km/sa}}$ hızla ${int(half_dist/v2*60)}$ dakika sürmüş ve yolda ${saved_minutes}$ dakika kazanılmıştır. "
+                f"$20$ dakika mola düşüldüğünde net durum: {corr}."
+            ),
             **opts
         }
 
     elif archetype == 3:
-        # Fonksiyonlar
-        a_coeff = random.choice([2, 3, 4])
-        b_const = random.choice([1, -2, 3, -4, 5])
-        x_val = random.randint(2, 5)
-        fx_val = a_coeff * x_val + b_const
-        q_text = f"Gerçel sayılar kümesinde tanımlı $f(x) = {a_coeff}x + ({b_const})$ fonksiyonu veriliyor.\n\nBuna göre $f({x_val}) + f(1)$ işleminin sonucu kaçtır?"
-        f1_val = a_coeff * 1 + b_const
-        total = fx_val + f1_val
-        corr = f"${total}$"
-        dist = [f"${total + 3}$", f"${total - 2}$", f"${total + 5}$", f"${total - 4}$"]
+        # Yeni Nesil Yüzde & Kâr-Zarar: Kampanya "3 Al 2 Öde" vs Yüzde İndirim
+        unit_cost = random.choice([120, 150, 200])
+        markup_pct = 50  # %50 karla etiket = 1.5 * cost
+        label_price = int(unit_cost * 1.5)
+        # 3 al 2 öde kampanyasında 3 ürün satışı: müşteri 2 * label_price öder = 3 * unit_cost!
+        # Eğer 4 al 3 öde yapılırsa: müşteri 3 * label_price = 4.5 * unit_cost öder, maliyet 4 * unit_cost
+        # 3 üründe 3. ürüne %50 indirim kampanyası: 2.5 * label_price = 3.75 * unit_cost (Maliyet 3 * unit_cost => %25 kar!)
+        paid_for_3 = int(2.5 * label_price)
+        cost_for_3 = 3 * unit_cost
+        profit_for_3 = paid_for_3 - cost_for_3
+        profit_pct = int(round((profit_for_3 / cost_for_3) * 100))
+
+        q_text = (
+            f"Bir giyim mağazası, birim maliyeti **${unit_cost}\\text{{ TL}}$** olan gömleklerin etiket fiyatını maliyet üzerinden **%$50$ kârla** belirlemiştir.\n"
+            f"Mağaza hafta sonu özel bir kampanya başlatarak; **\"Aynı gömlekten $3$ adet alan müşteriye, $1.$ ve $2.$ gömlek etiket fiyatından, $3.$ gömlek ise etiket fiyatı üzerinden %$50$ indirimli\"** olarak satmaktadır.\n\n"
+            f"Bu kampanyadan yararlanarak $3$ adet gömlek satın alan bir müşterinin ödediği toplam tutar üzerinden mağazanın elde ettiği **gerçek kâr oranı yüzde kaçtır**?"
+        )
+        corr = f"%${profit_pct}$"
+        dist = ["%$20$", "%$30$", "%$35$", "%$15$"]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Temel Matematik",
-            "topic": "Fonksiyonlar",
-            "subtopic": "Doğrusal Fonksiyonlar ve Değer Bulma",
-            "learning_outcome_code": "MAT.TYT.4.1",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"$f({x_val}) = {fx_val}$, $f(1) = {f1_val}$. Toplamları = ${total}$'dir.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Temel Matematik",
+            "topic": "Yüzde, Kâr-Zarar ve İskonto Problemleri", "subtopic": "Kampanya Kurguları ve Gerçek Kâr Analizi",
+            "learning_outcome_code": "MAT.TYT.3.4", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": (
+                f"Birim maliyet $= {unit_cost}\\text{{ TL}}$, etiket fiyatı $= {label_price}\\text{{ TL}}$'dir. "
+                f"$3$ gömleğin toplam maliyeti $= 3 \\times {unit_cost} = {cost_for_3}\\text{{ TL}}$'dir. "
+                f"Müşterinin ödediği tutar $= {label_price} + {label_price} + {label_price // 2} = {paid_for_3}\\text{{ TL}}$'dir. "
+                f"Kâr $= {paid_for_3} - {cost_for_3} = {profit_for_3}\\text{{ TL}}$ olup kâr yüzdesi $= \\frac{{{profit_for_3}}}{{{cost_for_3}}} \\times 100 = \\%{profit_pct}$ bulunur."
+            ),
             **opts
         }
 
     elif archetype == 4:
-        # Mutlak Değer
-        c_val = random.randint(3, 7)
-        q_text = f"$|2x - 4| \\le {2*c_val}$ eşitsizliğini sağlayan $x$ tam sayılarının **toplamı kaçtır**?"
-        # -2c <= 2x - 4 <= 2c => 4 - 2c <= 2x <= 4 + 2c => 2 - c <= x <= 2 + c
-        # simetrik olduğu için ortalama 2, eleman sayısı (2c + 1)
-        tot_sum = 2 * (2 * c_val + 1)
-        corr = f"${tot_sum}$"
-        dist = [f"${tot_sum - 4}$", f"${tot_sum + 6}$", f"${c_val * 2}$", f"${0}$"]
+        # Yeni Nesil Grafik ve Tablo Yorumlama (SVG'li)
+        k_mult = random.choice([10, 15, 20])
+        a_prod = 40 * k_mult // 10
+        b_prod = 30 * k_mult // 10
+        c_prod = 50 * k_mult // 10
+        svg = generate_dynamic_chart_analysis_svg(120, 90, 150, "TYT Veri Analizi: Üretim Dağılımı ve Birim Oranlar")
+
+        q_text = (
+            f"Bir geri dönüşüm tesisine gelen **Cam (A), Plastik (B) ve Metal (C)** atıkların kütlece dağılımı yukarıdaki **Grafik 1 (Daire Grafiği)**'nde verilmiştir ($120^\\circ, 90^\\circ, 150^\\circ$).\n"
+            f"- Tesise gelen toplam atık kütlesi **${a_prod + b_prod + c_prod}\\text{{ ton}}$**'dur.\n"
+            f"- Geri dönüşüm işlemi sonucunda Cam atıkların **%$75$'i**, Plastik atıkların **%$60$'ı** ve Metal atıkların **%$80$'i** saf hammaddeye dönüştürülebilmektedir.\n\n"
+            f"Buna göre bu tesiste elde edilen **toplam saf hammadde miktarı kaç tondur**?"
+        )
+        pure_a = a_prod * 75 // 100
+        pure_b = b_prod * 60 // 100
+        pure_c = c_prod * 80 // 100
+        total_pure = pure_a + pure_b + pure_c
+
+        corr = f"${total_pure}$"
+        dist = [
+            f"${total_pure + 12}$",
+            f"${total_pure - 9}$",
+            f"${a_prod + b_prod}$",
+            f"${total_pure + 25}$"
+        ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Temel Matematik",
-            "topic": "Denklemler ve Eşitsizlikler",
-            "subtopic": "Mutlak Değerli Eşitsizlikler",
-            "learning_outcome_code": "MAT.TYT.2.3",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": f"Eşitsizlik ${2-c_val} \\le x \\le {2+c_val}$ aralığıdır. Ortanca terim $2$ olup toplam ${tot_sum}$'dir.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Temel Matematik",
+            "topic": "Grafik ve Tablo Yorumlama Problemleri", "subtopic": "Daire ve Sütun Grafiği Verimlilik Hesabı",
+            "learning_outcome_code": "MAT.TYT.3.6", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": (
+                f"Toplam ${a_prod + b_prod + c_prod}\\text{{ ton}}$ ($360^\\circ$) içinde: A (Cam, $120^\\circ$) $= {a_prod}$ ton, B (Plastik, $90^\\circ$) $= {b_prod}$ ton, C (Metal, $150^\\circ$) $= {c_prod}$ ton. "
+                f"Saf hammadde $= {a_prod}\\times 0.75 + {b_prod}\\times 0.60 + {c_prod}\\times 0.80 = {pure_a} + {pure_b} + {pure_c} = {total_pure}\\text{{ ton}}$."
+            ),
             **opts
         }
 
     elif archetype == 5:
-        # Kümeler
-        sa = random.randint(8, 14)
-        sb = random.randint(10, 16)
-        inter = random.randint(3, 6)
-        union = sa + sb - inter
-        q_text = f"$A$ ve $B$ iki küme olmak üzere;\n$s(A) = {sa}$, $s(B) = {sb}$ ve $s(A \\cap B) = {inter}$\n\nolduğuna göre $s(A \\cup B)$ kümesinin eleman sayısı kaçtır?"
-        corr = f"${union}$"
-        dist = [f"${union + 2}$", f"${sa + sb}$", f"${union - 3}$", f"${sa - inter}$"]
+        # Yeni Nesil Fonksiyonlar: Kargo / Akıllı Sayaç Modellemesi
+        a = random.choice([3, 4, 5])
+        b = random.choice([10, 12, 15])
+        x_in = random.choice([4, 6, 8])
+        # f(x) = ax + b, g(x) = 2x - 4
+        fx = a * x_in + b
+        gfx = 2 * fx - 4
+
+        q_text = (
+            f"Bir veri merkezinde sunucu soğutma sisteminin enerji tüketimi iki aşamalı fonksiyonla modellenmiştir:\n"
+            f"- Ortam sıcaklığı $x\\ (^\\circ\\text{{C}})$ olmak üzere, fanların devir hızı $f(x) = {a}x + {b}$ fonksiyonu ile,\n"
+            f"- Devir hızı $y$ olan fanların saatlik elektrik tüketimi ise $g(y) = 2y - 4$ fonksiyonu ile hesaplanmaktadır.\n\n"
+            f"Buna göre ortam sıcaklığı **$x = {x_in}^\\circ\\text{{C}}$** olduğunda sistemin saatlik elektrik tüketimini veren **$(g \\circ f)({x_in})$ değeri** kaçtır?"
+        )
+        corr = f"${gfx}$"
+        dist = [
+            f"${fx}$",
+            f"${gfx + a}$",
+            f"${gfx - 6}$",
+            f"${a * (2 * x_in - 4) + b}$"
+        ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Temel Matematik",
-            "topic": "Kümeler",
-            "subtopic": "Küme İşlemleri ve Birleşim Formülü",
-            "learning_outcome_code": "MAT.TYT.1.5",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"$s(A \\cup B) = s(A) + s(B) - s(A \\cap B) = {sa} + {sb} - {inter} = {union}$'dur.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Temel Matematik",
+            "topic": "Fonksiyonlar (Temel Düzey)", "subtopic": "Bileşke Fonksiyonun Gerçek Yaşam Modellemesi",
+            "learning_outcome_code": "MAT.TYT.4.2", "cognitive_domain": "Uygulama / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": (
+                f"Önce $f({x_in}) = {a} \\cdot {x_in} + {b} = {fx}$ bulunur. "
+                f"Ardından $(g \\circ f)({x_in}) = g(f({x_in})) = g({fx}) = 2 \\cdot {fx} - 4 = {gfx}$ hesaplanır."
+            ),
             **opts
         }
 
     elif archetype == 6:
-        # Basamak Kavramı
-        q_text = "İki basamaklı bir $AB$ doğal sayısının rakamları toplamı $11$'dir. Rakamlarının yerleri değiştirildiğinde elde edilen $BA$ sayısı, $AB$ sayısından $27$ fazla olmaktadır.\n\nBuna göre $A \\times B$ çarpımı kaçtır?"
-        # BA - AB = 9(B - A) = 27 => B - A = 3. A + B = 11 => 2B = 14 => B = 7, A = 4. AB = 47. 4 * 7 = 28.
-        corr = "$28$"
-        dist = ["$24$", "$30$", "$32$", "$18$"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Temel Matematik",
-            "topic": "Temel Kavramlar",
-            "subtopic": "Basamak Kavramı ve Sayı Çözümleme",
-            "learning_outcome_code": "MAT.TYT.1.2",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": "$10B + A - (10A + B) = 9(B - A) = 27 \\implies B - A = 3$. $B + A = 11$ ile çözüldüğünde $B = 7, A = 4$ bulunur. Çarpım $4 \\times 7 = 28$'dir.",
-            **opts
-        }
+        # Yeni Nesil Kümeler & Venn Şeması Muhakemesi
+        only_py = random.choice([12, 14, 16])
+        only_js = random.choice([10, 13, 15])
+        both = random.choice([6, 8, 9])
+        neither = random.choice([4, 5])
+        total_students = only_py + only_js + both + neither
 
-    else:
-        # Sayma ve Olasılık
-        q_text = "$5$ evli çiftin bulunduğu bir gruptan rastgele $2$ kişi seçiliyor.\n\nSeçilen bu iki kişinin **birbiriyle evli bir çift olma olasılığı** kaçtır?"
-        # Toplam 10 kişi. C(10, 2) = 45. 5 çift var => 5 / 45 = 1/9.
-        corr = "$\\frac{1}{9}$"
-        dist = ["$\\frac{1}{5}$", "$\\frac{1}{10}$", "$\\frac{2}{9}$", "$\\frac{1}{45}$"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Temel Matematik",
-            "topic": "Sayma ve Olasılık",
-            "subtopic": "Kombinasyon ve Olasılık Hesabı",
-            "learning_outcome_code": "MAT.TYT.5.2",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": "Toplam durum sayısı $\\binom{10}{2} = 45$'tir. İstenen durum evli $5$ çiftten birini seçmektir (5 durum). Olasılık $\\frac{5}{45} = \\frac{1}{9}$'dur.",
-            **opts
-        }
-
-
-# ================= 3. TYT GEOMETRİ =================
-
-def gen_tyt_geometri(index: int) -> Dict[str, Any]:
-    archetype = index % 5
-    
-    if archetype == 0:
-        # Üçgende Açı
-        a_deg = random.choice([40, 50, 70, 80])
-        # İkizkenar üçgende tepe açısı A ise taban açıları (180 - A) / 2
-        base_deg = (180 - a_deg) // 2
-        q_text = f"Bir $ABC$ ikizkenar üçgeninde $|AB| = |AC|$ olup tepe açısının ölçüsü $m(\\widehat{{BAC}}) = {a_deg}^\\circ$'dir.\n\nBuna göre taban açılarından biri olan $m(\\widehat{{ABC}})$ **kaç derecedir**?"
-        corr = f"${base_deg}^\\circ$"
-        dist = [f"${base_deg + 10}^\\circ$", f"${base_deg - 10}^\\circ$", f"${a_deg}^\\circ$", f"${180 - base_deg}^\\circ$"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Geometri",
-            "topic": "Üçgende Açılar",
-            "subtopic": "İkizkenar Üçgen Açı Bağıntıları",
-            "learning_outcome_code": "GEO.TYT.1.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"İç açılar toplamı $180^\\circ$'dir. $180 - {a_deg} = {180 - a_deg}$. İkizkenar olduğundan taban açıları $\\frac{{{180 - a_deg}}}{{2}} = {base_deg}^\\circ$'dir.",
-            **opts
-        }
-
-    elif archetype == 1:
-        # Özel Üçgenler ve Pisagor
-        base = random.choice([6, 8, 12])
-        height = random.choice([8, 15, 16])
-        hypo = int(math.hypot(base, height))
-        q_text = f"Bir $ABC$ dik üçgeninde $[AB] \\perp [BC]$ olup $|AB| = {base}$ cm ve $|BC| = {height}$ cm'dir.\n\nBuna göre hipotenüs uzunluğu $|AC|$ **kaç santimetredir**?"
-        corr = f"${hypo}$ cm"
-        dist = [f"${hypo + 2}$ cm", f"${hypo - 1}$ cm", f"${base + height}$ cm", f"${hypo + 4}$ cm"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Geometri",
-            "topic": "Özel Üçgenler",
-            "subtopic": "Dik Üçgen ve Pisagor Bağıntısı",
-            "learning_outcome_code": "GEO.TYT.1.4",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": f"$|AC|^2 = {base}^2 + {height}^2 = {base**2 + height**2} = {hypo}^2 \\implies |AC| = {hypo}$ cm.",
-            **opts
-        }
-
-    elif archetype == 2:
-        # Çokgenler: Düzgün Çokgen Açıları
-        n_side = random.choice([5, 6, 8])
-        ext_angle = 360 // n_side
-        int_angle = 180 - ext_angle
-        names = {5: "beşgenin", 6: "altıgenin", 8: "sekizgenin"}
-        q_text = f"Bir düzgün {names[n_side]} bir **iç açısının ölçüsü** kaç derecedir?"
-        corr = f"${int_angle}^\\circ$"
-        dist = [f"${ext_angle}^\\circ$", f"${int_angle - 15}^\\circ$", f"${int_angle + 12}^\\circ$", f"${360 // (n_side - 1)}^\\circ$"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Geometri",
-            "topic": "Çokgenler ve Dörtgenler",
-            "subtopic": "Düzgün Çokgenlerin İç ve Dış Açıları",
-            "learning_outcome_code": "GEO.TYT.2.1",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"Dış açı $\\alpha = \\frac{{360^\\circ}}{{{n_side}}} = {ext_angle}^\\circ$. İç açı $= 180 - {ext_angle} = {int_angle}^\\circ$'dir.",
-            **opts
-        }
-
-    elif archetype == 3:
-        # Çemberde Uzunluk ve Alan
-        r = random.choice([3, 4, 6, 7])
-        area = f"${r**2}\\pi$"
-        q_text = f"Yarıçap uzunluğu $r = {r}$ cm olan bir dairenin **alanı kaç santimetrekaredir**?"
-        corr = f"${r**2}\\pi\\text{{ cm}}^2$"
-        dist = [f"${2*r}\\pi\\text{{ cm}}^2$", f"${(r+1)**2}\\pi\\text{{ cm}}^2$", f"${r**2}\\text{{ cm}}^2$", f"${4*r**2}\\pi\\text{{ cm}}^2$"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Geometri",
-            "topic": "Çember ve Daire",
-            "subtopic": "Dairenin Alanı",
-            "learning_outcome_code": "GEO.TYT.3.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"Alan formülü $A = \\pi r^2 = \\pi \\cdot {r}^2 = {r**2}\\pi\\text{{ cm}}^2$.",
-            **opts
-        }
-
-    else:
-        # Katı Cisimler: Silindirin Hacmi
-        r_cyl = random.choice([2, 3, 4])
-        h_cyl = random.choice([5, 6, 8, 10])
-        vol = (r_cyl**2) * h_cyl
-        q_text = f"Taban yarıçapı $r = {r_cyl}$ cm ve yüksekliği $h = {h_cyl}$ cm olan dik dairesel bir silindirin **hacmi kaç $\\pi\\text{{ cm}}^3$'tür**?"
-        corr = f"${vol}\\pi$"
-        dist = [f"${vol // 2}\\pi$", f"${vol * 2}\\pi$", f"${2 * r_cyl * h_cyl}\\pi$", f"${(r_cyl + h_cyl)**2}\\pi$"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Geometri",
-            "topic": "Katı Cisimler",
-            "subtopic": "Silindir ve Hacim Hesabı",
-            "learning_outcome_code": "GEO.TYT.4.1",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": f"$V = \\pi r^2 h = \\pi \\cdot {r_cyl}^2 \\cdot {h_cyl} = {vol}\\pi\\text{{ cm}}^3$.",
-            **opts
-        }
-
-
-# ================= 4. TYT FİZİK =================
-
-def gen_tyt_fizik(index: int) -> Dict[str, Any]:
-    archetype = index % 5
-    
-    if archetype == 0:
-        # Elektrik Devreleri ve Ohm Kanunu
-        v = random.choice([12, 24, 36, 48])
-        r = random.choice([2, 3, 4, 6])
-        i = v // r
-        q_text = f"İç direnci önemsenmeyen ${v}$ Volt potansiyel farkına sahip bir üretece $R = {r}\\,\\Omega$'luk direnç bağlanmıştır.\n\nBuna göre devreden geçen **akım şiddeti kaç Amperdir**?"
-        corr = f"${i}$ A"
-        dist = [f"${i + 2}$ A", f"${max(1, i - 1)}$ A", f"${v * r}$ A", f"${i * 2}$ A"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Fizik",
-            "topic": "Elektrik ve Manyetizma",
-            "subtopic": "Elektrik Akımı ve Ohm Yasası",
-            "learning_outcome_code": "FİZ.TYT.3.1",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"Ohm Yasası: $V = I \\cdot R \\implies I = \\frac{{V}}{{R}} = \\frac{{{v}}}{{{r}}} = {i}$ Amper.",
-            **opts
-        }
-
-    elif archetype == 1:
-        # Newton'ın Hareket Yasaları
-        m = random.choice([2, 4, 5, 10])
-        f = random.choice([20, 30, 40, 50])
-        a = f // m
-        q_text = f"Sürtünmesiz yatay bir düzlemde durmakta olan $m = {m}$ kg kütleli bir cisme yatay doğrultuda $F = {f}$ N büyüklüğünde sabit bir kuvvet uygulanmaktadır.\n\nBuna göre cismin kazanacağı **ivme kaç $\\text{{m/s}}^2$'dir**?"
-        corr = f"${a}\\text{{ m/s}}^2$"
-        dist = [f"${a + 2}\\text{{ m/s}}^2$", f"${max(1, a - 2)}\\text{{ m/s}}^2$", f"${m * f}\\text{{ m/s}}^2$", f"${a // 2}\\text{{ m/s}}^2$"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Fizik",
-            "topic": "Kuvvet ve Hareket",
-            "subtopic": "Newton'ın Temel Prensibi",
-            "learning_outcome_code": "FİZ.TYT.2.2",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": f"$F_{{net}} = m \\cdot a \\implies a = \\frac{{F}}{{m}} = \\frac{{{f}}}{{{m}}} = {a}\\text{{ m/s}}^2$.",
-            **opts
-        }
-
-    elif archetype == 2:
-        # Sıvıların Kaldırma Kuvveti
-        q_text = "Birbirine karışmayan $d$ ve $2d$ özkütleli sıvılar bulunan bir kapta, özkütlesi $1.5d$ olan homojen bir katı cisim serbest bırakılıyor.\n\nCismin sıvı içerisindeki denge durumu aşağıdakilerden hangisi gibi olur?"
-        corr = "İki sıvının ayrılma yüzeyinde, hacminin yarısı üstte yarısı altta kalacak şekilde asılı kalır."
+        q_text = (
+            f"Bilişim teknolojileri bölümündeki **${total_students}$ öğrencinin** katıldığı bir yazılım anketinde:\n"
+            f"- **Python** dilini bilenlerin sayısı, her iki dili de bilmeyenlerin sayısının **${(only_py + both) // neither if (only_py + both) % neither == 0 else ''}$**${only_py + both}$ kişidir,\n"
+            f"- **En çok bir** yazılım dilini bilenlerin sayısı **${only_py + only_js + neither}$** kişidir,\n"
+            f"- **En az bir** yazılım dilini bilenlerin sayısı ise **${only_py + only_js + both}$** kişidir.\n\n"
+            f"Buna göre sınıfta **yalnızca JavaScript** dilini bilen öğrenci sayısı kaçtır?"
+        )
+        corr = f"${only_js}$"
         dist = [
-            "Kabın tabanına batar.",
-            "En üstte tamamen $d$ özkütleli sıvının yüzeyinde yüzer.",
-            "Sıvıların sıcaklığına bağlı olarak sürekli aşağı yukarı hareket eder.",
-            "Tümüyle $2d$ sıvısının içine batarak tabana değer."
+            f"${only_py}$",
+            f"${both}$",
+            f"${only_js + both}$",
+            f"${only_js + neither}$"
         ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Fizik",
-            "topic": "Madde ve Özellikleri",
-            "subtopic": "Sıvıların Kaldırma Kuvveti ve Özkütle",
-            "learning_outcome_code": "FİZ.TYT.1.4",
-            "cognitive_domain": "Kavrama / Analiz",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": "Cismin özkütlesi $1.5d$, $d$ ile $2d$ arasındadır. Bu nedenle tam arayüzeyde dengelenir.",
-            **opts
-        }
-
-    elif archetype == 3:
-        # Isı ve Sıcaklık
-        q_text = "Isıca yalıtılmış bir kapta sıcaklıkları farklı iki sıvı karıştırılıyor.\n\nIsıl denge sağlandığında bu sıvılar için aşağıdakilerden hangisi **kesinlikle eşit** olur?"
-        corr = "Son Sıcaklıkları"
-        dist = ["İç Enerjileri", "Isı Sığaları", "Öz Isıları", "Kütleleri"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Fizik",
-            "topic": "Isı ve Sıcaklık",
-            "subtopic": "Isıl Denge ve Karışımlar",
-            "learning_outcome_code": "FİZ.TYT.4.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "Isıl dengede sistemdeki tüm maddelerin sıcaklıkları eşitlenir ($T_{denge}$).",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Temel Matematik",
+            "topic": "Kümeler ve Kartezyen Çarpım", "subtopic": "Küme Problemleri (En Az / En Çok Bir Kurgusu)",
+            "learning_outcome_code": "MAT.TYT.1.5", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": (
+                f"Toplam öğrenci $= {total_students}$. En az bir dil bilenler ($P \\cup J$) $= {only_py + only_js + both}$ kişi olduğundan, "
+                f"hiçbirini bilmeyenler $= {total_students} - {only_py + only_js + both} = {neither}$ kişidir. "
+                f"Python bilenler ($s(P)$) $= {only_py + both}$ kişi olduğundan, yalnızca JavaScript bilenler $= s(P \\cup J) - s(P) = {only_py + only_js + both} - {only_py + both} = {only_js}$ bulunur."
+            ),
             **opts
         }
 
     else:
-        # Optik: Işığın Kırılması
-        q_text = "Az yoğun ortamdan çok yoğun ortama (örneğin havadan suya) normalle dar bir açı yaparak geçen tek renkli ışık ışını ile ilgili;\nI. Hızı azalır.\nII. Frekansı değişmez.\nIII. Normale yaklaşarak kırılır.\n\nyargılarından hangileri **doğrudur**?"
+        # Yeni Nesil Olasılık ve Kombinasyon: Güvenli Şifre / Takım Seçimi
+        n_eng = 4
+        n_doc = 5
+        # 4 mühendis ve 5 doktor arasından 3 kişilik komisyon, içinde en az 1 mühendis ve en az 1 doktor olma olasılığı
+        total_ways = math.comb(n_eng + n_doc, 3)  # C(9,3) = 84
+        valid_ways = math.comb(n_eng, 2) * math.comb(n_doc, 1) + math.comb(n_eng, 1) * math.comb(n_doc, 2)  # 6*5 + 4*10 = 70
+        g = math.gcd(valid_ways, total_ways)
+
+        q_text = (
+            f"Bir biyo-mühendislik projesinde görev yapan **$4$ yazılım mühendisi ve $5$ tıp doktoru** arasından rastgele **$3$ kişilik** bir etik kurul seçilecektir.\n\n"
+            f"Seçilen bu kurulda **her iki meslek grubundan da en az birer kişinin** bulunma olasılığı kaçtır?"
+        )
+        corr = f"$\\frac{{{valid_ways // g}}}{{{total_ways // g}}}$"
+        dist = [
+            f"$\\frac{{{valid_ways // g - 1}}}{{{total_ways // g}}}$",
+            f"$\\frac{{3}}{{4}}$",
+            f"$\\frac{{2}}{{3}}$",
+            f"$\\frac{{5}}{{7}}$"
+        ]
+        opts = format_tyt_options(corr, dist)
+        return {
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Temel Matematik",
+            "topic": "Olasılık", "subtopic": "Koşullu Kombinasyon ve Olasılık",
+            "learning_outcome_code": "MAT.TYT.5.2", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text,
+            "explanation": (
+                f"Tüm durumlar $\\binom{{9}}{{3}} = 84$'tür. İstenen durum ($2$ Mühendis $1$ Doktor) veya ($1$ Mühendis $2$ Doktor) seçilmesidir: "
+                f"$\\binom{{4}}{{2}}\\binom{{5}}{{1}} + \\binom{{4}}{{1}}\\binom{{5}}{{2}} = 6 \\cdot 5 + 4 \\cdot 10 = 30 + 40 = 70$. "
+                f"Olasılık $= \\frac{{70}}{{84}} = \\frac{{{valid_ways // g}}}{{{total_ways // g}}}$ bulunur."
+            ),
+            **opts
+        }
+
+
+# ================= 3. TYT GEOMETRİ (ÖSYM YENİ NESİL KATLAMA VE MODELLEME) =================
+
+def gen_tyt_geometri(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    from app.services.ai_exam_service import (
+        generate_dynamic_folding_geometry_svg,
+        generate_dynamic_triangle_svg,
+        generate_dynamic_geometry_circle_svg
+    )
+    if index is None:
+        index = random.randint(0, 999)
+    top_low = str(topic or "").lower()
+
+    if "katlama" in top_low or "açı" in top_low or "dörtgen" in top_low:
+        archetype = 0
+    elif "üçgen" in top_low or "benzerlik" in top_low or "alan" in top_low:
+        archetype = 1
+    elif "çember" in top_low or "daire" in top_low:
+        archetype = 2
+    else:
+        archetype = index % 3
+
+    if archetype == 0:
+        alpha = random.choice([34, 38, 42])
+        ans_angle = 180 - 2 * alpha
+        svg = generate_dynamic_folding_geometry_svg(15, 10, alpha, "TYT Geometri: Dikdörtgen Katlama ve Açıortay")
+        q_text = (
+            f"Şekildeki $ABCD$ dikdörtgeni biçimindeki kâğıt, $[EF]$ boyunca katlandığında $D$ köşesi dikdörtgenin iç bölgesindeki $D'$ noktasına gelmektedir.\n"
+            f"- Katlama sonucunda $[ED]$ kenarı $[ED']$ konumuna taşındığına göreve $m(\\widehat{{DEF}}) = \\alpha = {alpha}^\\circ$ olduğuna göre,\n\n"
+            f"**$m(\\widehat{{AED'}})$ açısının ölçüsü kaç derecedir**?"
+        )
+        corr = f"${ans_angle}^\\circ$"
+        dist = [f"${90 - alpha}^\\circ$", f"${180 - alpha}^\\circ$", f"${2 * alpha}^\\circ$", f"${ans_angle + 12}^\\circ$"]
+        opts = format_tyt_options(corr, dist)
+        return {
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Geometri",
+            "topic": "Dörtgenler ve Özel Dörtgenler (Paralelkenar, Eşkenar Dörtgen, Dikdörtgen, Kare, Yamuk)",
+            "subtopic": "Yeni Nesil Kâğıt Katlama ve Açıortay Özellikleri",
+            "learning_outcome_code": "GEO.TYT.2.3", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": f"Kat izi $[EF]$ açıortay olduğundan $m(\\widehat{{DEF}}) = m(\\widehat{{FED'}}) = {alpha}^\\circ$. Doğrusal açıdan $m(\\widehat{{AED'}}) = 180^\\circ - 2\\cdot {alpha}^\\circ = {ans_angle}^\\circ$.",
+            **opts
+        }
+
+    elif archetype == 1:
+        triples = [(6, 8, 10), (8, 15, 17), (9, 12, 15), (12, 16, 20)]
+        c_side, a_side, b_hyp = triples[index % len(triples)]
+        svg = generate_dynamic_triangle_svg(a_side, b_hyp, c_side, "ABC Dik Üçgen Parkuru")
+        area = (a_side * c_side) // 2
+        q_text = (
+            f"Bir belediye, dik üçgen biçimindeki $ABC$ yeşil alanının ($[AB] \\perp [BC]$) etrafına yürüyüş yolu yapacaktır.\n"
+            f"- Parkın dik kenar uzunlukları $|AB| = {c_side}\\text{{ m}}$ ve $|BC| = {a_side}\\text{{ m}}$'dir.\n\n"
+            f"Buna göre hipotenüs uzunluğu $|AC| = b$ kaç metredir ve parkın **toplam alanı kaç $\\text{{m}}^2$'dir**?"
+        )
+        corr = f"$|AC| = {b_hyp}\\text{{ m}}$ — Alan $= {area}\\text{{ m}}^2$"
+        dist = [
+            f"$|AC| = {b_hyp}\\text{{ m}}$ — Alan $= {a_side * c_side}\\text{{ m}}^2$",
+            f"$|AC| = {a_side + c_side}\\text{{ m}}$ — Alan $= {area}\\text{{ m}}^2$",
+            f"$|AC| = {b_hyp + 2}\\text{{ m}}$ — Alan $= {area + 10}\\text{{ m}}^2$",
+            f"$|AC| = {b_hyp}\\text{{ m}}$ — Alan $= {(a_side + c_side) * 2}\\text{{ m}}^2$"
+        ]
+        opts = format_tyt_options(corr, dist)
+        return {
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Geometri",
+            "topic": "Özel Üçgenler (Dik, İkizkenar, Eşkenar)", "subtopic": "Dik Üçgende Pisagor ve Alan Modellemesi",
+            "learning_outcome_code": "GEO.TYT.1.3", "cognitive_domain": "Uygulama / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": f"Pisagor bağıntısından $|AC| = \\sqrt{{{c_side}^2 + {a_side}^2}} = {b_hyp}\\text{{ m}}$. Alan $= \\frac{{{c_side} \\times {a_side}}}{{2}} = {area}\\text{{ m}}^2$.",
+            **opts
+        }
+
+    else:
+        r = random.choice([6, 8, 12])
+        angle = random.choice([60, 90, 120])
+        svg = generate_dynamic_geometry_circle_svg(r, angle)
+        sector_area = (r * r * angle) // 360
+        q_text = (
+            f"Merkezi $O$ noktası ve yarıçapı **$r = {r}\\text{{ metre}}$** olan daire biçimindeki bir tarım arazisinde, merkezde bulunan döner fıskiye **$\\alpha = {angle}^\\circ$**'lik merkez açı tarayarak sulama yapmaktadır.\n\n"
+            f"Buna göre fıskiyenin suladığı **daire diliminin alanı kaç $\\pi\\text{{ m}}^2$'dir**?"
+        )
+        corr = f"${sector_area}\\pi$"
+        dist = [f"${sector_area * 2}\\pi$", f"${r * r}\\pi$", f"${sector_area + 4}\\pi$", f"${2 * r}\\pi$"]
+        opts = format_tyt_options(corr, dist)
+        return {
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Geometri",
+            "topic": "Dairede Alan ve Çevre", "subtopic": "Daire Diliminin Alanı",
+            "learning_outcome_code": "GEO.TYT.3.2", "cognitive_domain": "Uygulama / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": f"Daire diliminin alanı $= \\pi r^2 \\cdot \\frac{{\\alpha}}{{360^\\circ}} = \\pi \\cdot {r}^2 \\cdot \\frac{{{angle}}}{{360}} = {sector_area}\\pi\\text{{ m}}^2$.",
+            **opts
+        }
+
+
+# ================= 4. TYT FİZİK (ÖSYM YENİ NESİL DENEY VE GÖRSEL TEMELLİ) =================
+
+def gen_tyt_fizik(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    from app.services.ai_exam_service import (
+        generate_dynamic_circuit_svg,
+        generate_dynamic_force_block_svg,
+        generate_dynamic_optics_prism_svg
+    )
+    if index is None:
+        index = random.randint(0, 999)
+    top_low = str(topic or "").lower()
+
+    if "elektrik" in top_low or "devre" in top_low:
+        archetype = 0
+    elif "kuvvet" in top_low or "hareket" in top_low or "newton" in top_low:
+        archetype = 1
+    elif "optik" in top_low or "kırılma" in top_low or "ayna" in top_low:
+        archetype = 2
+    else:
+        archetype = index % 3
+
+    if archetype == 0:
+        r1, r2, r3 = 4, 6, 2
+        r_eq = r1 + r2 + r3  # 12 ohm
+        i_amp = random.choice([2, 3, 4])
+        v_volt = r_eq * i_amp
+        svg = generate_dynamic_circuit_svg(v_volt, r1, r2, r3)
+        p_watt = (i_amp ** 2) * r2
+        q_text = (
+            f"Şekildeki elektrik devresinde iç direnci önemsiz **$V = {v_volt}\\text{{ Volt}}$** gerilimli üretece $R_1 = {r1}\\,\\Omega$, $R_2 = {r2}\\,\\Omega$ ve $R_3 = {r3}\\,\\Omega$ dirençleri seri olarak bağlanmıştır.\n\n"
+            f"Buna göre;\n"
+            f"I. İdeal ampermetreden ($A$) geçen ana kol akımı **${i_amp}\\text{{ Amper}}$**'dir.\n"
+            f"II. $R_2$ direncinin uçları arasındaki potansiyel farkı **${i_amp * r2}\\text{{ Volt}}$**'tur.\n"
+            f"III. $R_2$ direncinin birim zamanda ($1$ saniyede) harcadığı elektriksel güç **${p_watt}\\text{{ Watt}}$**'tır.\n\n"
+            f"yargılarından hangileri **doğrudur**?"
+        )
         corr = "I, II ve III"
-        dist = ["Yalnız I", "I ve III", "II ve III", "Yalnız III"]
+        dist = ["Yalnız I", "I ve II", "I ve III", "II ve III"]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Fizik",
-            "topic": "Optik",
-            "subtopic": "Kırılma ve Işık Hızı",
-            "learning_outcome_code": "FİZ.TYT.5.1",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Çok yoğun ortamda ışığın hızı azalır ($v = c/n$), kaynağa bağlı olan frekans değişmez, normale yaklaşarak kırılır.",
-            **opts
-        }
-
-
-# ================= 5. TYT KİMYA =================
-
-def gen_tyt_kimya(index: int) -> Dict[str, Any]:
-    archetype = index % 5
-    
-    if archetype == 0:
-        # Periyodik Sistem ve Atom Numarası
-        elements = [
-            ("Sodyum (Na, Z=11)", "3. periyot 1A grubu alkali metalidir.", ["2. periyot 7A halojenidir.", "Soygazdır.", "Geçiş metalidir.", "Ametaldir."]),
-            ("Klor (Cl, Z=17)", "3. periyot 7A grubu halojenidir.", ["Alkali metaldir.", "Toprak alkali metalidir.", "Soygazdır.", "Yarı metaldir."]),
-            ("Argon (Ar, Z=18)", "3. periyot 8A grubu soygazıdır (asal gaz).", ["1A grubu metalidir.", "Halojendir.", "Aktif bir ametaldir.", "Kalkojendir."])
-        ]
-        el = elements[index % len(elements)]
-        q_text = f"Temel hal elektron dizilimi yazılan **{el[0]}** elementi ile ilgili aşağıdaki ifadelerden hangisi **doğrudur**?"
-        opts = format_tyt_options(el[1], el[2])
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Kimya",
-            "topic": "Atom ve Periyodik Sistem",
-            "subtopic": "Periyodik Cetvelde Yer Bulma",
-            "learning_outcome_code": "KİM.TYT.1.3",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"{el[0]} için katman dizilimi incelendiğinde {el[1]}",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Fizik",
+            "topic": "Elektrik Akımı ve Devreler", "subtopic": "Ohm Yasası, Potansiyel Farkı ve Elektriksel Güç",
+            "learning_outcome_code": "FİZ.TYT.3.2", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": (
+                f"$R_{{eş}} = {r1}+{r2}+{r3} = {r_eq}\\,\\Omega$. Ana kol akımı $I = V/R_{{eş}} = {v_volt}/{r_eq} = {i_amp}\\text{{ A}}$ (I doğru). "
+                f"$V_2 = I \\cdot R_2 = {i_amp} \\cdot {r2} = {i_amp * r2}\\text{{ V}}$ (II doğru). "
+                f"Güç $P_2 = I^2 \\cdot R_2 = {i_amp}^2 \\cdot {r2} = {p_watt}\\text{{ W}}$ (III doğru)."
+            ),
             **opts
         }
 
     elif archetype == 1:
-        # Mol Kavramı
-        moles = random.choice([0.5, 1.5, 2.0])
-        # H2O (MA = 18)
-        mass = moles * 18
-        q_text = f"${moles}$ mol saf $H_2O$ (su) bileşiği kaç gramdır? ($H: 1$, $O: 16$ g/mol)"
-        corr = f"${mass:.1f}$ g" if mass % 1 != 0 else f"${int(mass)}$ g"
-        dist = [f"${mass + 9}$ g", f"${mass - 5}$ g", f"${mass * 2}$ g", f"${18}$ g"]
+        m = random.choice([4, 5])
+        a = random.choice([2, 3])
+        f_s = random.choice([6, 8])
+        f_uyg = m * a + f_s
+        svg = generate_dynamic_force_block_svg(m, f_uyg, f_s, a)
+        q_text = (
+            f"Yatay ve sürtünmeli bir düzlemde hareket eden **$m = {m}\\text{{ kg}}$** kütleli bir sandığa yatay doğrultuda **$F = {f_uyg}\\text{{ N}}$** kuvvet uygulandığında, zemin ile sandık arasında **$f_s = {f_s}\\text{{ N}}$** büyüklüğünde kinetik sürtünme kuvveti oluşmaktadır.\n\n"
+            f"Buna göre sandığın hareket ivmesi ($a$) ve $4$ saniye sonunda durgun halden başlayarak kazanacağı hız ($v$) aşağıdakilerin hangisinde doğru verilmiştir?"
+        )
+        corr = f"$a = {a}\\text{{ m/s}}^2$ — $v = {4 * a}\\text{{ m/s}}$"
+        dist = [
+            f"$a = {f_uyg / m:.1f}\\text{{ m/s}}^2$ — $v = {2 * a}\\text{{ m/s}}$",
+            f"$a = {a + 1}\\text{{ m/s}}^2$ — $v = {4 * (a + 1)}\\text{{ m/s}}$",
+            f"$a = {a}\\text{{ m/s}}^2$ — $v = {2 * a}\\text{{ m/s}}$",
+            f"$a = {a + 2}\\text{{ m/s}}^2$ — $v = {4 * a}\\text{{ m/s}}$"
+        ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Kimya",
-            "topic": "Kimyasal Hesaplamalar",
-            "subtopic": "Mol Kütlesi ve Gram İlişkisi",
-            "learning_outcome_code": "KİM.TYT.3.1",
-            "cognitive_domain": "Uygulama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"$M_A(H_2O) = 2 \\times 1 + 16 = 18$ g/mol. $m = n \\cdot M_A = {moles} \\times 18 = {mass}$ gram.",
-            **opts
-        }
-
-    elif archetype == 2:
-        # Kimyasal Türler Arası Etkileşimler
-        q_text = "Aşağıdaki bileşik veya moleküllerin hangisinde moleküller arasında **Hidrojen Bağı** bulunur?"
-        corr = "$H_2O$ (Su)"
-        dist = ["$CH_4$ (Metan)", "$CO_2$ (Karbondioksit)", "$HCl$ (Hidroklorik Asit)", "$O_2$ (Oksijen Gazı)"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Kimya",
-            "topic": "Kimyasal Türler Arası Etkileşimler",
-            "subtopic": "Zayıf Etkileşimler ve Hidrojen Bağı",
-            "learning_outcome_code": "KİM.TYT.2.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Hidrojen atomunun $F, O, N$ elektronegatif atomlarına doğrudan bağlı olduğu moleküller arasında hidrojen bağı kurulur.",
-            **opts
-        }
-
-    elif archetype == 3:
-        # Karışımlar ve Ayırma Yöntemleri
-        q_text = "Birbiri içinde homojen karışan ve kaynama noktaları birbirinden farklı iki sıvının (örneğin etil alkol ve su karışımı) ayrılmasında en uygun yöntem hangisidir?"
-        corr = "Ayrımsal Damıtma"
-        dist = ["Süzme", "Ayırma Hunisi", "Diyaliz", "Basit Kristallendirme"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Kimya",
-            "topic": "Karışımlar",
-            "subtopic": "Kaynama Noktası Farkı ile Ayırma",
-            "learning_outcome_code": "KİM.TYT.4.3",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "Sıvı-sıvı homojen karışımlarda kaynama noktası farkından yararlanılarak ayrımsal damıtma yapılır.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Fizik",
+            "topic": "Newton'ın Hareket Yasaları", "subtopic": "Sürtünmeli Yüzeyde Dinamik ve Hız Değişimi",
+            "learning_outcome_code": "FİZ.TYT.2.2", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": f"$F_{{net}} = F - f_s = {f_uyg} - {f_s} = {m * a}\\text{{ N}}$. İvme $a = F_{{net}}/m = {a}\\text{{ m/s}}^2$. $4$ saniye sonraki hız $v = a \\cdot t = {4 * a}\\text{{ m/s}}$.",
             **opts
         }
 
     else:
-        # Asitler, Bazlar ve Tuzlar
-        q_text = "Oda koşullarında ($25^\\circ\\text{C}$) hazırlanan sulu çözeltilerde $pH < 7$ olan çözeltilerle ilgili;\nI. Tadı ekşidir.\nII. $Zn, Fe, Al$ gibi aktif metallerle tepkimeye girerek $H_2$ gazı açığa çıkarır.\nIII. Kırmızı turnusol kağıdını maviye çevirir.\n\nyargılarından hangileri **doğrudur**?"
+        svg = generate_dynamic_optics_prism_svg()
+        q_text = (
+            "Şekildeki optik deney düzeneğinde, kırıcılık indisi $n_1$ olan hava ortamından kırıcılık indisi $n_2$ olan cam prizmaya ($n_2 > n_1$) tek renkli bir ışık ışını gönderilmiştir.\n\n"
+            "Işığın hava ortamından cam prizmaya geçiş sürecinde;\n"
+            "I. Işığın ortalama yayılma sürati azalır.\n"
+            "II. Işığın frekansı ($f$) kaynağa bağlı olduğundan değişmez.\n"
+            "III. Işın yüzey normaline yaklaşacak biçimde kırılır.\n\n"
+            "yargılarından hangileri **doğrudur**?"
+        )
+        corr = "I, II ve III"
+        dist = ["Yalnız I", "I ve II", "I ve III", "II ve III"]
+        opts = format_tyt_options(corr, dist)
+        return {
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Fizik",
+            "topic": "Optik (Aydınlanma, Aynalar, Kırılma, Mercekler, Prizmalar ve Renk)",
+            "subtopic": "Snell Kırılma Yasası ve Dalga Özellikleri",
+            "learning_outcome_code": "FİZ.TYT.5.3", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": "Az yoğundan çok yoğuna geçen ışın normale yaklaşır, ortamdaki hızı ($v=c/n$) ve dalga boyu azalır, ancak frekansı değişmez.",
+            **opts
+        }
+
+
+# ================= 5. TYT KİMYA (ÖSYM YENİ NESİL LABORATUVAR VE ANALİZ) =================
+
+def gen_tyt_kimya(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    from app.services.ai_exam_service import generate_dynamic_chemistry_lab_svg
+    if index is None:
+        index = random.randint(0, 999)
+    archetype = index % 3
+
+    if archetype == 0:
+        svg = generate_dynamic_chemistry_lab_svg("TYT Kimya Deneyi: Asit-Baz Nötralleşme Düzeneği")
+        q_text = (
+            "Kimya laboratuvarında kurulan yukarıdaki düzenekte, erlenmayerde bulunan **$HCl$ (hidroklorik asit)** sulu çözeltisi üzerine büretten damla damla **$NaOH$ (sodyum hidroksit)** sulu çözeltisi eklenmektedir.\n\n"
+            "Gerçekleşen $HCl(suda) + NaOH(suda) \\to NaCl(suda) + H_2O(s)$ tepkimesi ve süreçle ilgili;\n"
+            "I. Erlenmayerdeki çözeltinin $pH$ değeri zamanla artar.\n"
+            "II. Net iyon denklemi $H^+(suda) + OH^-(suda) \\to H_2O(s)$ şeklindedir.\n"
+            "III. Tam nötralleşme anında oluşan $NaCl$ tuzu suda iyonlaşarak elektriği iletir.\n\n"
+            "ifadelerinden hangileri **doğrudur**?"
+        )
+        corr = "I, II ve III"
+        dist = ["Yalnız I", "I ve II", "I ve III", "II ve III"]
+        opts = format_tyt_options(corr, dist)
+        return {
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Kimya",
+            "topic": "Asitler, Bazlar ve Tuzlar", "subtopic": "Asit-Baz Nötralleşme Tepkimeleri",
+            "learning_outcome_code": "KİM.TYT.5.2", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": "Asit üzerine baz eklendikçe asitlik azalır ve pH yükselir (I doğru). Nötralleşmenin net iyon denklemi su oluşumudur (II doğru) ve tuzlu su elektrolittir (III doğru).",
+            **opts
+        }
+
+    elif archetype == 1:
+        q_text = (
+            "Aşağıda üç farklı kimyasal tür çifti arasındaki baskın etkileşimler incelenmektedir:\n"
+            "- **I. Durum:** Saf su ($H_2O$) ile etil alkol ($C_2H_5OH$) molekülleri arasında kurulan etkileşim,\n"
+            "- **II. Durum:** Sıvı karbondioksit ($CO_2$) molekülleri arasında yoğunlaşma sırasında oluşan etkileşim,\n"
+            "- **III. Durum:** Yemek tuzu ($NaCl$) kristalindeki $Na^+$ ve $Cl^-$ iyonlarının su ($H_2O$) molekülleriyle sarılması.\n\n"
+            "Bu üç etkileşim türü aşağıdakilerin hangisinde sırasıyla doğru sınıflandırılmıştır?"
+        )
+        corr = "I: Hidrojen Bağı — II: London Kuvvetleri — III: İyon-Dipol Etkileşimi"
+        dist = [
+            "I: Dipol-Dipol — II: Hidrojen Bağı — III: İyonik Bağ",
+            "I: Hidrojen Bağı — II: Dipol-Dipol — III: Kovalent Bağ",
+            "I: Kovalent Bağ — II: London Kuvvetleri — III: Hidrojen Bağı",
+            "I: İyon-Dipol — II: London Kuvvetleri — III: Dipol-Dipol"
+        ]
+        opts = format_tyt_options(corr, dist)
+        return {
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Kimya",
+            "topic": "Kimyasal Türler Arası Etkileşimler", "subtopic": "Zayıf Etkileşimlerin Sınıflandırılması",
+            "learning_outcome_code": "KİM.TYT.2.3", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": None,
+            "explanation": "$H_2O$ ve $C_2H_5OH$ arasında $-OH$ gruplarından dolayı Hidrojen bağı (I), apolar $CO_2$ molekülleri arasında yalnız London kuvvetleri (II), $NaCl$ iyonları ile polar $H_2O$ arasında İyon-Dipol etkileşimi (III) bulunur.",
+            **opts
+        }
+
+    else:
+        q_text = (
+            "Periyodik sistemin baş gruplarında (A grupları) yer alan **X, Y ve Z** elementleriyle ilgili şu bilgiler veriliyor:\n"
+            "- **$X$ ve $Y$** aynı periyotta yer almakta olup $Y$'nin atom yarıçapı $X$'inkinden küçüktür.\n"
+            "- **$X$ ve $Z$** aynı grupta yer almakta olup $Z$'nin birinci iyonlaşma enerjisi $X$'inkinden küçüktür.\n\n"
+            "Buna göre $X, Y$ ve $Z$ elementlerinin **atom numaralarının (proton sayılarının)** büyükten küçüğe doğru sıralanışı aşağıdakilerden hangisidir?"
+        )
+        corr = "$Z > Y > X$"
+        dist = ["$X > Y > Z$", "$Y > Z > X$", "$Z > X > Y$", "$Y > X > Z$"]
+        opts = format_tyt_options(corr, dist)
+        return {
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Kimya",
+            "topic": "Atom ve Periyodik Sistem", "subtopic": "Periyodik Özelliklerin Değişim Eğilimleri",
+            "learning_outcome_code": "KİM.TYT.1.4", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": None,
+            "explanation": "Aynı periyotta sağa gidildikçe yarıçap küçülür ($Y$, $X$'in sağındadır $\\implies Z_Y > Z_X$). Aynı grupta aşağı inildikçe iyonlaşma enerjisi azalır ($Z$, $X$'in alt periyodundadır $\\implies Z_Z > Z_Y > Z_X$).",
+            **opts
+        }
+
+
+# ================= 6. TYT BİYOLOJİ (ÖSYM YENİ NESİL SOYAĞACI VE EKOLOJİ) =================
+
+def gen_tyt_biyoloji(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    from app.services.ai_exam_service import (
+        generate_dynamic_pedigree_svg,
+        generate_dynamic_food_pyramid_svg
+    )
+    if index is None:
+        index = random.randint(0, 999)
+    archetype = index % 3
+
+    if archetype == 0:
+        svg = generate_dynamic_pedigree_svg("TYT Biyoloji: Otozomal Çekinik Kalıtım Analizi")
+        q_text = (
+            "Yukarıdaki soyağacında koyu renkli ($2$ ve $4$ numaralı) bireyler belirli bir kalıtsal özelliği fenotipinde göstermektedir. Bu özelliğin **otozomal çekinik ($a$)** bir alelle taşındığı bilinmektedir.\n\n"
+            "Buna göre soyağacındaki numaralanmış bireylerin genotipleriyle ilgili;\n"
+            "I. $2$ ve $4$ numaralı bireyler kesinlikle homozigot çekinik ($aa$) genotiptedir.\n"
+            "II. $1$ numaralı baba, $4$ numaralı çocuğuna çekinik alel aktardığı için heterozigot ($Aa$) olmak zorundadır.\n"
+            "III. $3$ ve $5$ numaralı kardeşler annelerinden ($2$ numara) kesinlikle çekinik ($a$) alelini almış birer taşıyıcıdır ($Aa$).\n\n"
+            "yargılarından hangileri **kesinlikle doğrudur**?"
+        )
+        corr = "I, II ve III"
+        dist = ["Yalnız I", "I ve II", "I ve III", "II ve III"]
+        opts = format_tyt_options(corr, dist)
+        return {
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Biyoloji",
+            "topic": "Kalıtımın Genel İlkeleri (Mendel Genetiği)", "subtopic": "Soyağacı ve Otozomal Çekinik Kalıtım",
+            "learning_outcome_code": "BİY.TYT.4.2", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": "Koyu bireyler (2 ve 4) $aa$'dır (I doğru). 4 numara ($aa$) bir $a$'yı 1 numaralı babadan aldığı için 1 numara sağlıklı görünümlü $Aa$'dır (II doğru). 2 numaralı anne ($aa$) tüm çocuklarına (3 ve 5) $a$ aleli verdiğinden 3 ve 5 kesinlikle $Aa$'dır (III doğru).",
+            **opts
+        }
+
+    elif archetype == 1:
+        svg = generate_dynamic_food_pyramid_svg()
+        q_text = (
+            "Yukarıda bir kara ekosistemine ait **besin ve enerji piramidi** gösterilmiştir. Piramidin en alt basamağındaki üreticilerin toplam enerji eşdeğeri **$100.000\\text{ Joule}$** olarak ölçülmüştür.\n\n"
+            "Bu besin piramidiyle ilgili;\n"
+            "I. Trofik basamaklar arasında %$10$ enerji aktarım yasasına göre 2. tüketici basamağına aktarılan enerji yaklaşık **$1.000\\text{ Joule}$**'dür.\n"
+            "II. Toprağa karışan DDT gibi biyolojik olarak parçalanamayan bir zehir, en yüksek derişime **3. tüketici** dokularında ulaşır.\n"
+            "III. Ayrıştırıcı (saprofit) canlılar piramidin yalnızca en üst basamağındaki canlıların kalıntılarını ayrıştırır.\n\n"
+            "ifadelerinden hangileri **doğrudur**?"
+        )
         corr = "I ve II"
-        dist = ["Yalnız I", "I ve III", "Yalnız III", "I, II ve III"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Kimya",
-            "topic": "Asitler, Bazlar ve Tuzlar",
-            "subtopic": "Asitlerin Genel Özellikleri",
-            "learning_outcome_code": "KİM.TYT.5.1",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Asitler turnusolu kırmızıya çevirir (III yanlıştır, bazlar maviye çevirir). I ve II doğrudur.",
-            **opts
-        }
-
-
-# ================= 6. TYT BİYOLOJİ =================
-
-def gen_tyt_biyoloji(index: int) -> Dict[str, Any]:
-    archetype = index % 5
-    
-    if archetype == 0:
-        # Hücre Organelleri
-        organelles = [
-            ("Mitokondri", "Oksijenli solunum ile ATP (hücresel enerji) üretir.", ["Hücre içi sindirimi sağlar.", "Protein sentezini gerçekleştirir.", "Fotosentez yapar.", "Hücre bölünmesini başlatır."]),
-            ("Kloroplast", "Işık enerjisini kullanarak inorganik maddelerden organik besin (glikoz) üretir.", ["Hücre içi madde taşınmasını sağlar.", "Katalaz enzimi içerir.", "ATP tüketmeden solunum yapar.", "Sentrozom görevi görür."]),
-            ("Ribozom", "Tüm canlı hücrelerde bulunan zarsız organel olup protein sentezini yürütür.", ["Steroit hormon üretir.", "Glikolipit sentezler.", "Lizozom enzimi depolar.", "İğ ipliklerini oluşturur."])
-        ]
-        org = organelles[index % len(organelles)]
-        q_text = f"Ökaryot bir hücrede bulunan **{org[0]}** organelinin temel hücresel görevi aşağıdakilerden hangisidir?"
-        opts = format_tyt_options(org[1], org[2])
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Biyoloji",
-            "topic": "Hücre ve Organelleri",
-            "subtopic": "Zarlı ve Zarsız Organeller",
-            "learning_outcome_code": "BİY.TYT.1.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": f"{org[0]} organeli: {org[1]}",
-            **opts
-        }
-
-    elif archetype == 1:
-        # Hücre Bölünmeleri: Mitoz ve Mayoz
-        q_text = "Mayoz bölünmeyi mitoz bölünmeden ayıran ve yavru hücrelerde genetik çeşitlilik (varyasyon) sağlayan temel olay hangisidir?"
-        corr = "Krossing-over (parça değişimi) ve homolog kromozomların rastgele kutuplara çekilmesi"
-        dist = [
-            "İğ ipliklerinin sentrozomlar tarafından oluşturulması",
-            "DNA replikasyonunun interfaz evresinde gerçekleşmesi",
-            "Sitokinezin boğumlanma ile tamamlanması",
-            "Karyokinezin (çekirdek bölünmesi) meydana gelmesi"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Biyoloji",
-            "topic": "Hücre Bölünmeleri",
-            "subtopic": "Mayoz Bölünme ve Genetik Çeşitlilik",
-            "learning_outcome_code": "BİY.TYT.3.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Homolog kromozomların rastgele dizilimi ve mayoz I profazındaki krossing-over çeşitliliğin ana kaynağıdır.",
-            **opts
-        }
-
-    elif archetype == 2:
-        # Kalıtım ve Soyağacı
-        q_text = "Otozomal çekinik (resesif) bir özelliği fenotipinde gösteren bir dişi bireyin genotipi ile ilgili aşağıdaki ifadelerden hangisi **kesinlikle doğrudur**?"
-        corr = "Homozigot çekiniktir ($aa$) ve bu alellerden birini annesinden, diğerini babasından almıştır."
-        dist = [
-            "Heterozigot genotiptedir ($Aa$).",
-            "Babası bu özelliği fenotipinde kesinlikle göstermek zorundadır.",
-            "Tüm erkek çocukları bu özelliği fenotipinde göstermek zorundadır.",
-            "Annesi kesinlikle homozigot baskındır."
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Biyoloji",
-            "topic": "Kalıtımın Genel İlkeleri",
-            "subtopic": "Otozomal Çekinik Kalıtım",
-            "learning_outcome_code": "BİY.TYT.4.1",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": "Çekinik özellik sadece homozigot durumda ($aa$) fenotipe yansır; biri anneden biri babadan gelir.",
-            **opts
-        }
-
-    elif archetype == 3:
-        # Canlıların Sınıflandırılması
-        q_text = "Aşağıdaki canlı gruplarından hangisi **prokaryot** hücre yapısına sahiptir?"
-        corr = "Bakteriler ve Arkeler"
-        dist = ["Mantarlar ve Bitkiler", "Protistler ve Hayvanlar", "Algler ve Mayalar", "Omurgalı Hayvanlar"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Biyoloji",
-            "topic": "Canlılar Dünyası",
-            "subtopic": "Canlıların Sınıflandırılması",
-            "learning_outcome_code": "BİY.TYT.2.1",
-            "cognitive_domain": "Hatırlama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "Zarla çevrili çekirdek ve organeli olmayan tek hücreli canlılar Bakteriler ve Arkelerdir.",
-            **opts
-        }
-
-    else:
-        # Ekosistem Ekolojisi: Besin Piramidi
-        q_text = "Kara ekosisteminde bir besin piramidinde üreticilerden son tüketicilere doğru gidildikçe;\nI. Biyokütle (toplam canlı ağırlığı)\nII. Biyolojik birikim (zehirli madde derişimi)\nIII. Aktarılan enerji miktarı\n\nniceliklerinden hangileri **azalır**?"
-        corr = "I ve III"
         dist = ["Yalnız I", "Yalnız II", "II ve III", "I, II ve III"]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Biyoloji",
-            "topic": "Ekosistem Ekolojisi",
-            "subtopic": "Besin Piramidinde Enerji ve Madde Akışı",
-            "learning_outcome_code": "BİY.TYT.5.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Üst basamaklara çıktıkça biyokütle ve aktarılan enerji (%10 kuralı) azalır; zehirli biyolojik birikim ise artar.",
-            **opts
-        }
-
-
-# ================= 7. TYT TARİH =================
-
-def gen_tyt_tarih(index: int) -> Dict[str, Any]:
-    archetype = index % 5
-    
-    if archetype == 0:
-        # İlk Türk Devletleri: Kut ve Kurultay
-        q_text = "İlk Türk devletlerinde hükümdara yönetme yetkisinin Gök Tengri tarafından verildiğine inanılan ve 'Kut' olarak adlandırılan anlayış;\nI. Hükümdar ailesinin tüm erkek üyelerinin tahtta hak iddia etmesi\nII. Taht kavgalarının ve iç karışıklıkların artması\nIII. Devletlerin kısa sürede parçalanıp yıkılması\n\nsonuçlarından hangilerine **zemin hazırlamıştır**?"
-        corr = "I, II ve III"
-        dist = ["Yalnız I", "I ve II", "II ve III", "Yalnız III"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Tarih",
-            "topic": "İlk ve Orta Çağlarda Türk Dünyası",
-            "subtopic": "Devlet Yönetimi ve Kut Anlayışı",
-            "learning_outcome_code": "TAR.TYT.1.2",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": "Kut inancı hanedanın ortak malı anlayışını doğurmuş, taht kavgalarını körükleyerek devletlerin ömrünü kısaltmıştır.",
-            **opts
-        }
-
-    elif archetype == 1:
-        # Osmanlı Devleti: İskan ve İstimalet
-        q_text = "Osmanlı Devleti'nin Rumeli ve Balkanlar'da fethettiği topraklarda kalıcılığı sağlamak için uyguladığı;\n- Anadolu'dan getirdiği Türkmenleri fethettiği bölgelere yerleştirme (**İskân**)\n- Yerel halkın diline, dinine ve geleneklerine saygı gösterip hoşgörüyle yaklaşma (**İstimâlet**)\n\npolitikalarının ortak amacı aşağıdakilerden hangisidir?"
-        corr = "Fethin kalıcı olmasını sağlamak ve bölgeyi huzur içinde elde tutmak"
-        dist = [
-            "Avrupa'da Hristiyan birliğini yeniden kurmak",
-            "Gaza ve cihat anlayışını tamamen terk etmek",
-            "Tüm Balkan halklarını zorla Müslümanlaştırmak",
-            "Merkezi otoriteyi eyalet valilerine devretmek"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Tarih",
-            "topic": "Beylikten Devlete Osmanlı Siyaseti",
-            "subtopic": "İskân ve İstimalet Politikası",
-            "learning_outcome_code": "TAR.TYT.2.3",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "İskân ve adaletli istimâlet politikası Balkanlar'daki hâkimiyetin yüzyıllarca sürmesini sağlamıştır.",
-            **opts
-        }
-
-    elif archetype == 2:
-        # Tımar Sistemi
-        q_text = "Osmanlı Devleti'nde Tımar sisteminin sağladığı faydalar arasında aşağıdakilerden hangisi **yer almaz**?"
-        corr = "Hazineye doğrudan yüklü miktarda sıcak nakit para girişi sağlanması"
-        dist = [
-            "Devletin hazinesinden para çıkmadan büyük bir atlı ordu (tımarlı sipahi) beslenmesi",
-            "Tarımsal üretimin denetlenmesi ve üretimde sürekliliğin sağlanması",
-            "Kırsal bölgelerde asayiş ve güvenliğin tesis edilmesi",
-            "Vergilerin yerinde toplanarak bürokratik masrafların azaltılması"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Tarih",
-            "topic": "Devletleşme Sürecinde Osmanlı",
-            "subtopic": "Tımar Sistemi ve Faydaları",
-            "learning_outcome_code": "TAR.TYT.2.5",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": "Tımar sisteminde vergiler nakit olarak başkente gelmez; yerinde askere ve hizmete harcanır. Sıcak nakit iltizam ile toplanırdı.",
-            **opts
-        }
-
-    elif archetype == 3:
-        # Tanzimat ve Islahat Fermanları
-        q_text = "1839 yılında ilan edilen Tanzimat Fermanı'nda yer alan 'Padişah da dahil olmak üzere herkesin kanun önünde eşit sayılacağı' hükmü Osmanlı tarihinde öncelikle hangi ilkenin kabul edildiğini gösterir?"
-        corr = "Kanun Üstünlüğü ve Hukuk Devleti Anlayışı"
-        dist = [
-            "Teokratik Devlet Düzeni",
-            "Sosyalist Mülkiyet Rejimi",
-            "Mutlak Monarşinin Güçlenmesi",
-            "Feodal Derebeylik Sistemi"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Tarih",
-            "topic": "Değişim Çağında Avrupa ve Osmanlı",
-            "subtopic": "Tanzimat Fermanı ve Kanun Üstünlüğü",
-            "learning_outcome_code": "TAR.TYT.3.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "Padişahın kendi yetkilerini kanun gücüyle sınırlandırması hukukun üstünlüğüne geçiştir.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Biyoloji",
+            "topic": "Ekosistem Ekolojisi ve Güncel Çevre Sorunları", "subtopic": "Besin Piramidi ve Biyolojik Birikim",
+            "learning_outcome_code": "BİY.TYT.5.2", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": svg,
+            "explanation": "Üretici ($100.000\\text{ J}$) $\\to$ 1. Tüketici ($10.000\\text{ J}$) $\\to$ 2. Tüketici ($1.000\\text{ J}$) (I doğru). Biyolojik birikim en üstte maksimumdur (II doğru). Saprofitler tüm basamaklarda görev yapar (III yanlış).",
             **opts
         }
 
     else:
-        # Millî Mücadele: Kongreler
-        q_text = "Amasya Genelgesi'nde yer alan \"Milletin bağımsızlığını yine milletin azim ve kararı kurtaracaktır.\" maddesi Türk inkılabının öncelikle hangi yönünü ortaya koymuştur?"
-        corr = "Millî egemenliğe dayalı yeni bir devletin kurulacağının ilk sinyali"
+        q_text = (
+            "Yarı geçirgen bir zarla ayrılmış U borusunun **A koluna %$10$'luk sükroz (çay şekeri) çözeltisi**, **B koluna ise %$2$'lik sükroz çözeltisi** konularak eşit seviyede başlatılıyor.\n\n"
+            "Sükroz disakkarit olduğundan hücre zarından (yarı geçirgen zardan) doğrudan geçemediğine göre, bir süre sonra gerçekleşecek olaylarla ilgili aşağıdakilerden hangisi **doğrudur**?"
+        )
+        corr = "B kolundan A koluna doğru ozmozla su geçişi olur; A kolundaki sıvı seviyesi yükselirken iki kolun derişimleri eşitlenir."
         dist = [
-            "Manda rejimine boyun eğileceği",
-            "Saltanat şurasının kararlarına bağlı kalınacağı",
-            "Düzenli ordunun dağıtılacağı",
-            "Bölgesel kurtuluş yollarının deneneceği"
+            "A kolundan B koluna doğru sükroz molekülleri difüzyonla geçerek şeker miktarlarını eşitler.",
+            "A kolundaki su molekülleri B koluna geçerek B kolundaki sıvı seviyesini yükseltir.",
+            "Su geçişi sırasında ortamda bulunan ATP molekülleri harcanarak aktif taşıma yapılır.",
+            "Her iki koldaki sıvı seviyeleri ve ozmotik basınçlar hiçbir değişime uğramadan sabit kalır."
         ]
         opts = format_tyt_options(corr, dist)
         return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Tarih",
-            "topic": "Millî Mücadele",
-            "subtopic": "Amasya Genelgesi ve İhtilal Beyannamesi",
-            "learning_outcome_code": "TAR.TYT.4.1",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Milletin kendi kararını vermesi, padişah iradesinin yerine halk iradesinin geçeceğinin kanıtıdır.",
+            "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Biyoloji",
+            "topic": "Hücre Zarından Madde Geçişleri", "subtopic": "Ozmoz ve Ozmotik Basınç Deneyi",
+            "learning_outcome_code": "BİY.TYT.1.4", "cognitive_domain": "Analiz / Muhakeme",
+            "difficulty": "ÖSYM / Yeni Nesil", "question_text": q_text, "visual_svg": None,
+            "explanation": "Sükroz büyük molekül (disakkarit) olduğu için zardan geçemez. Ancak yoğunluğu fazla olan A kolunun ozmotik basıncı yüksek olduğundan B kolundan A koluna ozmozla su çeker.",
             **opts
         }
 
 
-# ================= 8. TYT COĞRAFYA =================
+# ================= 7. TYT TARİH, COĞRAFYA, FELSEFE, DİN KÜLTÜRÜ =================
 
-def gen_tyt_cografya(index: int) -> Dict[str, Any]:
-    archetype = index % 5
-    
-    if archetype == 0:
-        # Harita Bilgisi ve İzohipsler
-        q_text = "Bir topoğrafya haritasında eş yükselti (izohips) eğrilerinin birbirine **çok yaklaştığı (sıklaştığı)** bir bölge için aşağıdakilerden hangisi kesinlikle söylenebilir?"
-        corr = "Arazide eğim fazladır ve akarsuyun akış hızı/aşındırma gücü yüksektir."
-        dist = [
-            "Arazi tamamen düz bir ovadır.",
-            "Deniz seviyesinden yüksekliği sıfırdır.",
-            "Bölgede kesinlikle krater gölü bulunur.",
-            "Kalıcı kar sınırının altındadır."
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Coğrafya",
-            "topic": "Harita Bilgisi",
-            "subtopic": "İzohipsler ve Yeryüzü Şekilleri",
-            "learning_outcome_code": "COĞ.TYT.1.3",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "İzohipslerin sıklaşması eğimin dikleştiğini gösterir. Eğimli arazide akarsu hızlı akar ve aşındırma artar.",
-            **opts
-        }
-
-    elif archetype == 1:
-        # İklim Tipleri: Akdeniz İklimi
-        q_text = "\"Yazları sıcak ve kurak, kışları ılık ve yağışlı; doğal bitki örtüsü kızılçam ormanları ve tahrip edildiği yerlerde bodur çalılardan oluşan maki...\"\n\nYukarıda özellikleri verilen **iklim tipi** aşağıdakilerden hangisidir?"
-        corr = "Akdeniz İklimi"
-        dist = ["Karadeniz İklimi", "Karasal İklim", "Muson İklimi", "Tundra İklimi"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Coğrafya",
-            "topic": "İklim Bilgisi",
-            "subtopic": "Büyük İklim Tipleri ve Bitki Örtüsü",
-            "learning_outcome_code": "COĞ.TYT.2.4",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "Kış ılıklığı, kış yağışları ve maki bitki örtüsü Akdeniz ikliminin karakteristik özelliğidir.",
-            **opts
-        }
-
-    elif archetype == 2:
-        # Levha Tektoniği ve Doğal Afetler: Deprem
-        q_text = "Dünya üzerinde aktif volkanların, jeotermal sıcak su kaynaklarının ve şiddetli deprem kuşaklarının birbirleriyle büyük paralellik göstermesinin temel nedeni nedir?"
-        corr = "Levha sınırları boyunca yer kabuğunun kırıklı ve hareketli fay hatlarına sahip olması"
-        dist = [
-            "Tüm bu bölgelerin Ekvator çizgisine yakın konumda bulunması",
-            "Bölgedeki okyanus akıntılarının sıcaklık dengesini bozması",
-            "Aşırı yağışların toprak kaymalarını tetiklemesi",
-            "Bölgede yüksek sıradağların rüzgarı engellemesi"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Coğrafya",
-            "topic": "Yerin Şekillenmesi",
-            "subtopic": "Levha Tektoniği ve Fay Hatları",
-            "learning_outcome_code": "COĞ.TYT.3.1",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": "Levha sınırları yer kabuğunun zayıf zonlarıdır; deprem, volkanizma ve jeotermal bu sınırlarda yoğunlaşır.",
-            **opts
-        }
-
-    elif archetype == 3:
-        # Nüfus Piramitleri
-        q_text = "Tabanı daralan bir nüfus piramidine sahip olan gelişmiş bir ülke için aşağıdakilerden hangisi **kesinlikle söylenebilir**?"
-        corr = "Doğum oranları azalmakta ve yaşlı nüfus oranı artmaktadır."
-        dist = [
-            "Çocuk işçi oranı hızla yükselmektedir.",
-            "Tarımsal nüfus yoğunluğu çok yüksektir.",
-            "Ortalama yaşam süresi kısalmaktadır.",
-            "Okur-yazar oranı dünya ortalamasının altındadır."
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Coğrafya",
-            "topic": "Nüfus ve Yerleşme",
-            "subtopic": "Nüfus Piramitleri ve Demografi",
-            "learning_outcome_code": "COĞ.TYT.4.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Piramit tabanının daralması doğum oranlarının gerilediğini, tavanın genişliği ise yaşlı nüfusun fazlalığını gösterir.",
-            **opts
-        }
-
-    else:
-        # Dış Kuvvetler: Akarsu Aşınım ve Birikim
-        q_text = "Bir akarsuyun denize döküldüğü kıyıda **delta ovası** oluşturabilmesi için aşağıdakilerden hangisi **gerekli bir koşul değildir**?"
-        corr = "Kıyıda güçlü gelgit (gelgit genliği) ve sert dalga akıntılarının bulunması"
-        dist = [
-            "Akarsuyun bol miktarda alüvyon taşıması",
-            "Kıyının sığ (kıta sahanlığının geniş) olması",
-            "Kıyıda güçlü akıntıların bulunmaması",
-            "Havzanın erozyona açık kayaçlardan oluşması"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Coğrafya",
-            "topic": "Dış Kuvvetler",
-            "subtopic": "Akarsu Biriktirme Şekilleri (Delta Ovaları)",
-            "learning_outcome_code": "COĞ.TYT.3.3",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Güçlü gelgit ve akıntılar alüvyonların birikmesini engelleyip açık denize sürükler; haliç oluşturur, delta oluşumunu bozar.",
-            **opts
-        }
+def gen_tyt_tarih(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    if index is None:
+        index = random.randint(0, 999)
+    items = [
+        (
+            "Orhun Yazıtları'nda Bilge Kağan; *\"Türk milleti için gece uyumadım, gündüz oturmadım. Ölecek milleti dirilttim, çıplak milleti giydirdim, fakir milleti zengin kıldım.\"* ifadelerini kullanmıştır.\n\n"
+            "Bilge Kağan'ın bu sözleri İlk Türk devletlerindeki yönetim anlayışıyla ilgili;\n"
+            "I. Sosyal devlet (halkın refahını gözetme) anlayışının benimsendiği,\n"
+            "II. Hükümdarın halka karşı sorumluluk bilinciyle hareket ettiği,\n"
+            "III. Teokratik mutlakiyetle halkın yönetime katılımının tamamen yasaklandığı\n\n"
+            "durumlarından hangilerini kanıtlar?",
+            "I ve II",
+            ["Yalnız I", "Yalnız II", "I ve III", "I, II ve III"],
+            "Aç halkı doyurmak ve giydirmek doğrudan 'Sosyal Devlet' anlayışının ve hükümdarın milletine karşı görev bilincinin kanıtıdır."
+        ),
+        (
+            "Osmanlı Devleti'nde klasik dönemde uygulanan **Tımar (Dirlik) Sistemi**'nde devlet, toprağın mülkiyetini (rakabe) elinde tutar; kullanım hakkını köylüye (reaya), vergisini toplama yetkisini ise sipahiye devrederdi. Sipahi topladığı vergiyle atlı asker (**cebelü**) yetiştirirdi.\n\n"
+            "Buna göre Tımar sisteminin bozulması Osmanlı Devleti'nde;\n"
+            "I. Taşrada güvenliğin sarsılması ve Celâli İsyanları'nın yayılması,\n"
+            "II. Tarımsal üretimin düşmesi ve köylünün toprağı terk etmesi,\n"
+            "III. Hazine giderlerinin artması ve ücretli asker (sekban/saruca) alımının çoğalması\n\n"
+            "sonuçlarından hangilerine doğrudan yol açmıştır?",
+            "I, II ve III",
+            ["Yalnız I", "I ve II", "II ve III", "I ve III"],
+            "Tımar sisteminin bozulması hem askeri hem ekonomik hem de taşra güvenliği açısından üç sonucu da doğrudan doğurmuştur."
+        )
+    ]
+    it = items[index % len(items)]
+    opts = format_tyt_options(it[1], it[2])
+    return {
+        "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Tarih",
+        "topic": "İlk ve Orta Çağlarda Türk Dünyası", "subtopic": "Tarihsel Kaynak Analizi ve Sosyal Devlet",
+        "learning_outcome_code": "TAR.TYT.1.3", "cognitive_domain": "Analiz / Muhakeme",
+        "difficulty": "ÖSYM / Yeni Nesil", "question_text": it[0], "explanation": it[3], **opts
+    }
 
 
-# ================= 9. TYT FELSEFE =================
-
-def gen_tyt_felsefe(index: int) -> Dict[str, Any]:
-    archetype = index % 5
-    
-    if archetype == 0:
-        # Epistemoloji: Bilgi Felsefesi
-        currents = [
-            ("Rasyonalizm (Akılcılık)", "Doğru bilginin kaynağı yalnızca akıldır; duyular aldatıcıdır (Descartes, Platon, Sokrates)."),
-            ("Empirizm (Deneycilik)", "İnsan zihni doğuştan boş bir levhadır (tabula rasa); tüm bilgiler duyum ve deneyimle kazanılır (John Locke, David Hume)."),
-            ("Kritisizm (Eleştiricilik)", "Görüsüz kavramlar boş, kavramsız görüler kördür; bilgi hem deneyden hem akıldan beslenir (Immanuel Kant).")
-        ]
-        c = currents[index % len(currents)]
-        q_text = f"\"{c[1]}\"\n\nBu görüşü savunan epistemolojik **felsefi akım** aşağıdakilerden hangisidir?"
-        corr = c[0].split(" (")[0]
-        dist = ["Pozitivizm", "Entüisyonizm", "Pragmatizm", "Septisizm"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Felsefe",
-            "topic": "Bilgi Felsefesi (Epistemoloji)",
-            "subtopic": "Doğru Bilginin Kaynağı ve İmkânı",
-            "learning_outcome_code": "FEL.TYT.2.1",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": f"Verilen açıklama doğrudan {c[0]} akımının temel tezidir.",
-            **opts
-        }
-
-    elif archetype == 1:
-        # Ontoloji: Varlık Felsefesi
-        q_text = "Descartes, evrende birbirinden bağımsız iki tözün olduğunu; bunlardan birinin 'düşünen töz' (ruh), diğerinin ise 'yer kaplayan töz' (madde) olduğunu savunur.\n\nDescartes'ın bu varlık anlayışı felsefede hangi kavramla adlandırılır?"
-        corr = "Düalizm (İkicilik)"
-        dist = ["Monizm (Tekçilik)", "Plüralizm (Çokçuluk)", "Materyalizm (Maddecilik)", "Nihilizm (Hiççilik)"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Felsefe",
-            "topic": "Varlık Felsefesi (Ontoloji)",
-            "subtopic": "Varlığın Mahiyeti ve Töz Problemi",
-            "learning_outcome_code": "FEL.TYT.1.3",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "Ruh ve maddeyi iki ayrı bağımsız töz kabul eden anlayış Düalizm'dir.",
-            **opts
-        }
-
-    elif archetype == 2:
-        # Etik: Kant'ın Ödev Ahlakı
-        q_text = "Kant'a göre bir eylemin ahlaki değerini belirleyen şey, onun doğuracağı sonuçlar veya sağlayacağı fayda değil; yalnızca 'ödev duygusuyla' ve iyi niyetle yapılmış olmasıdır.\n\nKant'ın bu etik yaklaşımı aşağıdakilerden hangisiyle adlandırılır?"
-        corr = "Ödev Ahlakı (Deontoloji)"
-        dist = ["Hedonizm (Hazcılık)", "Faydacılık (Utilitarizm)", "Egoizm (Bencillik)", "Anarşizm"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Felsefe",
-            "topic": "Ahlak Felsefesi (Etik)",
-            "subtopic": "Kant'ın Ödev Ahlakı ve Koşulsuz Buyruk",
-            "learning_outcome_code": "FEL.TYT.3.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Kant menfaat ve sonuca değil, niyet ve evrensel ödev ahlakına dayanır.",
-            **opts
-        }
-
-    elif archetype == 3:
-        # Siyaset Felsefesi: Ütopyalar ve Devlet
-        q_text = "Thomas Hobbes, insanların doğa durumunda 'İnsan insanın kurdudur (Homo homini lupus)' ilkesiyle bir kaos yaşadığını ve can güvenliğini sağlamak için haklarını tek bir egemene devrederek devleti oluşturduklarını savunur.\n\nHobbes'a göre devletin varoluş temeli aşağıdakilerden hangisidir?"
-        corr = "Toplum Sözleşmesi ve Güvenlik İhtiyacı"
-        dist = [
-            "İlahi buyrukların yeryüzünde icra edilmesi",
-            "Sınıfsız ve devletsiz komünal yaşam",
-            "Doğanın dengesine müdahale edilmemesi",
-            "Yöneticilerin aristokratik üstünlüğü"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Felsefe",
-            "topic": "Siyaset Felsefesi",
-            "subtopic": "Devletin Doğuşu ve Toplum Sözleşmesi",
-            "learning_outcome_code": "FEL.TYT.4.1",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "ÖSYM / Yeni Nesil",
-            "question_text": q_text,
-            "explanation": "Hobbes devleti kaostan kurtulmak için akılla yapılan bir toplum sözleşmesi olarak tanımlar.",
-            **opts
-        }
-
-    else:
-        # Felsefi Düşüncenin Özellikleri
-        q_text = "Felsefi düşünce; eleştirel, sorgulayıcı, refleksif (düşünce üzerine düşünme), yığılan (kümülatif) fakat bilim gibi kesin doğrularla ilerlemeyen bir yapıya sahiptir.\n\nBuna göre aşağıdakilerden hangisi felsefi bilginin **özellikleri arasında yer almaz**?"
-        corr = "Deney ve gözlemle kesin olarak ispatlanıp bitmiş/değişmez doğrular sunması"
-        dist = [
-            "Kendi üzerine dönük (refleksif) bir akıl yürütme olması",
-            "Sorgulayıcı ve şüpheci bir tutumla hareket etmesi",
-            "Bütüncül ve evrensel sorulara cevap araması",
-            "Mantıksal tutarlılık taşıması"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Felsefe",
-            "topic": "Felsefeyi Tanıma",
-            "subtopic": "Felsefi Düşüncenin Nitelikleri",
-            "learning_outcome_code": "FEL.TYT.1.1",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "Felsefede kesin ve nihai deney kanıtları yoktur; sorgulama ve akıl yürütme süreklidir.",
-            **opts
-        }
+def gen_tyt_cografya(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    if index is None:
+        index = random.randint(0, 999)
+    items = [
+        (
+            "Türkiye'de kıyı bölgelerden iç kesimlere doğru gidildikçe iklim ve yer şekillerine bağlı olarak beşerî ve ekonomik faaliyetlerde belirgin değişimler gözlenir.\n\n"
+            "Aşağıdaki bölgelerden hangisinde dağların kıyıya uzanış doğrultusu nedeniyle **denizel iklimin iç kesimlere sokulması daha kolay** olmuş ve kıyı ile iç kesim arasındaki iklim farklılığı daha az kalmıştır?",
+            "Ege Bölgesi (Kıyı Ege — Dağların kıyıya dik uzanması ve graben ovaları)",
+            [
+                "Doğu Karadeniz Bölümü (Kaçkar Dağları'nın kıyıya paralel uzanması)",
+                "Antalya Bölümü (Batı Torosların kıyıya paralel yükselmesi)",
+                "Batı Karadeniz Bölümü (Küre Dağları'nın kıyı şeridini sınırlaması)",
+                "Adana Bölümü (Orta Torosların iç kesimle bağlantıyı güçleştirmesi)"
+            ],
+            "Ege Bölgesi'nde horst-graben sistemindeki dağlar kıyıya dik uzandığı için nemli hava kütleleri graben ovaları boyunca iç kesimlere kadar sokulabilir."
+        ),
+        (
+            "Bir ülkenin **1980 ve 2026 yıllarına ait nüfus piramitleri** karşılaştırıldığında; piramidin tabanının belirgin biçimde daraldığı, üst kısmının (65+ yaş grubu) ise genişlediği tespit edilmiştir.\n\n"
+            "Bu nüfus değişimi yaşayan ülke için aşağıdakilerden hangisi **kesinlikle söylenebilir**?",
+            "Doğum oranları azalmış, ortalama yaşam süresi uzamış ve ortanca (medyan) yaş yükselmiştir.",
+            [
+                "Toplam nüfus miktarı 1980 yılına göre yarı yarıya azalmıştır.",
+                "Tarımda çalışan aktif nüfus oranı sanayi ve hizmet sektörünü geçmiştir.",
+                "Bebek ölüm oranları yükselmiş ve sağlık hizmetleri gerilemiştir.",
+                "Genç bağımlı nüfus oranı yaşlı bağımlı nüfus oranının iki katına çıkmıştır."
+            ],
+            "Piramidin tabanının daralması doğum oranlarının düştüğünü, tavanının genişlemesi ise ortalama yaşam süresinin ve yaşlı nüfus oranının (ortanca yaşın) arttığını gösterir."
+        )
+    ]
+    it = items[index % len(items)]
+    opts = format_tyt_options(it[1], it[2])
+    return {
+        "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Coğrafya",
+        "topic": "Türkiye'nin İklimi ve Nüfus", "subtopic": "Yer Şekilleri-İklim İlişkisi ve Nüfus Piramitleri",
+        "learning_outcome_code": "COĞ.TYT.2.4", "cognitive_domain": "Analiz / Muhakeme",
+        "difficulty": "ÖSYM / Yeni Nesil", "question_text": it[0], "explanation": it[3], **opts
+    }
 
 
-# ================= 10. TYT DİN KÜLTÜRÜ VE AHLAK BİLGİSİ =================
+def gen_tyt_felsefe(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    if index is None:
+        index = random.randint(0, 999)
+    items = [
+        (
+            "Immanuel Kant'a göre bir insan, boğulmakta olan birini *'ileride bana iyiliği dokunur'* veya *'toplumda kahraman ilan edilirim'* düşüncesiyle kurtarırsa, bu eylem görünüşte ödeve uygun olsa bile **ahlaki değer taşımaz**. Eylemin ahlaki olabilmesi için hiçbir çıkar gözetmeksizin, yalnızca **'insan hayatını kurtarmak ahlaki bir ödev olduğu için'** yapılması gerekir.\n\n"
+            "Bu parçadan hareketle Kant'ın ahlak felsefesi (deontoloji) hakkında aşağıdakilerden hangisine ulaşılabilir?",
+            "Bir eylemin ahlaki değerini belirleyen ölçüt, eylemin doğurduğu pratik sonuçlar değil arkasındaki iyi niyet ve koşulsuz ödev bilincidir.",
+            [
+                "En fazla sayıda insana en büyük mutluluğu sağlayan eylem en ahlaki eylemdir.",
+                "İnsan doğası gereği bencil olduğundan evrensel bir ahlak yasası kurulamaz.",
+                "Ahlaki kurallar toplumdan topluma ve çağdan çağa değişen göreli uzlaşımlardır.",
+                "Bireyin bedensel ve ruhsal hazza ulaşması yaşamın en yüce ahlaki amacıdır."
+            ],
+            "Kant'ın ödev ahlakı faydacı sonuçları reddeder; eylemin yalnızca 'iyi isteme' ve 'koşulsuz buyruk (ödev)' bilinciyle yapılmasını şart koşar."
+        ),
+        (
+            "Karl Popper'a göre bilim, doğrulamalarla değil **'yanlışlanabilirlik' (falsifiability)** ilkesiyle ilerler. *'Bütün kuğular beyazdır.'* önermesini milyonlarca beyaz kuğu gözlemleyerek kesin olarak kanıtlayamazsınız; çünkü gelecekte siyah bir kuğu çıkma ihtimali her zaman vardır. Ancak tek bir siyah kuğu gözlemlemek bu genellemeyi kesin olarak çürütmeye yeter.\n\n"
+            "Popper'ın bu bilim felsefesi yaklaşımına göre bir kuramın **bilimsel sayılabilmesinin temel ölçütü** aşağıdakilerden hangisidir?",
+            "Deney ve gözlemlerle sınanabilir olması ve hangi koşullarda yanlışlanabileceğini açıkça ortaya koyması",
+            [
+                "Hiçbir deneysel eleştiriye açık olmayacak kadar mutlak ve değişmez kabul edilmesi",
+                "Bilim dünyasının çoğunluğu tarafından hiçbir kuşku duyulmadan onaylanması",
+                "Sadece matematiksel sembollerle ifade edilip duyusal dünyadan bağımsız kalması",
+                "Tümevarım yöntemiyle toplanan sınırlı sayıdaki gözlemi mutlak yasa ilan etmesi"
+            ],
+            "Popper'a göre bir önermenin bilimsel olmasının kriteri doğrulanabilirliği değil, deneysel olarak sınanıp yanlışlanabilir (çürütülebilir) olmasıdır."
+        )
+    ]
+    it = items[index % len(items)]
+    opts = format_tyt_options(it[1], it[2])
+    return {
+        "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Felsefe",
+        "topic": "Ahlak ve Bilim Felsefesi", "subtopic": "Felsefi Metin Analizi ve Argüman Çıkarımı",
+        "learning_outcome_code": "FEL.TYT.2.3", "cognitive_domain": "Analiz / Muhakeme",
+        "difficulty": "ÖSYM / Yeni Nesil", "question_text": it[0], "explanation": it[3], **opts
+    }
 
-def gen_tyt_din(index: int) -> Dict[str, Any]:
-    archetype = index % 5
-    
-    if archetype == 0:
-        # İslam ve Bilgi: Selim Akıl, Sadık Haber, Salim Duyular
-        q_text = "İslam düşüncesinde bağlayıcı ve doğru bilgiye (yakîn) ulaşmayı sağlayan üç temel bilgi kaynağı hangi seçenekte eksiksiz verilmiştir?"
-        corr = "Selim Akıl, Sadık Haber (Vahiy) ve Salim Duyular"
-        dist = [
-            "Sezgiler, Rüyalar ve Kehanetler",
-            "Mitoloji, Efsaneler ve Falcılık",
-            "Sadece Deney ve Gözlem Verileri",
-            "Gelenekler ve Toplumsal Kabuller"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Din Kültürü ve Ahlak Bilgisi",
-            "topic": "İslam ve Bilgi",
-            "subtopic": "İslam'da Bilgi Kaynakları",
-            "learning_outcome_code": "DİN.TYT.1.1",
-            "cognitive_domain": "Hatırlama / Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "İslam epistemolojisinde üç kaynak esastır: Salim duyular, selim akıl ve vahiy (sadık haber).",
-            **opts
-        }
 
-    elif archetype == 1:
-        # Ahlak: Kul Hakkı ve Adalet
-        q_text = "\"Ölçtüğünüz zaman tastamam ölçün ve doğru teraziyle tartın. Bu hem daha hayırlıdır hem de neticesi bakımından daha güzeldir.\" (İsrâ Suresi, 35)\n\nBu ayet-i kerimede bireysel ve toplumsal hayatta öncelikle hangi ilkeye dikkat çekilmektedir?"
-        corr = "Kul hakkının gözetilmesi, ticari dürüstlük ve ekonomik adalet"
-        dist = [
-            "Yalnızca ibadetlerde huşunun korunması",
-            "Dünya hayatından tamamen el etek çekilmesi",
-            "Sadece zenginlerin ticarete atılması",
-            "Geleneksel ticaret kurallarının korunması"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Din Kültürü ve Ahlak Bilgisi",
-            "topic": "Ahlak ve Değerler",
-            "subtopic": "İslam Ahlakı ve Kul Hakkı",
-            "learning_outcome_code": "DİN.TYT.2.3",
-            "cognitive_domain": "Analiz / Muhakeme",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "Ölçü ve tartıda dürüstlük doğrudan kul hakkı ve adaletle ilgilidir.",
-            **opts
-        }
-
-    elif archetype == 2:
-        # İtikadi ve Ameli Mezhepler
-        q_text = "İslam düşünce tarihinde inanç (itikad) alanında ortaya çıkan iki büyük Ehl-i Sünnet mezhebi hangisinde doğru verilmiştir?"
-        corr = "Maturidilik ve Eş'arilik"
-        dist = [
-            "Hanefilik ve Şafilik",
-            "Malikilik ve Hanbelilik",
-            "Cebriye ve Mutezile",
-            "Caferilik ve Zeydilik"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Din Kültürü ve Ahlak Bilgisi",
-            "topic": "İslam Düşüncesinde Yorumlar",
-            "subtopic": "İtikadi ve Fıkhi Mezhepler",
-            "learning_outcome_code": "DİN.TYT.3.2",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Orta",
-            "question_text": q_text,
-            "explanation": "İtikatta Maturidilik ve Eş'arilik; amelde/fıkıhta Hanefilik, Şafilik, Malikilik ve Hanbelilik esastır.",
-            **opts
-        }
-
-    elif archetype == 3:
-        # Din ve Çevre Ahlakı
-        q_text = "\"Göğü O yükseltti ve dengeyi O koydu. Sakın dengede haddi aşmayın!\" (Rahmân Suresi, 7-8)\n\nBu ayet küresel dünyada yaşanan sorunlardan hangisine yönelik ilahi bir uyarıdır?"
-        corr = "Çevre kirliliği, ekolojik dengenin tahribi ve doğal kaynakların israf edilmesi"
-        dist = [
-            "Uzay araştırmalarının yetersizliği",
-            "Sanat ve edebiyatın gerilemesi",
-            "Felsefi tartışmaların artması",
-            "Şehirleşme oranlarının düşmesi"
-        ]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Din Kültürü ve Ahlak Bilgisi",
-            "topic": "Din ve Hayat",
-            "subtopic": "İslam ve Çevre Ahlakı",
-            "learning_outcome_code": "DİN.TYT.4.1",
-            "cognitive_domain": "Kavrama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "Ayet ekolojik dengenin korunmasını ve ifrat/israftan kaçınılmasını emreder.",
-            **opts
-        }
-
-    else:
-        # Tasavvufi Yorumlar ve Gönül Coğrafyası
-        q_text = "Horasan ve Türkistan'da yetişip talebelerini Anadolu ve Balkanlar'a göndererek İslamiyet'in yayılmasına ve 'Divan-ı Hikmet' eseriyle Türk tasavvufunun mayalanmasına öncülük eden mutasavvıf kimdir?"
-        corr = "Hoca Ahmed Yesevi"
-        dist = ["Mevlana Celaleddin-i Rumi", "Yunus Emre", "Hacı Bektaş-ı Veli", "Ahi Evran"]
-        opts = format_tyt_options(corr, dist)
-        return {
-            "exam_type": "TYT",
-            "grade_level": "9-10. Sınıf",
-            "subject": "Din Kültürü ve Ahlak Bilgisi",
-            "topic": "Din, Kültür ve Medeniyet",
-            "subtopic": "Gönül Coğrafyamızın Öncüleri",
-            "learning_outcome_code": "DİN.TYT.3.4",
-            "cognitive_domain": "Hatırlama",
-            "difficulty": "Kolay",
-            "question_text": q_text,
-            "explanation": "Pîr-i Türkistan olarak bilinen Hoca Ahmed Yesevi'nin en önemli eseri Divan-ı Hikmet'tir.",
-            **opts
-        }
+def gen_tyt_din(index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    if index is None:
+        index = random.randint(0, 999)
+    items = [
+        (
+            "İslam düşünce geleneğinde bir bilginin dinî açıdan bağlayıcı sayılabilmesi için **Selim Akıl, Salim Duyular ve Sadık Haber (Vahiy / Mütevatir Haber)** kaynaklarından birine dayanması şarttır. Buna karşılık kişinin gördüğü rüyalar, öznel sezgileri (ilham) ve keşifleri yalnızca kendisini bağlar; toplumun tamamı için dinî bir hüküm kaynağı oluşturamaz.\n\n"
+            "Bu ilkenin İslam toplumunda öncelikle hangi tehlikeyi önlemeye yönelik olduğu söylenebilir?",
+            "Öznel iddiaların, hurafelerin ve istismarcı yorumların dinin kesin emriymiş gibi topluma dayatılmasını",
+            [
+                "İnsanların bireysel ibadetlerinde samimiyet ve huşu arayışına girmesini",
+                "Bilim insanlarının doğa olaylarını deney ve gözlemle incelemesini",
+                "Farklı coğrafyalardaki Müslümanların kültürel sanat eserleri üretmesini",
+                "Ayetlerin anlaşılmasında akıl ve mantık ilkelerine başvurulmasını"
+            ],
+            "İslam epistemolojisinde bilginin nesnel kaynaklara (vahiy, akıl, duyular) bağlanması, dinin sübjektif rüya/ilham iddialarıyla istismar edilmesini engeller."
+        ),
+        (
+            "Bir kimsenin gösterişten, şöhret arzusundan ve dünyevi bir çıkar beklentisinden tamamen arınarak ibadetlerini ve iyiliklerini **yalnızca Allah'ın rızasını kazanmak** amacıyla yapması **'İhlas'**; her an Allah'ın kendisini gördüğü bilinciyle en güzel ve titiz biçimde davranması ise **'İhsan'** kavramıyla ifade edilir.\n\n"
+            "Buna göre İhlas ve İhsan bilincini içselleştirmiş bir bireyden aşağıdaki davranışlardan hangisi **beklenmez**?",
+            "Yaptığı hayır ve yardımları toplum içinde itibar kazanmak amacıyla sürekli dile getirmesi",
+            [
+                "Kimsenin görmediği ortamlarda dahi kul hakkına ve dürüstlüğe riayet etmesi",
+                "Üstlendiği mesleki görevi denetleyen biri olmasa bile eksiksiz yerine getirmesi",
+                "İhtiyaç sahiplerini incitmemek için yardımlarını gizlice ulaştırmaya özen göstermesi",
+                "İbadetlerinde şekilselliğin ötesine geçerek samimiyeti esas alması"
+            ],
+            "Gösteriş ve itibar kazanmak için yapılan iyilik 'riya'dır ve İhlas/İhsan kavramlarının tam zıddıdır."
+        )
+    ]
+    it = items[index % len(items)]
+    opts = format_tyt_options(it[1], it[2])
+    return {
+        "exam_type": "TYT", "grade_level": "9-10. Sınıf", "subject": "Din Kültürü ve Ahlak Bilgisi",
+        "topic": "İslam ve İnanç Esasları", "subtopic": "İslam Epistemolojisi ve Ahlaki Kavramlar",
+        "learning_outcome_code": "DİN.TYT.1.3", "cognitive_domain": "Analiz / Muhakeme",
+        "difficulty": "ÖSYM / Yeni Nesil", "question_text": it[0], "explanation": it[3], **opts
+    }
 
 
 # ================= ANA TYT SÖZLÜĞÜ VE ÜRETİCİ =================
@@ -1435,6 +1132,25 @@ TYT_DISPATCHER = {
     "Din Kültürü": gen_tyt_din,
 }
 
-def generate_tyt_question(subject: str, index: int) -> Dict[str, Any]:
-    func = TYT_DISPATCHER.get(subject, gen_tyt_turkce)
-    return func(index)
+
+def generate_tyt_question(subject: str, index: int = None, topic: str = "Karma") -> Dict[str, Any]:
+    s_norm = str(subject or "").lower()
+    if "geometri" in s_norm:
+        return gen_tyt_geometri(index, topic)
+    elif "matematik" in s_norm:
+        return gen_tyt_matematik(index, topic)
+    elif "fizik" in s_norm:
+        return gen_tyt_fizik(index, topic)
+    elif "kimya" in s_norm:
+        return gen_tyt_kimya(index, topic)
+    elif "biyoloji" in s_norm:
+        return gen_tyt_biyoloji(index, topic)
+    elif "tarih" in s_norm:
+        return gen_tyt_tarih(index, topic)
+    elif "coğrafya" in s_norm or "cografya" in s_norm:
+        return gen_tyt_cografya(index, topic)
+    elif "felsefe" in s_norm:
+        return gen_tyt_felsefe(index, topic)
+    elif "din" in s_norm:
+        return gen_tyt_din(index, topic)
+    return gen_tyt_turkce(index, topic)

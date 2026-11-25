@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const apiBase = import.meta.env.VITE_API_URL || 'https://pirireis-api-v3ku.onrender.com';
+const isLocalDev = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const apiBase = isLocalDev ? '' : (import.meta.env.VITE_API_URL || 'https://pirireis-api-v3ku.onrender.com');
 
 const api = axios.create({
   baseURL: apiBase ? `${apiBase.replace(/\/$/, '')}/api` : '/api',

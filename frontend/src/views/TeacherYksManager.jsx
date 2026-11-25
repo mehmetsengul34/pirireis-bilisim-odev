@@ -958,7 +958,7 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                     </div>
 
                     {/* Question Content */}
-                    <div className="text-xs sm:text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed font-sans bg-zinc-50 dark:bg-zinc-850/40 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800/80 mb-3">
+                    <div className="text-xs sm:text-sm text-zinc-800 dark:text-zinc-100 leading-relaxed font-sans bg-zinc-50 dark:bg-zinc-800/70 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-700/80 mb-3">
                       <MathRenderer text={q.question_text} />
                     </div>
 
@@ -984,7 +984,7 @@ export default function TeacherYksManager({ classrooms = [], user }) {
                                 className={`p-2 rounded-xl border flex items-start gap-1.5 ${
                                   isCorrect
                                     ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 font-semibold text-emerald-900 dark:text-emerald-200'
-                                    : 'bg-white dark:bg-zinc-850 border-zinc-200 dark:border-zinc-700/60 text-zinc-700 dark:text-zinc-300'
+                                    : 'bg-white dark:bg-zinc-800/80 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200'
                                 }`}
                               >
                                 <span className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 font-bold text-[10px] ${

@@ -255,9 +255,28 @@ async def autonomous_agent_background_loop():
     print("[AIAgent] Otonom arka plan gelişim ajanları nöbete başladı.")
     while True:
         try:
-            from app.services.ai_agent_service import AutonomousCoordinator
+            from app.services.ai_agent_service import AutonomousCoordinator, HighVolumeDailySynthesizerAgent
             db = SessionLocal()
             try:
+                # 1. Eski/bozuk veya kısa soruları otomatik temizle ve yeni nesil sorulara yükselt
+                from sqlalchemy import and_, or_
+                deleted_bad = db.query(QuestionBank).filter(
+                    or_(
+                        QuestionBank.question_text.ilike("%Laboratuvarda gerçekleştirilen bir deneyde,%"),
+                        and_(QuestionBank.exam_type == "LGS", QuestionBank.question_text.ilike("%\\lim_%")),
+                        and_(QuestionBank.exam_type == "LGS", QuestionBank.question_text.ilike("%parabolü%")),
+                        and_(QuestionBank.subject.ilike("%Fen%"), QuestionBank.question_text.ilike("%kâr fonksiyonu%"))
+                    )
+                ).delete(synchronize_session=False)
+                if deleted_bad:
+                    db.commit()
+                    print(f"[AIAgent] {deleted_bad} adet eski/hatalı soru temizlendi.")
+
+                # 2. Soru bankası 45 sorunun altındaysa LGS, TYT ve AYT yeni nesil sorularını otomatik sentezle
+                current_q_count = db.query(QuestionBank).count()
+                if current_q_count < 45:
+                    await HighVolumeDailySynthesizerAgent.run_daily_batch(db, exam_type=None, target_count=18)
+
                 print("[AIAgent] Otonom periyodik gelişim döngüsü yürütülüyor...")
                 await AutonomousCoordinator.run_full_autonomous_cycle(db, target_count_per_subject=2)
                 print("[AIAgent] Otonom döngü başarıyla tamamlandı.")

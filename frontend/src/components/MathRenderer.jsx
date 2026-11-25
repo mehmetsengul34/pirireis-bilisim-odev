@@ -252,6 +252,60 @@ function renderPlainTextWithMathSymbols(rawStr) {
 export default function MathRenderer({ text, content, value, children, className = '' }) {
   const rawText = text ?? content ?? value ?? (typeof children === 'string' ? children : '') ?? '';
 
+  const renderInlineTokens = (str, keyPrefix = '') => {
+    const inlineRegex = /(\$[^\$]+?\$|<u>[\s\S]*?<\/u>|<ins>[\s\S]*?<\/ins>)/g;
+    const subTokens = [];
+    let lastIdx = 0;
+    let m;
+    while ((m = inlineRegex.exec(str)) !== null) {
+      if (m.index > lastIdx) {
+        subTokens.push({ type: 'text', value: str.substring(lastIdx, m.index) });
+      }
+      const ms = m[0];
+      if (ms.startsWith('$') && ms.endsWith('$')) {
+        subTokens.push({ type: 'inline-math', value: ms.slice(1, -1) });
+      } else if ((ms.startsWith('<u>') && ms.endsWith('</u>')) || (ms.startsWith('<ins>') && ms.endsWith('</ins>'))) {
+        const inner = ms.startsWith('<u>') ? ms.slice(3, -4) : ms.slice(5, -6);
+        subTokens.push({ type: 'underline', value: inner });
+      }
+      lastIdx = m.index + ms.length;
+    }
+    if (lastIdx < str.length) {
+      subTokens.push({ type: 'text', value: str.substring(lastIdx) });
+    }
+    return subTokens.map((st, sIdx) => {
+      if (st.type === 'inline-math') {
+        try {
+          const safeFormula = sanitizeFormulaForKatex(st.value);
+          const html = katex.renderToString(safeFormula, {
+            displayMode: false,
+            throwOnError: false,
+            output: 'html'
+          });
+          return (
+            <span
+              key={`${keyPrefix}-${sIdx}`}
+              className="inline-block px-0.5 align-middle print:!text-black"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          );
+        } catch (_e) {
+          return <span key={`${keyPrefix}-${sIdx}`}>{st.value}</span>;
+        }
+      } else if (st.type === 'underline') {
+        return (
+          <u
+            key={`${keyPrefix}-${sIdx}`}
+            className="underline underline-offset-4 decoration-2 decoration-indigo-600 dark:decoration-indigo-400 font-bold px-0.5 print:!text-black print:!decoration-black"
+          >
+            {renderPlainTextWithMathSymbols(st.value)}
+          </u>
+        );
+      }
+      return <React.Fragment key={`${keyPrefix}-${sIdx}`}>{renderPlainTextWithMathSymbols(st.value)}</React.Fragment>;
+    });
+  };
+
   const renderedContent = useMemo(() => {
     if (!rawText) return null;
 
@@ -262,8 +316,8 @@ export default function MathRenderer({ text, content, value, children, className
     const lines = normalized.split('\n');
 
     return lines.map((line, lineIdx) => {
-      // Satır içi parçalama: Önce $$...$$ (display math), sonra $...$ (inline math), sonra **...** (bold)
-      const tokenRegex = /(\$\$[\s\S]*?\$\$|\$[^\$]+?\$|\*\*[^*]+?\*\*|<u>[\s\S]*?<\/u>|<ins>[\s\S]*?<\/ins>)/g;
+      // Satır içi parçalama: Önce **...** (içinde $...$ barındırabilir), sonra $$...$$, sonra $...$, sonra <u>...</u>
+      const tokenRegex = /(\*\*[^*]+?\*\*|\$\$[\s\S]*?\$\$|\$[^\$]+?\$|<u>[\s\S]*?<\/u>|<ins>[\s\S]*?<\/ins>)/g;
       const tokens = [];
       let lastPos = 0;
       let tokenMatch;
@@ -277,7 +331,12 @@ export default function MathRenderer({ text, content, value, children, className
         }
 
         const matchStr = tokenMatch[0];
-        if (matchStr.startsWith('$$') && matchStr.endsWith('$$')) {
+        if (matchStr.startsWith('**') && matchStr.endsWith('**')) {
+          tokens.push({
+            type: 'bold',
+            value: matchStr.slice(2, -2)
+          });
+        } else if (matchStr.startsWith('$$') && matchStr.endsWith('$$')) {
           tokens.push({
             type: 'block-math',
             value: matchStr.slice(2, -2)
@@ -286,11 +345,6 @@ export default function MathRenderer({ text, content, value, children, className
           tokens.push({
             type: 'inline-math',
             value: matchStr.slice(1, -1)
-          });
-        } else if (matchStr.startsWith('**') && matchStr.endsWith('**')) {
-          tokens.push({
-            type: 'bold',
-            value: matchStr.slice(2, -2)
           });
         } else if ((matchStr.startsWith('<u>') && matchStr.endsWith('</u>')) || (matchStr.startsWith('<ins>') && matchStr.endsWith('</ins>'))) {
           const inner = matchStr.startsWith('<u>') ? matchStr.slice(3, -4) : matchStr.slice(5, -6);
@@ -360,7 +414,7 @@ export default function MathRenderer({ text, content, value, children, className
             } else if (token.type === 'bold') {
               return (
                 <strong key={tokIdx} className="font-semibold text-inherit print:!text-black">
-                  {renderPlainTextWithMathSymbols(token.value)}
+                  {renderInlineTokens(token.value, `b-${tokIdx}`)}
                 </strong>
               );
             } else if (token.type === 'underline') {
@@ -369,7 +423,7 @@ export default function MathRenderer({ text, content, value, children, className
                   key={tokIdx}
                   className="underline underline-offset-4 decoration-2 decoration-indigo-600 dark:decoration-indigo-400 font-bold px-0.5 print:!text-black print:!decoration-black print:font-bold"
                 >
-                  {renderPlainTextWithMathSymbols(token.value)}
+                  {renderInlineTokens(token.value, `u-${tokIdx}`)}
                 </u>
               );
             } else {

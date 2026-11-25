@@ -247,7 +247,7 @@ def sanitize_math_and_turkish(text: str, is_option: bool = False) -> str:
     if is_option or (len(trimmed) < 50 and not any(p in trimmed for p in ['?', '!', ':', 'dir.', 'tir.', 'dır.', 'tır.'])):
         has_math = bool(re.search(r'[\\\^_²³°√π±≤≥≠÷×]|\b(cm|m|mm|km)\^[23]\b|\b[a-zA-Z]\^[0-9]', trimmed, re.IGNORECASE))
         words = re.findall(r'[a-zA-ZçğıöşüÇĞİÖŞÜ]{4,}', trimmed)
-        if not (trimmed.startswith("$") and trimmed.endswith("$")) and has_math and len(words) <= 1:
+        if "$" not in trimmed and has_math and len(words) <= 1:
             return f"${clean_math_inner(trimmed)}$"
 
     # 2. Metni formül blokları ($$...$$ ve $...$) ile formül dışı düz metin olarak böl
@@ -2610,9 +2610,9 @@ async def generate_questions_with_gemini(
     Google Gemini API ile MEB müfredatı ve ÖSYM geçmiş sınav kalıplarına tam uyumlu,
     %100 özgün yeni nesil YKS soruları üretir.
     """
-    key = api_key or os.getenv("GEMINI_API_KEY")
-    if not key:
-        print("[AI Exam Service] GEMINI_API_KEY bulunamadı. Prosedürel motora yönlendiriliyor.")
+    key = (api_key or os.getenv("GEMINI_API_KEY") or "").strip()
+    if not key or not key.startswith("AIza"):
+        # Geçerli formatta (AIza...) bir Google Gemini API anahtarı yoksa zaman kaybetmeden yerleşik yeni nesil motora geç
         return []
 
     unique_session_seed = f"{time.time()}_{uuid.uuid4().hex[:8]}"
@@ -2705,10 +2705,10 @@ KATI KURALLAR:
         user_msg += f" Öğretmenin özel notu: {custom_prompt}"
 
     candidate_models = [
-        "gemini-3-flash-preview",
-        "gemini-flash-lite-latest",
-        "gemini-3.1-flash-lite-preview",
-        "gemini-flash-latest"
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-flash-latest",
+        "gemini-2.5-flash-lite"
     ]
 
     payload = {
@@ -2815,25 +2815,25 @@ def decorate_question_visuals(questions: List[Dict[str, Any]], subject: str):
             q_topic_low = normalize_text_for_branch(q_topic)
             subj_norm = normalize_text_for_branch(q_subj)
 
-            # Geometri veya Matematik (yalnızca sayısal branşsa)
+            # Geometri veya Matematik (yalnızca soru metni açıkça bir şekil/grafik referansı içeriyorsa bağla)
             if "geometri" in subj_norm or "matematik" in subj_norm:
                 # 1. Yeni Nesil Katlama ve Açınım Geometrisi (LGS / TYT)
-                if any(k in q_topic_low for k in ["katlama", "acinim", "origami"]) or any(k in q_text_low for k in ["katlandiginda", "kat izi", "katlanarak", "d noktasi", "c noktasi", "sekil 1", "sekil 2"]):
+                if any(k in q_text_low for k in ["katlandiginda", "kat izi", "katlanarak", "sekil 1", "sekil 2"]):
                     q["visual_svg"] = generate_dynamic_folding_geometry_svg()
                 # 2. Veri Analizi: Daire ve Sütun Grafiği (LGS / TYT)
-                elif any(k in q_topic_low for k in ["veri analizi", "daire grafigi", "sutun grafigi", "grafik"]) or any(k in q_text_low for k in ["daire grafigi", "sutun grafigi", "pasta grafik", "merkez acisi"]):
+                elif any(k in q_text_low for k in ["daire grafigi", "sutun grafigi", "pasta grafik", "grafik 1"]):
                     q["visual_svg"] = generate_dynamic_chart_analysis_svg()
                 # 3. Dönüşüm Geometrisi ve Koordinat Sistemi (LGS / TYT / AYT)
-                elif any(k in q_topic_low for k in ["donusum", "oteleme", "koordinat", "analitik"]) or any(k in q_text_low for k in ["koordinat duzleminde", "orijin", "birim saga", "birim yukari"]):
+                elif any(k in q_text_low for k in ["koordinat duzleminde", "koordinat sisteminde", "birim saga", "birim asagi", "otelenerek"]):
                     q["visual_svg"] = generate_dynamic_coordinate_transform_svg()
-                # 4. Üçgenler ve Pisagor
-                elif any(k in q_topic_low for k in ["ucgen", "pisagor", "trigonometri"]) or any(k in q_text_low for k in ["ucgen", "pisagor", "hipotenus"]):
+                # 4. Üçgenler ve Pisagor (yalnızca 'şekildeki' veya 'dik üçgen' varsa)
+                elif any(k in q_text_low for k in ["sekildeki abc", "dik ucgende", "hipotenus"]):
                     q["visual_svg"] = generate_dynamic_triangle_svg()
                 # 5. Çember ve Daire
-                elif any(k in q_topic_low for k in ["cember", "daire"]) or any(k in q_text_low for k in ["cemberde aci", "dairede alan", "yaricapi r =", "merkez aci"]):
+                elif any(k in q_text_low for k in ["daire diliminin", "merkez aci", "fiskiyenin"]):
                     q["visual_svg"] = generate_dynamic_geometry_circle_svg()
                 # 6. Parabol ve Fonksiyon Grafiği
-                elif any(k in q_topic_low for k in ["parabol", "ikinci dereceden fonksiyon"]):
+                elif any(k in q_text_low for k in ["parabolik yorunge", "tepe noktasi"]):
                     q["visual_svg"] = generate_dynamic_parabola_svg()
 
             # Fizik ve Fen Bilimleri
@@ -2847,8 +2847,8 @@ def decorate_question_visuals(questions: List[Dict[str, Any]], subject: str):
                 # 3. Elektrik Devreleri
                 elif any(k in q_topic_low for k in ["elektrik", "devre", "akim"]) or any(k in q_text_low for k in ["direnc", "ohm", "voltluk", "reosta"]):
                     q["visual_svg"] = generate_dynamic_circuit_svg()
-                # 4. Newton ve Sürtünmeli Blok
-                elif any(k in q_topic_low for k in ["kuvvet", "newton", "dinamik", "hareket yasalari", "surtunme"]) or any(k in q_text_low for k in ["surtunme katsayisi", "newton'luk kuvvet", "yatay surtunmeli", "cisme f ="]):
+                # 4. Newton ve Sürtünmeli Blok (yalnızca sürtünmeli yatay zeminde blok sorusuysa)
+                elif any(k in q_text_low for k in ["surtunmeli bir duzlemde", "surtunme katsayisi", "kinetik surtunme kuvveti"]):
                     q["visual_svg"] = generate_dynamic_force_block_svg()
                 # 5. Optik ve Prizma
                 elif any(k in q_topic_low for k in ["optik", "kirilma", "ayna", "mercek", "prizma"]) or any(k in q_text_low for k in ["isik isini", "kirilma indisi", "snell", "cam prizma"]):
@@ -2904,34 +2904,56 @@ def enforce_strict_uniqueness(
             if len(unique_questions) >= target_count:
                 break
 
-    pool_funcs = get_procedural_candidates_pool(exam_type, subject, topic)
-    all_subject_funcs = get_procedural_candidates_pool(exam_type, subject, "Karma")
-    combined_pool = list(dict.fromkeys(pool_funcs + all_subject_funcs))
-    if not combined_pool:
-        if is_verbal_branch(subject, topic):
-            combined_pool = list(TURKISH_GENERATOR_REGISTRY + SOCIAL_GENERATOR_REGISTRY)
-        else:
-            combined_pool = list(MATH_GENERATOR_REGISTRY)
-    random.shuffle(combined_pool)
+    from app.services.question_generator_lgs import generate_lgs_question
+    from app.services.question_generator_tyt import generate_tyt_question
+    from app.services.question_generator_ayt import generate_ayt_question
 
-    func_index = 0
-    max_attempts = target_count * 40
+    et_norm = str(exam_type or "TYT").upper()
+
+    def build_new_gen_candidate(idx_seed: int) -> Dict[str, Any]:
+        if "LGS" in et_norm:
+            return generate_lgs_question(subject, index=idx_seed, topic=topic)
+        elif "AYT" in et_norm:
+            return generate_ayt_question(subject, index=idx_seed, topic=topic)
+        else:
+            return generate_tyt_question(subject, index=idx_seed, topic=topic)
+
+    func_index = random.randint(0, 50)
+    max_attempts = target_count * 45
     attempts = 0
 
     while len(unique_questions) < target_count and attempts < max_attempts:
         attempts += 1
-        gen_func = combined_pool[func_index % len(combined_pool)]
         func_index += 1
 
         try:
-            new_q = gen_func()
+            new_q = build_new_gen_candidate(func_index)
             q_text = new_q.get("question_text", "").strip()
 
             if not is_candidate_duplicate(q_text):
                 unique_questions.append(new_q)
                 seen_fps.add(compute_question_fingerprint(q_text))
         except Exception as e:
-            print(f"[enforce_strict_uniqueness] Üreteç hatası: {e}")
+            print(f"[enforce_strict_uniqueness] Yeni nesil üreteç hatası: {e}")
+
+    # Eğer aynı konuda tüm varyasyonlar tükendiyse aynı sınav türünün Karma havuzundan tamamla
+    if len(unique_questions) < target_count:
+        for extra_idx in range(40):
+            if len(unique_questions) >= target_count:
+                break
+            try:
+                if "LGS" in et_norm:
+                    new_q = generate_lgs_question(subject, index=extra_idx, topic="Karma")
+                elif "AYT" in et_norm:
+                    new_q = generate_ayt_question(subject, index=extra_idx, topic="Karma")
+                else:
+                    new_q = generate_tyt_question(subject, index=extra_idx, topic="Karma")
+                q_text = new_q.get("question_text", "").strip()
+                if not is_candidate_duplicate(q_text):
+                    unique_questions.append(new_q)
+                    seen_fps.add(compute_question_fingerprint(q_text))
+            except Exception:
+                pass
 
     is_lgs = (str(exam_type).upper() == "LGS")
     for idx, q in enumerate(unique_questions, start=1):
