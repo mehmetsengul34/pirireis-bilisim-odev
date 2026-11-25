@@ -539,7 +539,7 @@ async def generate_weekly_bilisim_material(
     5. 16:9 Geniş Ekran Sunum Slayt Mimarisi
     çıktılarını Gemini AI ile (veya yüksek kaliteli prosedürel motorla) üretir.
     """
-    key = api_key or os.getenv("GEMINI_API_KEY")
+    key = (api_key or os.getenv("GEMINI_API_KEY") or "").strip()
 
     prompt = f"""Sen Türkiye'nin en deneyimli Mesleki ve Teknik Anadolu Lisesi (MTAL) Bilişim Teknolojileri Alan Şefi ve Yazılım Mühendisisin.
 Ders Adı: {course_name}
@@ -696,7 +696,7 @@ JSON ÇIKTISI ŞU STANDARTTA OLMALIDIR (SADECE GEÇERLİ JSON DÖNDÜR):
 
     # Gemini API Çağrısı
     if key:
-        models = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash", "gemini-flash-latest"]
+        models = ["gemini-3-flash-preview", "gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "safetySettings": [
@@ -708,11 +708,10 @@ JSON ÇIKTISI ŞU STANDARTTA OLMALIDIR (SADECE GEÇERLİ JSON DÖNDÜR):
             ],
             "generationConfig": {
                 "temperature": 0.7,
-                "topP": 0.9,
-                "responseMimeType": "application/json"
+                "topP": 0.9
             }
         }
-        async with httpx.AsyncClient(timeout=40.0) as client:
+        async with httpx.AsyncClient(timeout=45.0) as client:
             for model_name in models:
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
@@ -721,8 +720,15 @@ JSON ÇIKTISI ŞU STANDARTTA OLMALIDIR (SADECE GEÇERLİ JSON DÖNDÜR):
                         data = res.json()
                         candidates = data.get("candidates", [])
                         if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
-                            raw = candidates[0]["content"]["parts"][0]["text"].strip()
-                            if raw.startswith("```"):
+                            raw = ""
+                            for part in candidates[0]["content"]["parts"]:
+                                if "text" in part:
+                                    raw += part["text"]
+                            raw = raw.strip()
+                            m_obj = re.search(r"\{[\s\S]*\}", raw)
+                            if m_obj:
+                                raw = m_obj.group(0)
+                            elif raw.startswith("```"):
                                 raw = re.sub(r"^```(?:json)?", "", raw)
                                 raw = re.sub(r"```$", "", raw).strip()
                             parsed = json.loads(raw)

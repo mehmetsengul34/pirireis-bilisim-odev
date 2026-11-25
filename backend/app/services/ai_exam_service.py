@@ -2611,8 +2611,8 @@ async def generate_questions_with_gemini(
     %100 özgün yeni nesil YKS soruları üretir.
     """
     key = (api_key or os.getenv("GEMINI_API_KEY") or "").strip()
-    if not key or not key.startswith("AIza"):
-        # Geçerli formatta (AIza...) bir Google Gemini API anahtarı yoksa zaman kaybetmeden yerleşik yeni nesil motora geç
+    if not key or not (key.startswith("AIza") or key.startswith("AQ.")):
+        # Geçerli formatta (AIza... veya AQ....) bir Google Gemini API anahtarı yoksa yerleşik yeni nesil motora geç
         return []
 
     unique_session_seed = f"{time.time()}_{uuid.uuid4().hex[:8]}"
@@ -2705,10 +2705,10 @@ KATI KURALLAR:
         user_msg += f" Öğretmenin özel notu: {custom_prompt}"
 
     candidate_models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-flash-latest",
-        "gemini-2.5-flash-lite"
+        "gemini-3-flash-preview",
+        "gemini-flash-lite-latest",
+        "gemini-3.5-flash-lite",
+        "gemini-3.1-flash-lite"
     ]
 
     payload = {
@@ -2722,12 +2722,11 @@ KATI KURALLAR:
         ],
         "generationConfig": {
             "temperature": 0.85,
-            "topP": 0.95,
-            "responseMimeType": "application/json"
+            "topP": 0.95
         }
     }
 
-    async with httpx.AsyncClient(timeout=35.0) as client:
+    async with httpx.AsyncClient(timeout=45.0) as client:
         for model_name in candidate_models:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
             try:
@@ -2737,8 +2736,16 @@ KATI KURALLAR:
                     data = res.json()
                     candidates = data.get("candidates", [])
                     if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
-                        raw_text = candidates[0]["content"]["parts"][0]["text"].strip()
-                        if raw_text.startswith("```"):
+                        raw_text = ""
+                        for part in candidates[0]["content"]["parts"]:
+                            if "text" in part:
+                                raw_text += part["text"]
+                        raw_text = raw_text.strip()
+                        # JSON dizisini [ ... ] ayıkla
+                        m_arr = re.search(r"\[[\s\S]*\]", raw_text)
+                        if m_arr:
+                            raw_text = m_arr.group(0)
+                        elif raw_text.startswith("```"):
                             raw_text = re.sub(r"^```(?:json)?", "", raw_text)
                             raw_text = re.sub(r"```$", "", raw_text).strip()
                         parsed = json.loads(raw_text)
@@ -2756,6 +2763,9 @@ KATI KURALLAR:
                                     q["visual_svg"] = None
                             print(f"[AI Exam Service] {model_name} ile {len(parsed)} adet özgün soru başarıyla üretildi.")
                             return parsed
+                elif res.status_code in (401, 403):
+                    print(f"[AI Exam Service] API anahtarı yetki hatası ({res.status_code} - ACCESS_TOKEN_TYPE_UNSUPPORTED). Yerleşik yeni nesil motora geçiliyor...")
+                    return []
                 else:
                     print(f"[AI Exam Service] {model_name} yanıt kodu: {res.status_code}, alternatif model deneniyor...")
             except Exception as e:
