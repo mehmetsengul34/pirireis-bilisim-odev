@@ -111,8 +111,10 @@ namespace PiriReisLabIzleme
             indicator = new IndicatorForm();
             indicator.Show();
             SetupTray();
-            ShowConsentOnce();
 
+            // Yakalama/gönderme ZAMANLAYICILARINI önce başlat: böylece ilk açılıştaki
+            // bilgilendirme penceresi açık olsa bile görüntü gönderimi engellenmez.
+            // (Modal pencere kendi mesaj döngüsünü çalıştırdığı için zamanlayıcılar işler.)
             captureTimer = new System.Windows.Forms.Timer();
             captureTimer.Interval = 320;
             captureTimer.Tick += OnCaptureTick;
@@ -122,6 +124,9 @@ namespace PiriReisLabIzleme
             topMostTimer.Interval = 500;
             topMostTimer.Tick += OnTopMostTick;
             topMostTimer.Start();
+
+            // Şeffaflık: öğrenciye ilk açılışta bir kez bilgi ver (artık gönderimi engellemez).
+            ShowConsentOnce();
         }
 
         // Odağı çalmadan üstte durabilmesi için (gösterge/kilit)
