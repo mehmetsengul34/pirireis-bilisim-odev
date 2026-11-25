@@ -2917,13 +2917,21 @@
         xhr.onload = async () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             const data = JSON.parse(xhr.responseText);
-            progressText.textContent = '✅ Yükleme tamamlandı! Dağıtım komutu veriliyor...';
+            progressText.textContent = '✅ Yükleme tamamlandı! Doğrulanmış dağıtım işi veriliyor...';
 
+            // GÜVENLİ DAĞITIM: sunucunun döndürdüğü SHA-256 ile hash'i sabitlenmiş,
+            // yalnızca kurulum dosyası çalıştıran iş. Keyfi komut gönderilmez.
+            if (!data.sha256) {
+              alert('Sunucu dosya özeti (SHA-256) döndürmedi. Güvenlik nedeniyle dağıtım iptal edildi.\n(Sunucu güncellenmemiş olabilir.)');
+              submitBtn.disabled = false;
+              btnLabel.textContent = 'Dosyayı Yükle ve Sessiz Dağıtımı Başlat';
+              return;
+            }
             await sendTeacherAction({
-              action: 'remoteInstall',
-              installType: 'download_exe',
+              action: 'deployVerified',
               packageName: pkgName,
-              installUrl: data.url,
+              installFile: data.filename,
+              installSha256: data.sha256,
               installArgs: args,
               targetIds: targetList
             });

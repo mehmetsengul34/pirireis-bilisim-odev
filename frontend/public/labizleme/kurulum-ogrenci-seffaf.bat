@@ -45,10 +45,14 @@ if not "%errorLevel%"=="0" (
 )
 
 set "SRC=%~dp0PiriReisLabIzleme.cs"
+set "SVC_SRC=%~dp0PiriReisLabDeployService.cs"
 set "ICON=%~dp0labmaster.ico"
 set "INSTALL_DIR=%ProgramData%\PiriReisLabIzleme"
 set "EXE=%INSTALL_DIR%\PiriReisLabIzleme.exe"
+set "SVC_EXE=%INSTALL_DIR%\PiriReisLabDeploy.exe"
 set "TASK=PiriReisLabIzleme"
+set "SVC=PiriReisLabDeploy"
+set "API_BASE=https://pirireis-api-v3ku.onrender.com"
 
 if not exist "%SRC%" (
     echo  [HATA] Kaynak dosya bulunamadi: %SRC%
@@ -96,7 +100,31 @@ if "%errorLevel%"=="0" (
     reg add "HKLM\Software\Microsoft\Windows\CurrentVersion\Run" /v "PiriReisLabIzleme" /t REG_SZ /d "\"%EXE%\"" /f >nul
 )
 
-echo  [4/4] Uygulama simdi baslatiliyor...
+echo  [4/6] Dagitim hizmeti derleniyor (gorunur Windows hizmeti)...
+:: Yalnizca dogrulanmis (hash eslesmeli) kurulum dosyasini calistirir. Keyfi komut yok.
+if exist "%SVC_SRC%" (
+    "%CSC%" /nologo /target:exe /optimize+ /out:"%SVC_EXE%" ^
+        /r:System.dll /r:System.ServiceProcess.dll "%SVC_SRC%"
+)
+if exist "%SVC_EXE%" (
+    echo         Tamam: %SVC_EXE%
+    echo  [5/6] Hizmet yapilandiriliyor ve kaydediliyor...
+    :: deploy.config: API adresi (ve sunucuda LABIZLE_DEPLOY_TOKEN tanimliysa ayni token)
+    > "%INSTALL_DIR%\deploy.config" echo ApiBase=%API_BASE%
+    set /p DEPTOKEN="        Sunucu dagitim anahtari (LABIZLE_DEPLOY_TOKEN) - yoksa bos birakin: "
+    if not "!DEPTOKEN!"=="" >> "%INSTALL_DIR%\deploy.config" echo Token=!DEPTOKEN!
+    sc stop "%SVC%" >nul 2>&1
+    sc delete "%SVC%" >nul 2>&1
+    sc create "%SVC%" binPath= "\"%SVC_EXE%\"" start= auto obj= LocalSystem DisplayName= "Piri Reis Lab Dagitim Hizmeti" >nul
+    sc description "%SVC%" "Ogretmen panosundan onaylanmis, SHA-256 dogrulanmis kurulum dosyalarini calistirir. Gorunur hizmet." >nul
+    sc start "%SVC%" >nul 2>&1
+    echo         Hizmet kuruldu ve baslatildi: "%SVC%" ^(Hizmetler listesinde gorunur^)
+) else (
+    echo  [UYARI] Dagitim hizmeti derlenemedi; yalnizca izleme kuruldu.
+    echo          Program dagitimi icin PDQ Deploy / GPO kullanabilirsiniz.
+)
+
+echo  [6/6] Izleme uygulamasi baslatiliyor...
 schtasks /run /tn "%TASK%" >nul 2>&1
 if not "%errorLevel%"=="0" start "" "%EXE%"
 
@@ -104,9 +132,11 @@ echo.
 echo ===============================================================
 echo   Kurulum tamamlandi.
 echo.
-echo   - Uygulama: %EXE%
-echo   - Otomatik baslatma: Gorev Zamanlayici ^> "%TASK%"
+echo   - Izleme uygulamasi: %EXE%  (Gorev Zamanlayici ^> "%TASK%")
+echo   - Dagitim hizmeti   : %SVC_EXE%  (Hizmetler ^> "%SVC%")
 echo   - Ogrenci ekraninda surekli izleme bildirimi gorunur.
+echo   - Hizmet yalnizca panodan onaylanan, hash dogrulanan kurulum
+echo     dosyasini calistirir; keyfi komut CALISTIRMAZ.
 echo.
 echo   Kaldirmak icin: kaldir-ogrenci.bat (ayni klasorde)
 echo ===============================================================
