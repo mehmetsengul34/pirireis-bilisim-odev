@@ -1983,6 +1983,16 @@
 
     async function sendTeacherAction(payload) {
       if (!authToken) return;
+      // GÜVENLİK: Panodan öğrenci makinelerine uzaktan program kurma / komut çalıştırma
+      // (remoteInstall) kaldırıldı. Kimliği doğrulanmamış bu kanal üzerinden sessiz
+      // kurulum, her makineye program basabilen bir arka kapı oluşturuyordu.
+      // Yazılım dağıtımını kimlik doğrulamalı, denetlenebilir bir araçla (PDQ Deploy / GPO) yapın.
+      if (payload && payload.action === 'remoteInstall') {
+        alert('Panodan uzaktan yazılım kurma güvenlik nedeniyle kaldırıldı.\n\n' +
+              'Program dağıtımı için PDQ Deploy veya Grup İlkesi (GPO) kullanın. ' +
+              'İzleme, kilitleme ve ekran yansıtma özellikleri çalışmaya devam eder.');
+        return;
+      }
       try {
         const res = await fetch(`${API_BASE}/action`, {
           method: 'POST',
