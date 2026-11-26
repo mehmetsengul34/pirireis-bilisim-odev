@@ -104,6 +104,17 @@ export default function Navbar({ user }) {
               <span className="hidden sm:inline">Gitar VR</span>
             </a>
 
+            <a
+              href="/vr8"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="3D Periyodik Tablo VR - Çocuklar İçin El Takipli Atom ve Molekül Laboratuvarı (Meta Quest 3)"
+              className="px-2.5 py-1.5 text-xs font-medium text-cyan-600 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 hover:bg-cyan-100 dark:hover:bg-cyan-900/60 border border-cyan-200/80 dark:border-cyan-800 rounded-lg transition flex items-center gap-1.5 shadow-sm"
+            >
+              <span className="text-sm">⚛️</span>
+              <span className="hidden sm:inline">Periyodik VR</span>
+            </a>
+
 
             {user && (
               <div className="flex items-center gap-1.5 sm:gap-2.5">

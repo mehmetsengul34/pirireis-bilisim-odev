@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>3D Periyodik Tablo VR • Meta Quest 3 El Takipli Atom Laboratuvarı</title>
+  <script type="module" crossorigin src="/vr8/assets/index-BGqCNYhU.js"></script>
+  <link rel="stylesheet" crossorigin href="/vr8/assets/index-Bk9ojnPu.css">
+</head>
+
+<body>
+  <!-- 2D HUD Overlay (PC / Tablet / Quest 2D Preview) -->
+  <div id="hud-overlay">
+    <div class="hud-top">
+      <div class="brand-badge">
+        <span class="brand-icon">⚛️</span>
+        <div class="brand-text">
+          <strong>3D Periyodik Tablo VR</strong>
+          <small>Meta Quest 3 El Takipli Atom Laboratuvarı</small>
+        </div>
+      </div>
+
+      <div class="category-bar" id="category-bar">
+        <button class="cat-pill active" data-cat="all">Tümü (118)</button>
+        <button class="cat-pill" data-cat="alkali">Alkali</button>
+        <button class="cat-pill" data-cat="alkaline">Toprak Alkali</button>
+        <button class="cat-pill" data-cat="transition">Geçiş Metalleri</button>
+        <button class="cat-pill" data-cat="nonmetal">Ametaller</button>
+        <button class="cat-pill" data-cat="halogen">Halojenler</button>
+        <button class="cat-pill" data-cat="noble">Soygazlar</button>
+        <button class="cat-pill" data-cat="metalloid">Yarı Metaller</button>
+        <button class="cat-pill" data-cat="lanthanide">Lantanitler</button>
+        <button class="cat-pill" data-cat="actinide">Aktinitler</button>
+      </div>
+
+      <div class="hud-actions">
+        <button class="icon-btn" id="btn-sound" title="Sesli Anlatım / Efekt">🔊</button>
+        <button class="icon-btn" id="btn-reset" title="Görünümü ve Tutulan Elementi Sıfırla">🔄</button>
+        <button class="icon-btn" id="btn-guide" title="Quest 3 El Takibi Rehberi">🥽</button>
+      </div>
+    </div>
+
+    <!-- Active Element Inspector Panel -->
+    <aside class="inspector-card" id="inspector-card">
+      <div class="insp-header">
+        <div class="insp-symbol-box" id="insp-symbol-box">
+          <span class="insp-num" id="insp-num">1</span>
+          <span class="insp-sym" id="insp-sym">H</span>
+        </div>
+        <div class="insp-title">
+          <h2 id="insp-name">Hidrojen</h2>
+          <span class="insp-cat" id="insp-cat">Ametal</span>
+        </div>
+        <button class="speak-btn" id="btn-speak" title="Türkçe Sesli Dinle">🗣️</button>
+      </div>
+
+      <div class="insp-stats">
+        <div class="stat">
+          <span>Atom Kütlesi</span>
+          <strong id="insp-mass">1.008 u</strong>
+        </div>
+        <div class="stat">
+          <span>Oda Hali</span>
+          <strong id="insp-state">Gaz</strong>
+        </div>
+        <div class="stat">
+          <span>Katmanlar</span>
+          <strong id="insp-shells">1</strong>
+        </div>
+      </div>
+
+      <p class="insp-fact" id="insp-fact">
+        Evrendeki en hafif ve en bol elementtir. Güneş ve yıldızların yakıtıdır; oksijenle birleşince suyu oluşturur!
+      </p>
+
+      <div class="insp-footer">
+        <button class="grab-btn" id="btn-grab-toggle">✋ Eline Al / İncele</button>
+        <button class="mix-btn" id="btn-add-lab">⚗️ Kazana At</button>
+      </div>
+
+      <div class="lab-box" id="lab-box">
+        <div class="lab-head">
+          <span>🧪 Molekül Kazanı</span>
+          <button class="lab-clear-btn" id="btn-lab-clear" title="Kazanı Temizle">Temizle</button>
+        </div>
+        <div class="lab-slots" id="lab-slots">Boş (Örn: H + H + O → H₂O)</div>
+        <div class="lab-recipes">
+          <small>Dene: <b>H₂O</b> (2H+O) • <b>NaCl</b> (Na+Cl) • <b>CO₂</b> (C+2O) • <b>CH₄</b> (C+4H) • <b>NH₃</b> (N+3H)</small>
+        </div>
+        <button class="quiz-btn" id="btn-quiz">🎯 Rastgele Keşif Görevi Başlat</button>
+      </div>
+    </aside>
+
+    <!-- Quiz / Mission Banner -->
+    <div class="mission-banner hidden" id="mission-banner">
+      <span id="mission-text">🎯 Görev: Suyun yapısında bulunan ve atom numarası 8 olan elementi bulup tut!</span>
+      <button id="btn-mission-close">&times;</button>
+    </div>
+
+    <div class="hud-bottom-hint">
+      <span>🖱️ Sol tık: Elementi eline al / incele • Sağ tık / Sürükle: Sahneyi döndür • Tekerlek: Yakınlaş • 🥽 Meta Quest 3: Parmağınla dokun veya başparmak-işaret parmağını birleştirip (Pinch) elementi havada tut!</span>
+    </div>
+  </div>
+
+  <!-- Quest 3 Hand Tracking Guide Modal -->
+  <div id="guide-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>🥽 Meta Quest 3 El Takibi (Hand Tracking) Rehberi</h3>
+        <button id="btn-close-guide">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="guide-row">
+          <span class="g-ico">🤏</span>
+          <div>
+            <strong>Tutma ve İnceleme (Pinch & Grab)</strong>
+            <p>Periyodik tablodaki herhangi bir element küpüne elini uzat, başparmağın ile işaret parmağını birleştirerek küpü tablodan çekip eline al!</p>
+          </div>
+        </div>
+        <div class="guide-row">
+          <span class="g-ico">⚛️</span>
+          <div>
+            <strong>Canlı 3D Bohr Atom Modeli</strong>
+            <p>Bir elementi tuttuğunda önünde dev bir 3 boyutlu atom modeli canlanır; protonlar, nötronlar ve yörüngelerde dönen elektronları 360° çevirip inceleyebilirsin.</p>
+          </div>
+        </div>
+        <div class="guide-row">
+          <span class="g-ico">🔊</span>
+          <div>
+            <strong>Çocuklar İçin Türkçe Sesli Anlatım</strong>
+            <p>Seçtiğin her elementin adı, grubu ve günlük hayattan eğlenceli bilgisi Türkçe olarak seslendirilir.</p>
+          </div>
+        </div>
+        <div class="guide-row">
+          <span class="g-ico">🧪</span>
+          <div>
+            <strong>Keşif Görevleri</strong>
+            <p>"Keşif Görevi" butonuna basarak ipuçlarından doğru elementi bulma oyunu oynayabilirsin.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

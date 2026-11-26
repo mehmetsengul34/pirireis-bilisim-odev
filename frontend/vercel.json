@@ -81,6 +81,14 @@
       "destination": "/vr7/:path*"
     },
     {
+      "source": "/vr8",
+      "destination": "/vr8/index.html"
+    },
+    {
+      "source": "/vr8/:path*",
+      "destination": "/vr8/:path*"
+    },
+    {
       "source": "/vr6",
       "destination": "/vr6/index.html"
     },
