@@ -2664,6 +2664,38 @@ TÜRKÇE VE PARAGRAF KESİN KURALLARI (MEB/ÖSYM FORMATI):
    - Paragraftan çıkarılabilecek 'en kapsamlı yargı', 'ana düşünce', 'ana fikir' veya 'asıl anlatılmak istenen' sorularında; şıklardan birine 'Bu yargıya metinden ulaşılamaz', 'Metinden böyle bir sonuca varılamaz', 'Metinden çıkarılamaz' gibi geçersiz, saçma ve hatalı şıklar YAZMAK KESİNLİKLE YASAKTIR!
    - Tüm 5 şık da (A, B, C, D, E) metnin konusuna dair alternatif birer fikir veya iddia cümlesi olmalıdır."""
 
+    is_fen_bilimleri = ("fen" in str(subject or "").lower())
+    if is_fen_bilimleri:
+        system_instruction += """
+
+FEN BİLİMLERİ MEB LGS BECERİ TEMELLİ SORU VE GÖRSEL STANDARDI (SADECE FEN BİLİMLERİ İÇİN):
+1. ÜÇ AŞAMALI MEB KURGUSU:
+   - Giriş: 1-2 cümlelik kısa, bilimsel temel ilke/bilgi notu (örn. "Kimyasal tepkimelerde atom sayısı ve çeşidi korunduğundan kütle de korunur." veya "Bilim insanları hipotezlerini test etmek için kontrollü deneyler yaparlar.").
+   - Deney / Gözlem Senaryosu: Somut bir laboratuvar düzeneği, aşamalı deney (Şekil I - Şekil II - Şekil III), kontrollü deney veri tablosu (Markdown tablosu: | Zaman (dk) | I. Beher (°C) | II. Beher (°C) |) veya grafik sunumu. Bağımsız değişken, bağımlı değişken ve sabit tutulan değişkenler bilimsel olarak tutarlı ve açık olsun.
+   - Soru Kökü: Ezber tanım yerine şu gerçek MEB LGS soru köklerini dengeli dağıt:
+     * Hipotez testi: "Öğrenci yapmış olduğu bu deney ile aşağıdaki hipotezlerden hangisini test etmek istemiştir?"
+     * Görsel/Deney çıkarımı: "Buna göre gerçekleşen olaylar ile ilgili I, II, III yargılarından hangileri doğrudur?"
+     * Genelleme eleme: "Yapılan bu deneyden hareketle I, II, III genellemelerinden hangileri yapılamaz?"
+     * Grafik/Tablo analizi: "Buna göre grafiği/tabloyu inceleyen öğrencilerin yaptığı yorumlardan hangisi doğrudur / söylenemez?"
+
+2. ZORUNLU MEB KİTAPÇIĞI KALİTESİNDE VEKTÖREL GÖRSEL (visual_svg):
+   - Üreteceğin HER BİR Fen Bilimleri sorusunda 'visual_svg' ALANI KESİNLİKLE DOLU OLMALIDIR (null bırakma!).
+   - Her görsel temiz, ölçekli ve okunaklı bir inline SVG olsun: <svg viewBox="0 0 460 220" xmlns="http://www.w3.org/2000/svg">...</svg>
+   - Görsel tasarım kuralları:
+     * Açık zemin kutusu: <rect x="2" y="2" width="456" height="216" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+     * Net, koyu çizgiler (#1e293b), okunaklı etiketler (font-family="sans-serif" font-size="12" fill="#0f172a"), renk kodlu vurgular (#0284c7 su/sıvı, #ef4444 ısıtıcı/asit, #10b981 baz/ürün, #f59e0b metal/ısı).
+     * Deney düzeneğini GERÇEKTEN çiz:
+       - Beher & ısıtma deneyinde: İki veya üç cam beher, farklı sıvı yükseklikleri, altında özdeş ısıtıcı alevleri, içlerinde termometre ve etiketler (örn. "I. Beher (200 mL)", "II. Beher (400 mL)").
+       - Öz ısı / buz kalıbı deneyinde: Yan yana 3 özdeş buz bloğu ve içine farklı derinliklerde batmış K, L, M bilyeleri + derinlik farkı net görünsün.
+       - Kimyasal tepkime / Lavoisier / kütle korunumu deneyinde: Şekil I, Şekil II, Şekil III panelleri (kapalı cam balon, terazi ekranında gram değeri, tepkime sonrası gaz/çökelti değişimi).
+       - Grafik/Periyodik sistem/pH deneyinde: Ekseni ve eğrileri etiketli kütle-zaman / sıcaklık-zaman grafiği, K-L-M-N harfli periyodik tablo kesiti veya pH/turnusol deney kapları.
+     * SVG metinleri birbirinin üstüne binmesin, viewBox (0 0 460 220) dışına taşmasın.
+
+3. MEB LGS CEVAP ŞIKKI STANDARDI:
+   - I-II-III öncüllü sorularda şıklar kısa ve resmî MEB formatında olsun: "Yalnız I", "Yalnız III", "I ve II", "II ve III" (veya "I, II ve III").
+   - Hipotez ve yorum sorularında 4 şık birbirine çok yakın bilimsel cümle yapısında, tek bir değişken farkıyla güçlü çeldirici oluşturacak şekilde dengeli olsun.
+   - Şıklarda (option_a..d) KESİNLİKLE <svg> kullanma; tüm çizim yalnızca 'visual_svg' alanında olsun."""
+
     if training_guidelines:
         system_instruction += f"""
 
