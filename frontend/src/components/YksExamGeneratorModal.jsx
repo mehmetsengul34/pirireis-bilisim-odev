@@ -284,8 +284,10 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
       return;
     }
 
-    if (geminiApiKey) {
-      localStorage.setItem('gemini_api_key', geminiApiKey);
+    if (geminiApiKey && geminiApiKey.trim()) {
+      localStorage.setItem('gemini_api_key', geminiApiKey.trim());
+    } else {
+      localStorage.removeItem('gemini_api_key');
     }
 
     setGenerating(true);
@@ -620,23 +622,27 @@ export default function YksExamGeneratorModal({ isOpen, onClose, onCreated }) {
                     </label>
                     {geminiApiKey ? (
                       <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                        🟢 Canlı Pro AI Aktif
+                        🟢 Özel API Anahtarı Aktif
                       </span>
                     ) : (
-                      <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
-                        ⚡ Dahili Şablon Motoru
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                        🟢 Sunucu Canlı Gemini AI Aktif
                       </span>
                     )}
                   </div>
                   <input
                     type="password"
                     value={geminiApiKey}
-                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                    placeholder="AIzaSy... (API Key girildiğinde Gemini Pro anında sıfırdan özgün soru üretir)"
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setGeminiApiKey(val);
+                      if (!val.trim()) localStorage.removeItem('gemini_api_key');
+                    }}
+                    placeholder="İsteğe bağlı (Boş bırakılırsa sunucudaki canlı Gemini anahtarı kullanılır)"
                     className="w-full text-xs rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-zinc-900 dark:text-zinc-100 font-mono shadow-sm focus:ring-2 focus:ring-indigo-500"
                   />
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1">
-                    Google AI Studio API anahtarınızı buraya girdiğinizde her &quot;Sınav Oluştur&quot; butonuna basışta Gemini Pro canlı ve %100 özgün sorular üretir.
+                    Sunucuda canlı Gemini API anahtarı zaten tanımlıdır; bu alanı boş bırakabilirsiniz.
                   </p>
                 </div>
               </div>

@@ -2610,8 +2610,13 @@ async def generate_questions_with_gemini(
     Google Gemini API ile MEB müfredatı ve ÖSYM geçmiş sınav kalıplarına tam uyumlu,
     %100 özgün yeni nesil YKS soruları üretir.
     """
-    key = (api_key or os.getenv("GEMINI_API_KEY") or "").strip()
-    if not key or not (key.startswith("AIza") or key.startswith("AQ.")):
+    server_key = (os.getenv("GEMINI_API_KEY") or "").strip()
+    client_key = (api_key or "").strip()
+    candidate_keys = []
+    for k in (server_key, client_key):
+        if k and (k.startswith("AIza") or k.startswith("AQ.")) and k not in candidate_keys:
+            candidate_keys.append(k)
+    if not candidate_keys:
         # Geçerli formatta (AIza... veya AQ....) bir Google Gemini API anahtarı yoksa yerleşik yeni nesil motora geç
         return []
 
@@ -2640,6 +2645,7 @@ GÖRSEL VE VEKTÖREL ŞEKİL DESTEĞİ:
 - Geometri (üçgen, çember, analitik), Fizik (devre, kuvvet, prizma/optik), Kimya (kap, periyodik sistem), Biyoloji (soyağacı, besin piramidi) ve Coğrafya (izohips, iklim grafiği) gibi derslerde soru bir görsel gerektiriyorsa:
 - SÖZEL DERSLERDE (Türkçe, Edebiyat, Tarih, Coğrafya, Felsefe, Din Kültürü, İnkılap) 'visual_svg' KESİNLİKLE null olmalıdır! Sayısal/şekilli görsel eklenemez.
 - 'visual_svg' alanına temiz, inline, viewBox'lı modern bir SVG stringi ekle (örneğin: <svg viewBox="0 0 380 200" ...>...</svg>).
+- Şıklarda (option_a, option_b, option_c, option_d, option_e) KESİNLİKLE <svg> etiketi kullanma; görseller sadece 'visual_svg' alanında yer almalı, şıklar yalnızca temiz metin veya KaTeX formülü olmalıdır.
 - Eğer uygun SVG üretemiyorsan 'visual_svg': null bırak; sistem otomatik vektörel diyagram bağlayacaktır.
 
 MATEMATİK VE KATEX STANDARDI:
@@ -2726,50 +2732,51 @@ KATI KURALLAR:
         }
     }
 
-    async with httpx.AsyncClient(timeout=45.0) as client:
-        for model_name in candidate_models:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-            try:
-                print(f"[AI Exam Service] Gemini API çağrılıyor... Model: {model_name}, Soru Sayısı: {question_count}")
-                res = await client.post(url, json=payload)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
-                        raw_text = ""
-                        for part in candidates[0]["content"]["parts"]:
-                            if "text" in part:
-                                raw_text += part["text"]
-                        raw_text = raw_text.strip()
-                        # JSON dizisini [ ... ] ayıkla
-                        m_arr = re.search(r"\[[\s\S]*\]", raw_text)
-                        if m_arr:
-                            raw_text = m_arr.group(0)
-                        elif raw_text.startswith("```"):
-                            raw_text = re.sub(r"^```(?:json)?", "", raw_text)
-                            raw_text = re.sub(r"```$", "", raw_text).strip()
-                        parsed = json.loads(raw_text)
-                        if isinstance(parsed, dict) and "questions" in parsed:
-                            parsed = parsed["questions"]
-                        if isinstance(parsed, list) and len(parsed) > 0:
-                            for q in parsed:
-                                q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""), is_option=False)
-                                q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""), is_option=False)
-                                for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
-                                    if opt_k in q:
-                                        q[opt_k] = sanitize_math_and_turkish(q[opt_k], is_option=True)
-                            if is_verbal_branch(subject, topic):
+    async with httpx.AsyncClient(timeout=90.0) as client:
+        for key in candidate_keys:
+            for model_name in candidate_models:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
+                try:
+                    print(f"[AI Exam Service] Gemini API çağrılıyor... Model: {model_name}, Soru Sayısı: {question_count}")
+                    res = await client.post(url, json=payload)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates and "content" in candidates[0] and "parts" in candidates[0]["content"]:
+                            raw_text = ""
+                            for part in candidates[0]["content"]["parts"]:
+                                if "text" in part:
+                                    raw_text += part["text"]
+                            raw_text = raw_text.strip()
+                            # JSON dizisini [ ... ] ayıkla
+                            m_arr = re.search(r"\[[\s\S]*\]", raw_text)
+                            if m_arr:
+                                raw_text = m_arr.group(0)
+                            elif raw_text.startswith("```"):
+                                raw_text = re.sub(r"^```(?:json)?", "", raw_text)
+                                raw_text = re.sub(r"```$", "", raw_text).strip()
+                            parsed = json.loads(raw_text)
+                            if isinstance(parsed, dict) and "questions" in parsed:
+                                parsed = parsed["questions"]
+                            if isinstance(parsed, list) and len(parsed) > 0:
                                 for q in parsed:
-                                    q["visual_svg"] = None
-                            print(f"[AI Exam Service] {model_name} ile {len(parsed)} adet özgün soru başarıyla üretildi.")
-                            return parsed
-                elif res.status_code in (401, 403):
-                    print(f"[AI Exam Service] API anahtarı yetki hatası ({res.status_code} - ACCESS_TOKEN_TYPE_UNSUPPORTED). Yerleşik yeni nesil motora geçiliyor...")
-                    return []
-                else:
-                    print(f"[AI Exam Service] {model_name} yanıt kodu: {res.status_code}, alternatif model deneniyor...")
-            except Exception as e:
-                print(f"[AI Exam Service] {model_name} çağrısında hata: {e}")
+                                    q["question_text"] = sanitize_math_and_turkish(q.get("question_text", ""), is_option=False)
+                                    q["explanation"] = sanitize_math_and_turkish(q.get("explanation", ""), is_option=False)
+                                    for opt_k in ["option_a", "option_b", "option_c", "option_d", "option_e"]:
+                                        if opt_k in q:
+                                            q[opt_k] = sanitize_math_and_turkish(q[opt_k], is_option=True)
+                                if is_verbal_branch(subject, topic):
+                                    for q in parsed:
+                                        q["visual_svg"] = None
+                                print(f"[AI Exam Service] {model_name} ile {len(parsed)} adet özgün soru başarıyla üretildi.")
+                                return parsed
+                    elif res.status_code in (401, 403):
+                        print(f"[AI Exam Service] API anahtarı yetki hatası ({res.status_code}). Sonraki anahtar deneniyor...")
+                        break
+                    else:
+                        print(f"[AI Exam Service] {model_name} yanıt kodu: {res.status_code}, alternatif model deneniyor...")
+                except Exception as e:
+                    print(f"[AI Exam Service] {model_name} çağrısında hata: {e}")
 
     return []
 
@@ -3013,7 +3020,7 @@ async def generate_questions_smart(
     excluded_fingerprints: Optional[Set[str]] = None,
     excluded_texts: Optional[List[str]] = None
 ) -> List[Dict[str, Any]]:
-    effective_key = api_key or os.getenv("GEMINI_API_KEY")
+    effective_key = os.getenv("GEMINI_API_KEY") or api_key
     candidates = []
 
     if effective_key:
