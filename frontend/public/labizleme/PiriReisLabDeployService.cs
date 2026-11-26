@@ -16,7 +16,7 @@
 //   - Her adım %ProgramData%\PiriReisLabIzleme\deploy.log dosyasına yazılır.
 //
 //  Yapılandırma: %ProgramData%\PiriReisLabIzleme\deploy.config (satır satır KEY=VALUE)
-//     ApiBase=https://pirireis-api-v3ku.onrender.com
+//     ApiBase=https://ogretmenlerodasi.info
 //     Token=<LABIZLE_DEPLOY_TOKEN ile aynı; sunucuda tanımlıysa zorunlu>
 // ============================================================
 using System;
@@ -35,7 +35,7 @@ namespace PiriReisLabDeploy
     {
         private Thread worker;
         private volatile bool running = false;
-        private string apiBase = "https://pirireis-api-v3ku.onrender.com";
+        private string apiBase = "https://ogretmenlerodasi.info";
         private string token = "";
         private readonly string machine = Environment.MachineName;
         private readonly string appDir = Path.Combine(

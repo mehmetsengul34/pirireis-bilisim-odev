@@ -10,7 +10,7 @@
     },
     {
       "source": "/api/labizleme/:path*",
-      "destination": "https://pirireis-api-v3ku.onrender.com/api/labizleme/:path*"
+      "destination": "https://pirireis-bilisim-odev-8vhq.onrender.com/api/labizleme/:path*"
     },
     {
       "source": "/bilsemlab",

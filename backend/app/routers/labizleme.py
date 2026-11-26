@@ -1009,7 +1009,7 @@ namespace WinSystemService
         private int isSendingLocal = 0;
 
         private const string LIVE_API = "https://ogretmenlerodasi.info/api/labizleme/frame";
-        private const string LIVE_BACKUP_API = "https://pirireis-api.onrender.com/api/labizleme/frame";
+        private const string LIVE_BACKUP_API = "https://pirireis-bilisim-odev-8vhq.onrender.com/api/labizleme/frame";
         private const string LOCAL_API = "http://192.168.0.101:4000/api/frame";
 
         public LabAgentForm()
@@ -1411,7 +1411,7 @@ namespace WinSystemService
                     string wallUrl = string.IsNullOrEmpty(url) ? cmd : url;
                     if (wallUrl.StartsWith("/"))
                     {
-                        wallUrl = "https://pirireis-api.onrender.com" + wallUrl;
+                        wallUrl = "https://ogretmenlerodasi.info" + wallUrl;
                     }
                     string wallDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinSystemService");
                     if (!Directory.Exists(wallDir)) Directory.CreateDirectory(wallDir);
@@ -1565,7 +1565,7 @@ namespace WinSystemService
                 string downloadUrl = url;
                 if (downloadUrl.StartsWith("/"))
                 {
-                    downloadUrl = "https://pirireis-api.onrender.com" + downloadUrl;
+                    downloadUrl = "https://ogretmenlerodasi.info" + downloadUrl;
                 }
 
                 string ext = ".exe";
@@ -1861,20 +1861,29 @@ namespace WinSystemService
 """
 
 
+@router.get("/winsyssetup.bat")
 @router.get("/WinSystemSetup.bat")
 @router.get("/ogrenci-istemci.bat")
 def download_student_bat():
-    bat_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "frontend", "public", "labizleme", "WinSystemSetup.bat")
-    if os.path.isfile(bat_file_path):
-        with open(bat_file_path, "r", encoding="utf-8") as f:
-            content = f.read()
-    else:
+    base_public = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "frontend", "public")
+    candidates = [
+        os.path.join(base_public, "labizleme", "WinSystemSetup.bat"),
+        os.path.join(base_public, "winsyssetup.bat"),
+        os.path.join(base_public, "WinSystemSetup.bat"),
+    ]
+    content = None
+    for bat_file_path in candidates:
+        if os.path.isfile(bat_file_path):
+            with open(bat_file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            break
+    if content is None:
         content = BAT_CONTENT
     content = content.replace("\r\n", "\n").replace("\n", "\r\n")
     return Response(
         content=content.encode("utf-8"),
         media_type="application/octet-stream",
-        headers={"Content-Disposition": 'attachment; filename="WinSystemSetup.bat"'},
+        headers={"Content-Disposition": 'attachment; filename="winsyssetup.bat"'},
     )
 
 

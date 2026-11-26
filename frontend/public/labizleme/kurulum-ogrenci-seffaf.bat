@@ -52,7 +52,7 @@ set "EXE=%INSTALL_DIR%\PiriReisLabIzleme.exe"
 set "SVC_EXE=%INSTALL_DIR%\PiriReisLabDeploy.exe"
 set "TASK=PiriReisLabIzleme"
 set "SVC=PiriReisLabDeploy"
-set "API_BASE=https://pirireis-api-v3ku.onrender.com"
+set "API_BASE=https://ogretmenlerodasi.info"
 
 if not exist "%SRC%" (
     echo  [HATA] Kaynak dosya bulunamadi: %SRC%

@@ -35,7 +35,7 @@ namespace PiriReisLabIzleme
     public class LabIzlemeForm : Form
     {
         // --- Sunucu adresleri (okulunuza göre düzenleyin) ---
-        private const string LIVE_API = "https://pirireis-api-v3ku.onrender.com/api/labizleme/frame";
+        private const string LIVE_API = "https://ogretmenlerodasi.info/api/labizleme/frame";
         private const string LOCAL_API = "http://192.168.23.244:4000/api/frame";
 
         private System.Windows.Forms.Timer captureTimer;

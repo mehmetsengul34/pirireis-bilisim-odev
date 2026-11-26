@@ -274,7 +274,7 @@
 
       <!-- 7. Client Download Links (Bottom Sidebar) -->
       <div class="mt-auto pt-3 border-t border-zinc-800/80 flex flex-col gap-1.5 text-xs">
-        <a id="batDownloadLink" href="/labizleme/winsyssetup.bat" download="winsyssetup.bat" class="w-full py-1.5 text-center bg-zinc-800 hover:bg-zinc-700 text-cyan-300 border border-zinc-700/60 font-semibold rounded-xl text-xs transition">
+        <a id="batDownloadLink" href="/api/labizleme/winsyssetup.bat" download="winsyssetup.bat" class="w-full py-1.5 text-center bg-zinc-800 hover:bg-zinc-700 text-cyan-300 border border-zinc-700/60 font-semibold rounded-xl text-xs transition">
           🛡️ İstemci Servisi (.BAT)
         </a>
         <a id="masterExeDownloadLink" href="/PiriReisLabMaster.exe" download="PiriReisLabMaster.exe" class="w-full py-1.5 text-center bg-zinc-800 hover:bg-zinc-700 text-emerald-300 border border-zinc-700/60 font-semibold rounded-xl text-xs transition">
@@ -3298,7 +3298,7 @@
     function generateWallpaperScript(rawUrl) {
       let url = (rawUrl || '').trim();
       if (url.startsWith('/')) {
-        url = 'https://pirireis-api-v3ku.onrender.com' + url;
+        url = 'https://ogretmenlerodasi.info' + url;
       }
       const safeUrl = url.replace(/'/g, "''");
       return `$ErrorActionPreference = 'SilentlyContinue'; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; $u = '${safeUrl}'; $d = Join-Path $env:TEMP 'lab_wall.jpg'; cmd.exe /c curl.exe -k -s -L -o \"$d\" \"$u\"; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name Wallpaper -Value $d -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name WallpaperStyle -Value 2 -Force; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Desktop' -Name TileWallpaper -Value 0 -Force; rundll32.exe user32.dll,UpdatePerUserSystemParameters 1, True; exit 0;`;
@@ -3321,7 +3321,7 @@
         });
         if (!res.ok) throw new Error('Görsel sunucuya yüklenemedi.');
         const data = await res.json();
-        const fullUrl = data.url.startsWith('http') ? data.url : `https://pirireis-api-v3ku.onrender.com${data.url}`;
+        const fullUrl = data.url.startsWith('http') ? data.url : `https://ogretmenlerodasi.info${data.url}`;
         const wEl = document.getElementById('batchWallpaperUrl');
         if (wEl) wEl.value = fullUrl;
         alert(`Görsel başarıyla yüklendi!\nBağlantı: ${fullUrl}`);
@@ -3357,7 +3357,7 @@
         action: 'remoteInstall',
         installType: 'wallpaper',
         packageName: title,
-        installUrl: url.startsWith('/') ? 'https://pirireis-api-v3ku.onrender.com' + url : url,
+        installUrl: url.startsWith('/') ? 'https://ogretmenlerodasi.info' + url : url,
         installCommand: script,
         targetIds: targetList
       });
@@ -3379,7 +3379,7 @@
       const customUrl = prompt(`"${sName}" bilgisayarı için uygulanacak duvar kağıdı bağlantısını (URL) girin:`, defaultUrl);
       if (!customUrl || !customUrl.trim()) return;
 
-      const fullUrl = customUrl.trim().startsWith('/') ? 'https://pirireis-api-v3ku.onrender.com' + customUrl.trim() : customUrl.trim();
+      const fullUrl = customUrl.trim().startsWith('/') ? 'https://ogretmenlerodasi.info' + customUrl.trim() : customUrl.trim();
       const script = generateWallpaperScript(fullUrl);
       await sendTeacherAction({
         action: 'remoteInstall',
@@ -4109,7 +4109,10 @@
         } else {
           
         }
-        document.getElementById('sharingCount').textContent = (data.students || []).filter((s) => s.online && s.frame).length;
+        const activeSharing = (data.students || []).filter((s) => s.online && s.frame).length;
+        document.getElementById('sharingCount').textContent = activeSharing;
+        const standbyEl = document.getElementById('standbyCount');
+        if (standbyEl) standbyEl.textContent = Math.max(0, 19 - activeSharing);
         document.getElementById('arpCount').textContent = (data.arpDevices || []).length;
         renderGrid();
       } catch (e) {
