@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Torbalı Bilsem VR 360 Piyano | Meta Quest 3</title>
+  <title>Torbalı BİLSEM VR 360 Piyano | Doğal El Takibi</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,121 +12,234 @@
   <style>
     :root {
       --gold: #f59e0b;
-      --gold-glow: rgba(245, 158, 11, 0.5);
+      --gold-glow: rgba(245, 158, 11, 0.45);
       --cyan: #38bdf8;
       --green: #22c55e;
-      --bg-dark: #06080e;
-      --glass: rgba(15, 23, 42, 0.90);
-      --border: rgba(255, 255, 255, 0.16);
+      --red: #ef4444;
+      --bg-dark: #06080f;
+      --glass: rgba(15, 23, 42, 0.88);
+      --glass-strong: rgba(11, 17, 32, 0.96);
+      --border: rgba(255, 255, 255, 0.15);
       --font: 'Plus Jakarta Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
 
-    body, html {
+    html, body {
       width: 100%; height: 100%; overflow: hidden;
       background: var(--bg-dark); font-family: var(--font); color: #fff;
     }
 
-    #webgl-canvas-container { width: 100%; height: 100%; position: absolute; inset: 0; z-index: 1; touch-action: none; }
+    #webgl-canvas-container {
+      width: 100%; height: 100%; position: absolute; inset: 0; z-index: 1; touch-action: none;
+    }
 
-    /* 2D HUD: kapsayıcılar tıklamayı engellemez, yalnızca paneller tıklanır */
+    /* 2D HUD katmanı: boş alanlar 3D sahneye dokunmayı engellemez */
     #hud-overlay {
       position: absolute; inset: 0; z-index: 10; pointer-events: none;
       display: flex; flex-direction: column; justify-content: space-between;
-      padding: 16px 20px; gap: 12px;
+      padding: 14px 18px; gap: 10px;
     }
     .panel { pointer-events: auto; }
 
+    /* Üst Başlık */
     .top-header {
       display: flex; justify-content: space-between; align-items: center; gap: 12px;
-      background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-      border: 1px solid var(--border); border-radius: 18px; padding: 10px 18px;
-      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+      background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border); border-radius: 18px; padding: 10px 16px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
     }
     .brand-section { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .brand-icon {
-      flex: 0 0 auto; width: 42px; height: 42px; border-radius: 12px;
+      flex: 0 0 auto; width: 40px; height: 40px; border-radius: 12px;
       background: linear-gradient(135deg, #f59e0b, #b45309);
-      display: flex; align-items: center; justify-content: center; font-size: 22px;
-      box-shadow: 0 0 20px var(--gold-glow);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+      box-shadow: 0 0 18px var(--gold-glow);
     }
     .brand-title {
-      font-size: 18px; font-weight: 800; letter-spacing: -0.5px; white-space: nowrap;
+      font-size: 17px; font-weight: 800; letter-spacing: -0.4px; white-space: nowrap;
       background: linear-gradient(135deg, #ffffff, #cbd5e1);
       -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .brand-subtitle { font-size: 11px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 1px; }
+    .brand-subtitle {
+      font-size: 11px; font-weight: 600; color: #94a3b8;
+      text-transform: uppercase; letter-spacing: 0.9px; white-space: nowrap;
+    }
+
+    .header-right {
+      display: flex; align-items: center; gap: 10px; min-width: 0;
+    }
 
     .status-chip {
       display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
       padding: 7px 14px; border-radius: 20px; border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.06); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw;
+      background: rgba(255, 255, 255, 0.06); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; max-width: 44vw;
     }
-    .status-chip.tutor { background: rgba(34, 197, 94, 0.16); border-color: rgba(34, 197, 94, 0.5); color: #86efac; }
+    .status-chip.tutor { background: rgba(34, 197, 94, 0.16); border-color: rgba(34, 197, 94, 0.55); color: #86efac; }
+    .status-chip.warn { background: rgba(245, 158, 11, 0.18); border-color: rgba(245, 158, 11, 0.6); color: #fde68a; }
+    .status-chip.rec { background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.6); color: #fca5a5; }
 
+    .vol-wrap {
+      display: flex; align-items: center; gap: 6px; padding: 5px 10px;
+      border-radius: 14px; border: 1px solid var(--border); background: rgba(255, 255, 255, 0.05);
+      font-size: 13px;
+    }
+    .vol-wrap input[type="range"] {
+      width: 68px; accent-color: var(--gold); cursor: pointer;
+    }
+
+    /* Kamera ile El Takibi Önizleme Kartı */
+    #cam-preview-card {
+      position: absolute; top: 82px; right: 18px; z-index: 18;
+      width: 224px; border-radius: 16px; overflow: hidden;
+      background: var(--glass-strong); border: 1px solid rgba(56, 189, 248, 0.45);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6);
+      display: none; flex-direction: column; pointer-events: auto;
+    }
+    #cam-preview-card.show { display: flex; }
+    .cam-video-wrap { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #020617; }
+    #cam-video {
+      width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); opacity: 0.72; display: block;
+    }
+    #cam-overlay {
+      position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); pointer-events: none;
+    }
+    .cam-caption {
+      padding: 6px 10px; font-size: 11px; font-weight: 600; color: #bae6fd;
+      display: flex; justify-content: space-between; align-items: center; gap: 6px;
+      background: rgba(15, 23, 42, 0.95);
+    }
+    .cam-close {
+      background: rgba(255,255,255,0.1); border: none; color: #fff; border-radius: 6px;
+      padding: 2px 7px; font-size: 11px; font-weight: 700; cursor: pointer;
+    }
+    .cam-close:hover { background: rgba(239, 68, 68, 0.35); }
+
+    /* Alt Kontrol Barı */
     .bottom-controls {
-      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .bottom-row-top {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
+      pointer-events: none;
+    }
+    .bottom-row-main {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
       pointer-events: none;
     }
 
     .instrument-selector {
-      display: flex; gap: 6px; background: var(--glass); backdrop-filter: blur(14px);
-      border: 1px solid var(--border); border-radius: 16px; padding: 6px;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4); max-width: 100%; overflow-x: auto;
+      display: flex; gap: 5px; background: var(--glass); backdrop-filter: blur(14px);
+      border: 1px solid var(--border); border-radius: 15px; padding: 5px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4); max-width: 100%; overflow-x: auto;
     }
-    .inst-btn, .action-btn, .song-btn {
-      display: flex; align-items: center; gap: 7px; font-family: inherit; font-weight: 700; cursor: pointer;
-      transition: background 0.2s, color 0.2s, border-color 0.2s; white-space: nowrap;
+    .inst-btn, .action-btn, .song-btn, .speed-btn {
+      display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-weight: 700;
+      cursor: pointer; transition: background 0.18s, color 0.18s, border-color 0.18s, transform 0.15s;
+      white-space: nowrap;
     }
-    .inst-btn { padding: 8px 14px; border-radius: 12px; border: none; background: transparent; color: #94a3b8; font-size: 13px; }
+    .inst-btn {
+      padding: 8px 12px; border-radius: 11px; border: none; background: transparent;
+      color: #94a3b8; font-size: 12.5px;
+    }
     .inst-btn:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
-    .inst-btn.active { color: #0f172a; background: linear-gradient(135deg, #f59e0b, #fbbf24); box-shadow: 0 0 16px var(--gold-glow); }
+    .inst-btn.active {
+      color: #0f172a; background: linear-gradient(135deg, #f59e0b, #fbbf24);
+      box-shadow: 0 0 14px var(--gold-glow);
+    }
 
-    .action-panel { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .xr-buttons {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; pointer-events: auto;
+    }
+    .xr-launch-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      padding: 12px 22px; border-radius: 36px; border: 1.5px solid rgba(255, 255, 255, 0.38);
+      background: linear-gradient(135deg, #ec4899, #8b5cf6, #3b82f6); background-size: 200% 200%;
+      animation: gradientShift 4s ease infinite; color: #fff; font-family: inherit; font-size: 13.5px;
+      font-weight: 800; text-transform: uppercase; letter-spacing: 0.9px; cursor: pointer;
+      box-shadow: 0 0 28px rgba(139, 92, 246, 0.5), 0 8px 20px rgba(0, 0, 0, 0.45);
+      transition: transform 0.22s, opacity 0.2s;
+    }
+    .xr-launch-btn:hover { transform: scale(1.03); }
+    .xr-launch-btn.ar-btn {
+      background: linear-gradient(135deg, #0ea5e9, #10b981);
+      box-shadow: 0 0 24px rgba(16, 185, 129, 0.45), 0 8px 20px rgba(0, 0, 0, 0.45);
+    }
+    .xr-launch-btn.disabled {
+      background: rgba(51, 65, 85, 0.85); border-color: rgba(148, 163, 184, 0.25);
+      color: #cbd5e1; animation: none; cursor: default; box-shadow: none; font-size: 12px; padding: 10px 16px;
+    }
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .action-panel {
+      display: flex; flex-wrap: wrap; gap: 7px; justify-content: flex-end; align-items: center;
+    }
     .action-btn {
-      padding: 10px 16px; background: var(--glass); border: 1px solid var(--border); border-radius: 14px;
-      color: #fff; font-size: 13px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      padding: 9px 13px; background: var(--glass); backdrop-filter: blur(12px);
+      border: 1px solid var(--border); border-radius: 13px;
+      color: #f1f5f9; font-size: 12.5px; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
     }
     .action-btn:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.3); }
-    .action-btn.active { border-color: #10b981; color: #10b981; background: rgba(16, 185, 129, 0.15); }
+    .action-btn.active { border-color: #10b981; color: #6ee7b7; background: rgba(16, 185, 129, 0.18); }
+    .action-btn.cam-active { border-color: var(--cyan); color: #7dd3fc; background: rgba(56, 189, 248, 0.2); }
+    .action-btn.rec-active { border-color: var(--red); color: #fca5a5; background: rgba(239, 68, 68, 0.22); }
 
-    #custom-vr-button {
-      pointer-events: auto; display: flex; align-items: center; justify-content: center; gap: 10px;
-      padding: 14px 30px; border-radius: 40px; border: 2px solid rgba(255, 255, 255, 0.4);
-      background: linear-gradient(135deg, #ec4899, #8b5cf6, #3b82f6); background-size: 200% 200%;
-      animation: gradientShift 4s ease infinite; color: #fff; font-family: inherit; font-size: 15px;
-      font-weight: 800; text-transform: uppercase; letter-spacing: 1.2px; cursor: pointer;
-      box-shadow: 0 0 35px rgba(236, 72, 153, 0.6), 0 10px 25px rgba(0, 0, 0, 0.5); transition: transform 0.3s;
-    }
-    #custom-vr-button:hover { transform: scale(1.04); }
-    #custom-vr-button.disabled { background: #475569; animation: none; cursor: not-allowed; box-shadow: none; }
-    @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-
+    /* Şarkı Öğretici Açılır Panel: ekran dışına taşmaz, diğer butonları kapatmaz */
     .song-dropdown { position: relative; }
     .song-list {
-      position: absolute; bottom: 52px; right: 0; background: var(--glass); backdrop-filter: blur(14px);
-      border: 1px solid var(--border); border-radius: 14px; padding: 8px; min-width: 300px;
-      display: none; flex-direction: column; gap: 4px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+      position: absolute; bottom: calc(100% + 10px); right: 0;
+      background: var(--glass-strong); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 16px; padding: 10px;
+      width: min(390px, calc(100vw - 28px)); max-height: min(62vh, 420px); overflow-y: auto;
+      display: none; flex-direction: column; gap: 6px;
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.65); z-index: 40;
     }
     .song-list.show { display: flex; }
-    .song-row { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; }
-    .song-row:hover { background: rgba(255, 255, 255, 0.06); }
-    .song-name { flex: 1; font-size: 13px; font-weight: 600; color: #cbd5e1; }
-    .song-btn { padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: rgba(255,255,255,0.06); color: #e2e8f0; font-size: 12px; }
+    .song-header-row {
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 2px 4px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .song-header-title { font-size: 12px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.7px; }
+    .speed-group { display: flex; gap: 4px; }
+    .speed-btn {
+      padding: 4px 8px; border-radius: 7px; border: 1px solid var(--border);
+      background: rgba(255,255,255,0.05); color: #cbd5e1; font-size: 11px;
+    }
+    .speed-btn.active { background: rgba(245, 158, 11, 0.22); border-color: var(--gold); color: #fde68a; }
+
+    .song-row {
+      display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 10px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+    .song-row:hover { background: rgba(255, 255, 255, 0.07); }
+    .song-info { flex: 1; min-width: 0; }
+    .song-name { font-size: 12.5px; font-weight: 700; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .song-meta { font-size: 10.5px; color: #94a3b8; }
+    .song-btn {
+      padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.06); color: #e2e8f0; font-size: 11.5px;
+    }
     .song-btn:hover { color: var(--gold); border-color: var(--gold); }
     .song-btn.learn:hover { color: var(--green); border-color: var(--green); }
-    .song-stop { margin-top: 4px; justify-content: center; }
+    .song-stop { margin-top: 2px; justify-content: center; padding: 8px; }
 
-    .kbd-hint { font-size: 11px; color: #94a3b8; margin-top: 6px; text-align: right; pointer-events: none; }
+    .kbd-hint {
+      font-size: 11px; color: #94a3b8; text-align: right; pointer-events: none;
+    }
     .kbd-hint b { color: #e2e8f0; }
 
+    /* Bilgilendirme Bildirimi */
     #vr-hint-toast {
-      position: absolute; top: 84px; left: 50%; transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.94); border: 1px solid rgba(255, 255, 255, 0.3);
-      padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 600; color: #f8fafc;
-      display: flex; align-items: center; gap: 10px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-      pointer-events: none; z-index: 20; transition: opacity 0.6s; max-width: 92vw; text-align: center;
+      position: absolute; top: 78px; left: 50%; transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.94); border: 1px solid rgba(255, 255, 255, 0.26);
+      padding: 9px 18px; border-radius: 30px; font-size: 12.5px; font-weight: 600; color: #f8fafc;
+      display: flex; align-items: center; gap: 9px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+      pointer-events: none; z-index: 25; transition: opacity 0.5s; max-width: 92vw; text-align: center;
     }
     #vr-hint-toast.hide { opacity: 0; }
 
@@ -136,28 +249,31 @@
     }
     #load-error.show { display: flex; }
 
-    /* Dar ekranlar (laptop, tablet, telefon) */
-    @media (max-width: 1100px) {
+    /* Orta ve Dar Ekran Uyumluluğu */
+    @media (max-width: 1180px) {
       .brand-subtitle { display: none; }
-      .inst-btn { padding: 8px 10px; font-size: 12px; }
-      .action-btn { padding: 9px 12px; font-size: 12px; }
-      #custom-vr-button { padding: 12px 22px; font-size: 13px; }
+      .inst-btn { padding: 7px 10px; font-size: 12px; }
+      .action-btn { padding: 8px 11px; font-size: 12px; }
+      .xr-launch-btn { padding: 10px 18px; font-size: 12.5px; }
+      .kbd-hint { display: none; }
     }
-    @media (max-width: 760px) {
+    @media (max-width: 820px) {
       #hud-overlay { padding: 10px; gap: 8px; }
       .top-header { padding: 8px 12px; flex-wrap: wrap; gap: 6px; }
-      .status-chip { flex: 1 1 100%; max-width: 100%; justify-content: center; }
+      .header-right { flex: 1 1 100%; justify-content: space-between; }
+      .status-chip { max-width: 68vw; font-size: 11.5px; padding: 6px 11px; }
       .brand-title { font-size: 15px; }
-      .brand-icon { width: 34px; height: 34px; font-size: 18px; }
-      .status-chip { font-size: 11px; }
-      .bottom-controls { flex-direction: column; align-items: stretch; }
-      .instrument-selector { order: 1; }
-      .action-panel { order: 2; justify-content: center; }
-      #custom-vr-button { order: 3; width: 100%; }
-      .action-btn .lbl, .inst-btn .lbl-long { display: none; }
-      .song-list { right: auto; left: 50%; transform: translateX(-50%); min-width: 280px; }
-      .kbd-hint { display: none; }
-      #vr-hint-toast { top: 108px; font-size: 12px; }
+      .brand-icon { width: 34px; height: 34px; font-size: 17px; }
+      .bottom-row-main { flex-direction: column; align-items: stretch; gap: 8px; }
+      .instrument-selector { justify-content: flex-start; }
+      .action-panel { justify-content: center; }
+      .xr-buttons { justify-content: center; width: 100%; }
+      .xr-launch-btn { flex: 1 1 auto; }
+      .action-btn .lbl-hide-sm, .inst-btn .lbl-long { display: none; }
+      .song-list { position: fixed; left: 12px; right: 12px; bottom: 132px; width: auto; max-width: none; transform: none; max-height: 56vh; }
+      .song-header-row { flex-wrap: wrap; }
+      #cam-preview-card { top: auto; bottom: 168px; right: 10px; width: 168px; }
+      #vr-hint-toast { top: 106px; font-size: 11.5px; }
     }
     @media (hover: none) { .kbd-hint { display: none; } }
   </style>
@@ -167,8 +283,20 @@
   <div id="webgl-canvas-container"></div>
 
   <div id="vr-hint-toast">
-    <span>🧤</span>
-    <span id="toast-text">Beyaz Konser Eldiveni Aktif: Piyano tuşlarını ellerinizle doğrudan çalabilirsiniz.</span>
+    <span id="toast-icon">🧤</span>
+    <span id="toast-text">Doğal El Takibi Aktif: Kontrolcü kullanmadan, doğrudan parmaklarınızla piyano çalabilirsiniz.</span>
+  </div>
+
+  <!-- Masaüstü/Akıllı Tahta Kamera El Takibi Önizlemesi -->
+  <div id="cam-preview-card">
+    <div class="cam-video-wrap">
+      <video id="cam-video" playsinline muted></video>
+      <canvas id="cam-overlay" width="320" height="240"></canvas>
+    </div>
+    <div class="cam-caption">
+      <span id="cam-status-lbl">✋ Ellerinizi kameraya gösterin</span>
+      <button type="button" class="cam-close" id="cam-close-btn" title="Kamerayı Kapat">✕</button>
+    </div>
   </div>
 
   <div id="load-error">
@@ -185,37 +313,80 @@
         <div class="brand-icon">🎵</div>
         <div style="min-width:0">
           <div class="brand-title">Torbalı BİLSEM VR 360 Piyano</div>
-          <div class="brand-subtitle">Meta Quest 3 • Beyaz Eldiven & El Takibi</div>
+          <div class="brand-subtitle">Kontrolcüsüz Doğal El Takibi • Beyaz Konser Eldiveni</div>
         </div>
       </div>
-      <div class="status-chip" id="status-chip">🎹 Konser Kuyruklu • Sustain kapalı</div>
+      <div class="header-right">
+        <div class="status-chip" id="status-chip">🎹 Konser Kuyruklu • Sustain kapalı</div>
+        <div class="vol-wrap" title="Ses Seviyesi">
+          <span id="vol-icon">🔊</span>
+          <input type="range" id="volume-slider" min="0" max="100" value="88" aria-label="Ses Seviyesi">
+        </div>
+      </div>
     </div>
 
     <div class="bottom-controls">
-      <div class="instrument-selector panel" id="instrument-selector"></div>
-
-      <button id="custom-vr-button" type="button">🥽 <span id="vr-btn-text">VR'A GİR (QUEST 3)</span></button>
-
-      <div class="panel">
-        <div class="action-panel">
-          <button class="action-btn" id="sustain-btn" type="button">👣 <span class="lbl" id="sustain-lbl">Sustain: Kapalı</span></button>
-
-          <div class="song-dropdown">
-            <button class="action-btn" id="song-toggle" type="button">🎓 <span class="lbl">Şarkı Öğretici</span></button>
-            <div class="song-list" id="song-list"></div>
-          </div>
-
-          <button class="action-btn" id="center-btn" type="button">🎯 <span class="lbl">Piyanoyu Bana Hizala</span></button>
-          <button class="action-btn" id="reset-view-btn" type="button">🔄 <span class="lbl">Açıyı Sıfırla</span></button>
+      <div class="bottom-row-top">
+        <div class="xr-buttons">
+          <button id="custom-vr-button" class="xr-launch-btn" type="button">
+            <span>🧤</span><span id="vr-btn-text">VR SALONA GİR (EL TAKİBİ)</span>
+          </button>
+          <button id="custom-ar-button" class="xr-launch-btn ar-btn" type="button" style="display:none">
+            <span>🌐</span><span id="ar-btn-text">KARMA GERÇEKLİK (AR)</span>
+          </button>
         </div>
-        <div class="kbd-hint" id="kbd-hint">Klavye: <b>Z–M</b> ve <b>Q–]</b> notalar • <b>← →</b> oktav (<span id="oct-lbl">C3</span>) • <b>Boşluk</b> sustain</div>
+        <div class="kbd-hint" id="kbd-hint">
+          Fare sol tık: tuşlar • Sağ sürükle: açı • Klavye: <b>Z–M</b> / <b>Q–]</b> • <b>← →</b> oktav (<span id="oct-lbl">C3</span>) • <b>Boşluk</b> sustain
+        </div>
+      </div>
+
+      <div class="bottom-row-main">
+        <div class="instrument-selector panel" id="instrument-selector"></div>
+
+        <div class="panel">
+          <div class="action-panel">
+            <button class="action-btn" id="cam-hand-btn" type="button" title="Web kamerası ile ellerinizi kullanarak çalın">
+              <span>✋</span><span class="lbl-hide-sm" id="cam-btn-lbl">Kamera ile El Çal</span>
+            </button>
+
+            <button class="action-btn" id="sustain-btn" type="button" title="Sustain Pedalı (Boşluk)">
+              <span>👣</span><span class="lbl-hide-sm" id="sustain-lbl">Sustain: Kapalı</span>
+            </button>
+
+            <button class="action-btn" id="label-mode-btn" type="button" title="Tuş üzerindeki nota isimlerini değiştir">
+              <span>🔤</span><span class="lbl-hide-sm" id="label-mode-lbl">Do-Re-Mi</span>
+            </button>
+
+            <button class="action-btn" id="metro-btn" type="button" title="Metronom Hızı">
+              <span>⏱️</span><span class="lbl-hide-sm" id="metro-lbl">Metronom</span>
+            </button>
+
+            <button class="action-btn" id="rec-btn" type="button" title="Performansını Kaydet / Dinle">
+              <span id="rec-icon">⏺</span><span class="lbl-hide-sm" id="rec-lbl">Kaydet</span>
+            </button>
+
+            <div class="song-dropdown" id="song-dropdown">
+              <button class="action-btn" id="song-toggle" type="button">
+                <span>🎓</span><span class="lbl-hide-sm">Şarkı Öğretici</span>
+              </button>
+              <div class="song-list" id="song-list"></div>
+            </div>
+
+            <button class="action-btn" id="center-btn" type="button" title="Piyanoyu ellerinize/bakışınıza hizalar">
+              <span>🎯</span><span class="lbl-hide-sm">Hizala</span>
+            </button>
+            <button class="action-btn" id="reset-view-btn" type="button" title="Kamera açısını ve piyano konumunu sıfırlar">
+              <span>🔄</span><span class="lbl-hide-sm">Sıfırla</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
   // ===========================================================================
-  // 0. KÜTÜPHANE YÜKLEYİCİ (Bir CDN engellenirse sıradakini dener)
+  // 0. KÜTÜPHANE YÜKLEYİCİ (CDN yedekli)
   // ===========================================================================
   (function () {
     const LIBS = [
@@ -234,6 +405,7 @@
       return new Promise((resolve, reject) => {
         const s = document.createElement('script');
         s.src = src;
+        s.crossOrigin = 'anonymous';
         s.onload = resolve;
         s.onerror = () => { s.remove(); reject(new Error(src)); };
         document.head.appendChild(s);
@@ -242,7 +414,7 @@
 
     async function loadFirst(list) {
       for (const url of list) {
-        try { await loadScript(url); return true; } catch (e) { /* sıradaki CDN */ }
+        try { await loadScript(url); return true; } catch (e) { /* yedek CDN */ }
       }
       return false;
     }
@@ -255,18 +427,19 @@
           return;
         }
       }
-      // Tuş etiketleri doğru yazı tipiyle çizilsin diye yazı tipini en fazla 1,5 sn bekle
       try {
         if (document.fonts && document.fonts.load) {
           await Promise.race([
             document.fonts.load('bold 40px "Plus Jakarta Sans"'),
-            new Promise(r => setTimeout(r, 1500))
+            new Promise(r => setTimeout(r, 1400))
           ]);
         }
       } catch (e) {}
-      window.PianoApp = createPianoApp();   // THREE yüklendikten sonra oluşturulur
+      window.PianoApp = createPianoApp();
       window.PianoApp.start();
     }
+
+    window.__loadExternalScriptFirst = loadFirst;
 
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', boot);
@@ -276,15 +449,26 @@
   })();
 
   // ===========================================================================
-  // UYGULAMA
+  // ANA PİYANO UYGULAMASI (KONTROLCÜSÜZ DOĞAL EL TAKİBİ)
   // ===========================================================================
   function createPianoApp() {
     'use strict';
 
     const KEY_START = 48;               // C3
-    const KEY_END = 84;                 // C6 (37 tuş)
+    const KEY_END = 84;                 // C6 (37 tuş = 3 tam oktav)
     const BLACK_IN_OCT = [1, 3, 6, 8, 10];
-    const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const NOTE_NAMES_EN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    const NOTE_NAMES_TR = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
+
+    // Gerçek insan eli ergonomisine uygun tuş ölçüleri (1 oktav = 18.2 cm; 5 parmak doğal hizada)
+    const WHITE_W = 0.026;
+    const WHITE_L = 0.156;
+    const WHITE_H = 0.022;
+    const BLACK_W = 0.0146;
+    const BLACK_L = 0.098;
+    const BLACK_H = 0.015;
+    // Akustik kuyruklu piyanoda siyah tuşların beyaz tuş aralıklarına göre mikro kaymaları
+    const BLACK_OFFSET_RATIO = { 1: -0.09, 3: 0.09, 6: -0.10, 8: 0.0, 10: 0.10 };
 
     const INSTRUMENTS = [
       { id: 'grand', label: 'Konser Kuyruklu', short: 'Kuyruklu', emoji: '🎹' },
@@ -294,87 +478,146 @@
       { id: 'harpsichord', label: 'Klavsen', short: 'Klavsen', emoji: '🏛️' }
     ];
 
-    // Şarkılar: [midi, süre(ms)]
-    const S16 = 170, S8 = 340, S4 = 680;
+    // Doğrulanmış şarkı kütüphanesi: [midi, süre(ms)]
+    const S16 = 175, S8 = 350, S4 = 700;
     const SONGS = {
-      arkadasim_esek: {
-        name: 'Barış Manço - Arkadaşım Eşek', short: 'Eşek',
-        notes: [[60, 350], [62, 350], [64, 350], [60, 350], [64, 350], [64, 350], [62, 700],
-                [60, 350], [62, 350], [64, 350], [60, 350], [62, 350], [62, 350], [60, 700]]
-      },
-      turk_marsi: {
-        // Mozart, Rondo alla Turca açılışı: Si-La-Sol#-La-Do / Re-Do-Si-Do-Mi / Fa-Mi-Re#-Mi-Si-La-Sol#-La-Si-La-Sol#-La-Do
-        name: 'Mozart - Türk Marşı', short: 'Türk Marşı',
-        notes: [[71, S16], [69, S16], [68, S16], [69, S16], [72, S4],
-                [74, S16], [72, S16], [71, S16], [72, S16], [76, S4],
-                [77, S16], [76, S16], [75, S16], [76, S16], [83, S16], [81, S16], [80, S16], [81, S16],
-                [83, S16], [81, S16], [80, S16], [81, S16], [84, S4 + S8]]
-      },
-      fur_elise: {
-        name: 'Beethoven - Für Elise', short: 'Für Elise',
-        notes: [[64, 260], [63, 260], [64, 260], [63, 260], [64, 260], [59, 260], [62, 260], [60, 260], [57, 520]]
+      kucuk_yildiz: {
+        name: 'Daha Dün Annemizin (Küçük Yıldız)', short: 'Küçük Yıldız', level: 'Başlangıç',
+        notes: [
+          [60, 360], [60, 360], [67, 360], [67, 360], [69, 360], [69, 360], [67, 720],
+          [65, 360], [65, 360], [64, 360], [64, 360], [62, 360], [62, 360], [60, 720]
+        ]
       },
       ode_to_joy: {
-        name: 'Beethoven - Neşeye Övgü', short: 'Neşeye Övgü',
-        notes: [[64, 350], [64, 350], [65, 350], [67, 350], [67, 350], [65, 350], [64, 350], [62, 350],
-                [60, 350], [60, 350], [62, 350], [64, 350], [64, 500], [62, 200], [62, 700]]
+        name: 'Beethoven - Neşeye Övgü', short: 'Neşeye Övgü', level: 'Kolay',
+        notes: [
+          [64, 350], [64, 350], [65, 350], [67, 350], [67, 350], [65, 350], [64, 350], [62, 350],
+          [60, 350], [60, 350], [62, 350], [64, 350], [64, 520], [62, 180], [62, 700],
+          [64, 350], [64, 350], [65, 350], [67, 350], [67, 350], [65, 350], [64, 350], [62, 350],
+          [60, 350], [60, 350], [62, 350], [64, 350], [62, 520], [60, 180], [60, 750]
+        ]
+      },
+      arkadasim_esek: {
+        // Gerçek Barış Manço melodisi (La minör: "Kaç yıl oldu saymadım..." + "Arkadaşım eşek" nakaratı)
+        name: 'Barış Manço - Arkadaşım Eşek', short: 'Arkadaşım Eşek', level: 'Orta',
+        notes: [
+          // Kaç yıl oldu saymadım (La La Mi Mi Fa Fa Mi)
+          [57, 300], [57, 300], [64, 300], [64, 300], [65, 300], [65, 300], [64, 600],
+          // Köyden göçeli (Re Re Fa Fa Mi)
+          [62, 300], [62, 300], [65, 300], [65, 300], [64, 600],
+          // Mevsimler geldi geçti (Re Re Fa Fa Mi Re Do)
+          [62, 280], [62, 280], [65, 280], [65, 280], [64, 280], [62, 280], [60, 480],
+          // Görüşmeyeli (Si Si Do Si La)
+          [59, 280], [59, 280], [60, 280], [59, 280], [57, 650],
+          // Nakarat: Arkadaşım eş, arkadaşım şek, arkadaşım eşek
+          [57, 250], [59, 250], [60, 250], [57, 250], [64, 550],
+          [57, 250], [59, 250], [60, 250], [57, 250], [64, 550],
+          [57, 250], [59, 250], [60, 250], [57, 250], [55, 340], [57, 750]
+        ]
+      },
+      fur_elise: {
+        name: 'Beethoven - Für Elise', short: 'Für Elise', level: 'Orta',
+        notes: [
+          [76, 240], [75, 240], [76, 240], [75, 240], [76, 240], [71, 240], [74, 240], [72, 240], [69, 520],
+          [60, 240], [64, 240], [69, 240], [71, 520],
+          [64, 240], [68, 240], [71, 240], [72, 520],
+          [64, 240], [76, 240], [75, 240], [76, 240], [75, 240], [76, 240], [71, 240], [74, 240], [72, 240], [69, 520],
+          [60, 240], [64, 240], [69, 240], [71, 520],
+          [64, 240], [72, 240], [71, 240], [69, 750]
+        ]
+      },
+      turk_marsi: {
+        name: 'Mozart - Türk Marşı', short: 'Türk Marşı', level: 'İleri',
+        notes: [
+          [71, S16], [69, S16], [68, S16], [69, S16], [72, S4],
+          [74, S16], [72, S16], [71, S16], [72, S16], [76, S4],
+          [77, S16], [76, S16], [75, S16], [76, S16], [83, S16], [81, S16], [80, S16], [81, S16],
+          [83, S16], [81, S16], [80, S16], [81, S16], [84, S4],
+          [81, S8], [84, S8], [83, S8], [81, S8], [79, S8], [81, S8],
+          [83, S8], [81, S8], [79, S8], [78, S8], [76, S4 + S8]
+        ]
       }
     };
 
+    function formatMidiLabel(midi, mode) {
+      const n = midi % 12;
+      const oct = Math.floor(midi / 12) - 1;
+      if (mode === 'en') return NOTE_NAMES_EN[n] + oct;
+      return NOTE_NAMES_TR[n] + oct;
+    }
+
+    function formatMidiDual(midi) {
+      const n = midi % 12;
+      const oct = Math.floor(midi / 12) - 1;
+      return NOTE_NAMES_TR[n] + oct + ' (' + NOTE_NAMES_EN[n] + oct + ')';
+    }
+
+    // Basit akor tanıyıcı (durum çubuğunda basılan akoru/notayı gösterir)
+    function describeActiveNotes(midiList) {
+      if (!midiList.length) return '';
+      const sorted = [...midiList].sort((a, b) => a - b);
+      if (sorted.length === 1) return '🎵 ' + formatMidiDual(sorted[0]);
+      const pcs = [...new Set(sorted.map(m => m % 12))];
+      if (pcs.length >= 3) {
+        for (const root of pcs) {
+          const rel = pcs.map(p => (p - root + 12) % 12);
+          const has = x => rel.includes(x);
+          if (has(4) && has(7)) return '🎵 ' + NOTE_NAMES_TR[root] + ' Majör Akoru';
+          if (has(3) && has(7)) return '🎵 ' + NOTE_NAMES_TR[root] + ' Minör Akoru';
+          if (has(3) && has(6)) return '🎵 ' + NOTE_NAMES_TR[root] + ' Eksik Akor';
+        }
+      }
+      return '🎵 ' + sorted.slice(0, 4).map(m => NOTE_NAMES_TR[m % 12] + (Math.floor(m / 12) - 1)).join(' + ');
+    }
+
     // =========================================================================
-    // 1. SES MOTORU
-    //    - Her nota kendi sonunda osilatörlerini durdurur ve bağlantısını keser
-    //      (sustain açıkken bile birikme olmaz).
-    //    - Gerçek yankı: sesler Convolver'a girer.
-    //    - Sınırlayıcı (limiter): akorlarda ses bozulmaz.
+    // 1. AKUSTİK SES MOTORU + STEREO SAHNE + METRONOM
     // =========================================================================
-    let audioCtx = null, masterBus = null, reverbIn = null, hammerBuffer = null;
+    let audioCtx = null, masterOutGain = null, masterBus = null, reverbIn = null, hammerBuffer = null;
+    let masterVolume = 0.88;
     let activeInstrument = 'grand';
     let sustainEnabled = false;
-    const voices = new Map();      // midi -> en son ses
-    let liveVoiceCount = 0;        // test/teşhis için: henüz temizlenmemiş ses sayısı
+    const voices = new Map();
+    let liveVoiceCount = 0;
 
-    // Enstrüman profilleri: zarf (envelope) ve tını
     const PROFILES = {
-      grand:       { attack: 0.004, t1: 0.35, d1: 0.75, t2: 1.8, d2: 0.40, tail: 4.8, release: 0.85, bright: [3.4, 3.8], velSens: 1.0, hammer: 0.18, hammerFreq: 800 },
-      upright:     { attack: 0.003, t1: 0.22, d1: 0.62, t2: 1.1, d2: 0.26, tail: 3.4, release: 0.50, bright: [4.8, 4.2], velSens: 1.0, hammer: 0.30, hammerFreq: 1300 },
-      rhodes:      { attack: 0.006, t1: 0.30, d1: 0.80, t2: 1.6, d2: 0.45, tail: 4.0, release: 0.60, bright: [6.0, 4.0], velSens: 1.0, hammer: 0, hammerFreq: 0 },
-      celesta:     { attack: 0.002, t1: 0.15, d1: 0.50, t2: 0.9, d2: 0.20, tail: 2.6, release: 0.45, bright: [8.0, 4.0], velSens: 0.6, hammer: 0, hammerFreq: 0 },
-      harpsichord: { attack: 0.002, t1: 0.12, d1: 0.45, t2: 0.8, d2: 0.20, tail: 2.4, release: 0.12, bright: [10.0, 0], velSens: 0.0, hammer: 0, hammerFreq: 0 }
+      grand:       { attack: 0.004, t1: 0.38, d1: 0.74, t2: 1.9, d2: 0.38, tail: 5.0, release: 0.80, bright: [3.6, 3.6], velSens: 1.0, hammer: 0.17, hammerFreq: 850 },
+      upright:     { attack: 0.003, t1: 0.24, d1: 0.62, t2: 1.15, d2: 0.26, tail: 3.5, release: 0.48, bright: [4.6, 4.0], velSens: 1.0, hammer: 0.28, hammerFreq: 1250 },
+      rhodes:      { attack: 0.006, t1: 0.32, d1: 0.80, t2: 1.65, d2: 0.45, tail: 4.1, release: 0.58, bright: [5.8, 3.8], velSens: 1.0, hammer: 0, hammerFreq: 0 },
+      celesta:     { attack: 0.002, t1: 0.16, d1: 0.50, t2: 0.92, d2: 0.20, tail: 2.6, release: 0.44, bright: [7.6, 3.8], velSens: 0.65, hammer: 0, hammerFreq: 0 },
+      harpsichord: { attack: 0.002, t1: 0.12, d1: 0.45, t2: 0.80, d2: 0.18, tail: 2.3, release: 0.12, bright: [9.5, 0.5], velSens: 0.1, hammer: 0, hammerFreq: 0 }
     };
 
     function initAudio() {
       if (audioCtx) {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
         return;
       }
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       audioCtx = new AC();
 
-      // Sınırlayıcı: aynı anda çok nota çalınınca taşmayı (clipping) önler
       const limiter = audioCtx.createDynamicsCompressor();
-      limiter.threshold.value = -10;
+      limiter.threshold.value = -9;
       limiter.knee.value = 6;
       limiter.ratio.value = 12;
       limiter.attack.value = 0.003;
-      limiter.release.value = 0.25;
+      limiter.release.value = 0.24;
 
-      const out = audioCtx.createGain();
-      out.gain.value = 0.9;
-      limiter.connect(out);
-      out.connect(audioCtx.destination);
+      masterOutGain = audioCtx.createGain();
+      masterOutGain.gain.value = masterVolume * 0.92;
+      limiter.connect(masterOutGain);
+      masterOutGain.connect(audioCtx.destination);
 
       masterBus = audioCtx.createGain();
       masterBus.gain.value = 1.0;
       masterBus.connect(limiter);
 
-      // Gerçek konser salonu yankısı
       try {
         const convolver = audioCtx.createConvolver();
-        convolver.buffer = makeImpulse(2.6, 3.2);
+        convolver.buffer = makeImpulse(2.4, 3.4);
         const wet = audioCtx.createGain();
-        wet.gain.value = 0.22;
+        wet.gain.value = 0.21;
         convolver.connect(wet);
         wet.connect(limiter);
         reverbIn = convolver;
@@ -382,11 +625,19 @@
         reverbIn = null;
       }
 
-      // Çekiç vuruşu gürültüsü bir kez hazırlanır
       const size = Math.floor(audioCtx.sampleRate * 0.015);
       hammerBuffer = audioCtx.createBuffer(1, size, audioCtx.sampleRate);
       const data = hammerBuffer.getChannelData(0);
-      for (let i = 0; i < size; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (size * 0.25));
+      for (let i = 0; i < size; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (size * 0.24));
+    }
+
+    function setMasterVolume(val01) {
+      masterVolume = Math.max(0, Math.min(1, val01));
+      if (masterOutGain && audioCtx) {
+        masterOutGain.gain.setTargetAtTime(masterVolume * 0.92, audioCtx.currentTime, 0.02);
+      }
+      const icon = document.getElementById('vol-icon');
+      if (icon) icon.textContent = masterVolume === 0 ? '🔇' : (masterVolume < 0.45 ? '🔉' : '🔊');
     }
 
     function makeImpulse(seconds, decay) {
@@ -404,6 +655,7 @@
     }
 
     function addOsc(list, mix, type, freq, gain, detune, now) {
+      if (freq > audioCtx.sampleRate * 0.46) return null;
       const osc = audioCtx.createOscillator();
       osc.type = type;
       osc.frequency.setValueAtTime(freq, now);
@@ -421,21 +673,46 @@
       partials.forEach(p => addOsc(list, mix, p[3] || 'sine', freq * p[0], p[1] / total, p[2] || 0, now));
     }
 
+    function playUiTick(pitch) {
+      if (!audioCtx || masterVolume <= 0.01) return;
+      try {
+        const now = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(pitch || 660, now);
+        g.gain.setValueAtTime(0.05, now);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+        osc.connect(g);
+        g.connect(masterBus);
+        osc.start(now);
+        osc.stop(now + 0.04);
+      } catch (e) {}
+    }
+
     function startVoice(midi, velocity) {
       const now = audioCtx.currentTime;
       const freq = 440 * Math.pow(2, (midi - 69) / 12);
       const P = PROFILES[activeInstrument];
-      const vel = Math.max(0.15, Math.min(1, 0.8 + (velocity - 0.8) * P.velSens));
+      const vel = Math.max(0.16, Math.min(1, 0.25 + velocity * 0.75 * P.velSens + (1 - P.velSens) * 0.55));
+      // Pes tellerde daha uzun sönüm, tiz tellerde daha berrak kısa sönüm
+      const keyScale = Math.pow(2, (60 - midi) / 36);
+      const tail = Math.max(1.4, Math.min(6.8, P.tail * keyScale));
 
       const mix = audioCtx.createGain();
       const filter = audioCtx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.Q.value = 0.5;
-      filter.frequency.setValueAtTime(Math.min(freq * (P.bright[0] + vel * P.bright[1]), 16000), now);
-      filter.frequency.exponentialRampToValueAtTime(Math.max(freq * 1.1, 180), now + Math.min(2.5, P.tail * 0.6));
+      filter.Q.value = 0.55;
+      filter.frequency.setValueAtTime(Math.min(freq * (P.bright[0] + vel * P.bright[1]), 15500), now);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(freq * 1.15, 190), now + Math.min(2.6, tail * 0.62));
       mix.connect(filter);
 
       const out = audioCtx.createGain();
+      let panner = null;
+      if (typeof audioCtx.createStereoPanner === 'function') {
+        panner = audioCtx.createStereoPanner();
+        panner.pan.setValueAtTime(Math.max(-0.45, Math.min(0.45, ((midi - 66) / 18) * 0.42)), now);
+      }
       const srcs = [];
 
       switch (activeInstrument) {
@@ -445,61 +722,65 @@
           const modGain = audioCtx.createGain();
           mod.type = 'sine';
           mod.frequency.setValueAtTime(freq * 2.0, now);
-          modGain.gain.setValueAtTime(freq * 1.5 * vel, now);
-          modGain.gain.exponentialRampToValueAtTime(Math.max(0.1, freq * 0.05), now + 1.2);
+          modGain.gain.setValueAtTime(freq * 1.45 * vel, now);
+          modGain.gain.exponentialRampToValueAtTime(Math.max(0.1, freq * 0.05), now + 1.15);
           mod.connect(modGain);
-          modGain.connect(carrier.frequency);
+          if (carrier) modGain.connect(carrier.frequency);
           srcs.push(mod);
           break;
         }
         case 'celesta':
-          // Çan benzeri: temel ses + 4. ve 10. kısmi sesler
-          addPartials(srcs, mix, freq, [[1, 1.0], [4, 0.22], [10, 0.05]], now);
+          addPartials(srcs, mix, freq, [[1, 1.0], [4, 0.22], [10, 0.045]], now);
           break;
         case 'harpsichord':
-          addPartials(srcs, mix, freq, [[1, 0.7, 0, 'sawtooth'], [2, 0.35, 0, 'triangle'], [3, 0.12, 0, 'sawtooth']], now);
+          addPartials(srcs, mix, freq, [[1, 0.72, 0, 'sawtooth'], [2, 0.34, 0, 'triangle'], [3, 0.12, 0, 'sawtooth']], now);
           break;
         case 'upright':
-          // Duvar piyanosu: daha parlak, kısa sönümlü, hafif "honky" iki tel
-          addPartials(srcs, mix, freq, [[1, 1.0], [1, 0.6, 7], [2, 0.6, 0, 'triangle'], [3, 0.38], [4, 0.22], [6, 0.08]], now);
+          addPartials(srcs, mix, freq, [[1, 1.0], [1, 0.55, 6.5], [2, 0.58, 0, 'triangle'], [3, 0.36], [4, 0.20], [6, 0.07]], now);
           break;
         default:
-          addPartials(srcs, mix, freq, [[1, 0.85], [2, 0.45, -1.2, 'triangle'], [3, 0.24, 1.6], [4, 0.12, -2.0], [5, 0.06, 2.5]], now);
+          addPartials(srcs, mix, freq, [
+            [1, 0.88], [1, 0.22, 1.8], [2, 0.44, -1.1, 'triangle'],
+            [3, 0.23, 1.5], [4, 0.11, -1.8], [5, 0.055, 2.2], [6, 0.025]
+          ], now);
       }
 
-      // Çekiç vuruşu (kuyruklu ve duvar piyanosu)
       if (P.hammer > 0 && hammerBuffer) {
         const noise = audioCtx.createBufferSource();
         noise.buffer = hammerBuffer;
         const bp = audioCtx.createBiquadFilter();
         bp.type = 'bandpass';
-        bp.frequency.value = P.hammerFreq;
-        bp.Q.value = 1.5;
+        bp.frequency.value = P.hammerFreq * Math.pow(2, (midi - 60) / 48);
+        bp.Q.value = 1.4;
         const ng = audioCtx.createGain();
         ng.gain.value = P.hammer * vel;
         noise.connect(bp); bp.connect(ng); ng.connect(filter);
         noise.start(now);
       }
 
-      // Zarf
-      const peak = 0.30 * (0.3 + 0.7 * vel);
+      const peak = 0.30 * (0.28 + 0.72 * vel);
       out.gain.setValueAtTime(0.0001, now);
       out.gain.linearRampToValueAtTime(peak, now + P.attack);
       out.gain.exponentialRampToValueAtTime(peak * P.d1, now + P.t1);
       out.gain.exponentialRampToValueAtTime(peak * P.d2, now + P.t2);
-      out.gain.exponentialRampToValueAtTime(0.0001, now + P.tail);
+      out.gain.exponentialRampToValueAtTime(0.0001, now + tail);
 
       filter.connect(out);
-      out.connect(masterBus);
-      if (reverbIn) out.connect(reverbIn);
+      if (panner) {
+        out.connect(panner);
+        panner.connect(masterBus);
+        if (reverbIn) panner.connect(reverbIn);
+      } else {
+        out.connect(masterBus);
+        if (reverbIn) out.connect(reverbIn);
+      }
 
-      // Her ses kendi sonunda durur → sızıntı yok
-      const endAt = now + P.tail + 0.05;
+      const endAt = now + tail + 0.05;
       srcs.forEach(s => { s.start(now); s.stop(endAt); });
 
-      const voice = { midi, out, mix, filter, srcs, held: true, damped: false, release: P.release, cleaned: false };
+      const voice = { midi, out, mix, filter, panner, srcs, held: true, damped: false, release: P.release, cleaned: false };
       liveVoiceCount++;
-      srcs[0].onended = () => cleanupVoice(voice);
+      if (srcs[0]) srcs[0].onended = () => cleanupVoice(voice);
       return voice;
     }
 
@@ -508,11 +789,15 @@
       voice.cleaned = true;
       liveVoiceCount--;
       voice.srcs.forEach(s => { try { s.disconnect(); } catch (e) {} });
-      try { voice.mix.disconnect(); voice.filter.disconnect(); voice.out.disconnect(); } catch (e) {}
+      try {
+        voice.mix.disconnect();
+        voice.filter.disconnect();
+        voice.out.disconnect();
+        if (voice.panner) voice.panner.disconnect();
+      } catch (e) {}
       if (voices.get(voice.midi) === voice) voices.delete(voice.midi);
     }
 
-    // Keçe damper: sesi verilen sürede söndürür ve osilatörleri durdurur
     function dampVoice(voice, seconds) {
       if (!voice || voice.damped || voice.cleaned) return;
       voice.damped = true;
@@ -533,7 +818,7 @@
       initAudio();
       if (!audioCtx) return;
       const prev = voices.get(midi);
-      if (prev) dampVoice(prev, 0.04);   // aynı tuşa tekrar basıldı
+      if (prev) dampVoice(prev, 0.035);
       voices.set(midi, startVoice(midi, velocity));
     }
 
@@ -545,64 +830,188 @@
     }
 
     function setSustain(on) {
-      sustainEnabled = on;
-      // Pedal bırakılınca basılı tutulmayan tüm notalar susturulur
-      if (!on && audioCtx) voices.forEach(v => { if (!v.held) dampVoice(v, v.release); });
+      sustainEnabled = !!on;
+      if (!sustainEnabled && audioCtx) {
+        voices.forEach(v => { if (!v.held) dampVoice(v, v.release); });
+      }
+      if (sustainPedalMesh) sustainPedalMesh.rotation.x = sustainEnabled ? 0.18 : 0;
       updateStatus();
       updateHudButtons();
       refreshVRButtons();
     }
 
     function toggleSustain() {
+      initAudio();
       setSustain(!sustainEnabled);
-      haptic(0.4);
+      playUiTick(sustainEnabled ? 520 : 420);
     }
 
     function setInstrument(id) {
+      if (!PROFILES[id]) return;
       activeInstrument = id;
       updateStatus();
       updateHudButtons();
       refreshVRButtons();
     }
 
+    // --- Metronom ---
+    const METRO_BPMS = [0, 72, 96, 120];
+    let metroIdx = 0;
+    let metroTimer = null;
+    let metroBeat = 0;
+
+    function cycleMetronome() {
+      initAudio();
+      metroIdx = (metroIdx + 1) % METRO_BPMS.length;
+      const bpm = METRO_BPMS[metroIdx];
+      if (metroTimer) { clearInterval(metroTimer); metroTimer = null; }
+      if (bpm > 0) {
+        metroBeat = 0;
+        const tick = () => {
+          if (!audioCtx) return;
+          const now = audioCtx.currentTime;
+          const accent = (metroBeat % 4) === 0;
+          metroBeat++;
+          const osc = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(accent ? 1180 : 840, now);
+          g.gain.setValueAtTime(accent ? 0.16 : 0.09, now);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.045);
+          osc.connect(g);
+          g.connect(masterBus);
+          osc.start(now);
+          osc.stop(now + 0.05);
+        };
+        tick();
+        metroTimer = setInterval(tick, Math.round(60000 / bpm));
+      }
+      updateHudButtons();
+      refreshVRButtons();
+    }
+
+    // --- Performans Kaydedici ---
+    let recorder = { state: 'idle', startAt: 0, events: [], timers: [] };
+
+    function toggleRecorder() {
+      initAudio();
+      if (recorder.state === 'playing') {
+        stopRecorderPlayback();
+        return;
+      }
+      if (recorder.state === 'recording') {
+        recorder.state = recorder.events.length > 0 ? 'ready' : 'idle';
+        updateHudButtons();
+        updateStatus();
+        refreshVRButtons();
+        return;
+      }
+      if (recorder.state === 'ready' && recorder.events.length > 0) {
+        playRecording();
+        return;
+      }
+      // Yeni kayıt başlat
+      stopTutor(true);
+      recorder.events = [];
+      recorder.startAt = performance.now();
+      recorder.state = 'recording';
+      updateHudButtons();
+      updateStatus();
+      refreshVRButtons();
+    }
+
+    function clearRecording() {
+      stopRecorderPlayback();
+      recorder.events = [];
+      recorder.state = 'idle';
+      updateHudButtons();
+      updateStatus();
+      refreshVRButtons();
+    }
+
+    function playRecording() {
+      if (!recorder.events.length) return;
+      stopTutor(true);
+      stopRecorderPlayback();
+      recorder.state = 'playing';
+      updateHudButtons();
+      updateStatus();
+      refreshVRButtons();
+      let maxT = 0;
+      recorder.events.forEach(ev => {
+        maxT = Math.max(maxT, ev.t);
+        recorder.timers.push(setTimeout(() => {
+          const k = keyByMidi(ev.midi);
+          if (!k) return;
+          if (ev.type === 'on') pressKey(k, 'recplay', ev.vel);
+          else releaseKey(k, 'recplay');
+        }, ev.t));
+      });
+      recorder.timers.push(setTimeout(() => {
+        keys.forEach(k => releaseKey(k, 'recplay'));
+        recorder.state = 'ready';
+        updateHudButtons();
+        updateStatus();
+        refreshVRButtons();
+      }, maxT + 350));
+    }
+
+    function stopRecorderPlayback() {
+      recorder.timers.forEach(clearTimeout);
+      recorder.timers = [];
+      keys.forEach(k => releaseKey(k, 'recplay'));
+      if (recorder.state === 'playing') recorder.state = recorder.events.length ? 'ready' : 'idle';
+      updateHudButtons();
+      updateStatus();
+      refreshVRButtons();
+    }
+
     // =========================================================================
-    // 2. SAHNE
+    // 2. 3D SAHNE, KONSER SALONU VE KUYRUKLU/STÜDYO PİYANO GÖVDESİ
     // =========================================================================
     let scene, camera, renderer, controls;
-    let pianoGroup;
+    let pianoGroup, hallEnvironmentGroup, standGroup, sustainPedalMesh;
     const keys = [];
-    let keysHitOrder = [];          // önce siyah tuşlar
+    let keysHitOrder = [];
     const keyMeshMap = new Map();
     const noteParticles = [];
     let particleTextures = [];
     let usingFloor = true;
+    let isARSession = false;
+    let labelMode = 'tr';           // 'tr' (Do-Re-Mi) | 'en' (C-D-E) | 'off'
+    let totalKeysWidth = 0;
 
     function startApp() {
       pianoGroup = new THREE.Group();
+      hallEnvironmentGroup = new THREE.Group();
       const container = document.getElementById('webgl-canvas-container');
 
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0a0d14);
+      scene.background = new THREE.Color(0x070a12);
 
-      camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.05, 100);
-      camera.position.set(0, 1.25, 0.45);
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.04, 100);
+      camera.position.set(0, 1.24, 0.42);
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFShadowMap;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      if (THREE.ACESFilmicToneMapping !== undefined) {
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+      }
       renderer.xr.enabled = true;
       renderer.xr.setReferenceSpaceType('local-floor');
       container.appendChild(renderer.domElement);
 
       controls = new THREE.OrbitControls(camera, renderer.domElement);
-      controls.target.set(0, 0.82, -0.42);
+      controls.target.set(0, 0.84, -0.42);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.maxPolarAngle = Math.PI / 2 + 0.1;
-      controls.minDistance = 0.3;
-      controls.maxDistance = 4;
+      controls.dampingFactor = 0.06;
+      controls.maxPolarAngle = Math.PI / 2 + 0.08;
+      controls.minDistance = 0.28;
+      controls.maxDistance = 3.8;
 
       setupLights();
       createConcertHall();
@@ -611,129 +1020,316 @@
       createTutorArrow();
       makeParticleTextures();
 
-      setupWebXRControllers();
       setupWhiteGloves();
-      setupVRButton();
+      setupWebXRHandSystem();
+      setupXRButtons();
       setupDesktopInput();
       setupHud();
 
       window.addEventListener('resize', onWindowResize);
-      window.addEventListener('orientationchange', () => setTimeout(() => { onWindowResize(); resetView(); }, 300));
+      window.addEventListener('orientationchange', () => setTimeout(() => { onWindowResize(); resetView(); }, 280));
       resetView();
       renderer.setAnimationLoop(renderLoop);
 
-      setTimeout(() => document.getElementById('vr-hint-toast').classList.add('hide'), 7000);
+      setTimeout(() => {
+        const toast = document.getElementById('vr-hint-toast');
+        if (toast) toast.classList.add('hide');
+      }, 7500);
       updateStatus();
     }
 
     function setupLights() {
-      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+      scene.add(new THREE.AmbientLight(0xe2e8f0, 0.46));
 
-      const spot = new THREE.SpotLight(0xffffff, 1.7, 8, Math.PI / 3, 0.25, 1.0);
-      spot.position.set(0, 2.2, -0.15);
+      // Dengeli sahne spotu: beyaz tuşlarda parlama yapmadan net kontur üretir
+      const spot = new THREE.SpotLight(0xfffaf0, 1.15, 9, Math.PI / 3.1, 0.45, 1.1);
+      spot.position.set(0, 2.35, 0.05);
       spot.target = pianoGroup;
       spot.castShadow = true;
       spot.shadow.mapSize.set(1024, 1024);
+      spot.shadow.bias = -0.0005;
       scene.add(spot);
 
-      const fill = new THREE.DirectionalLight(0xfff7ed, 0.8);
-      fill.position.set(0, 2.5, 0.8);
+      const fill = new THREE.DirectionalLight(0xe0f2fe, 0.42);
+      fill.position.set(0, 2.2, 1.1);
       scene.add(fill);
 
-      const cyanRim = new THREE.PointLight(0x38bdf8, 1.6, 8);
-      cyanRim.position.set(-2.2, 1.8, -1.0);
+      const cyanRim = new THREE.PointLight(0x38bdf8, 1.15, 9);
+      cyanRim.position.set(-2.4, 1.9, -1.2);
       scene.add(cyanRim);
 
-      const goldRim = new THREE.PointLight(0xf59e0b, 1.6, 8);
-      goldRim.position.set(2.2, 1.8, -1.0);
+      const goldRim = new THREE.PointLight(0xf59e0b, 1.15, 9);
+      goldRim.position.set(2.4, 1.9, -1.2);
       scene.add(goldRim);
     }
 
     function createConcertHall() {
-      scene.add(new THREE.Mesh(
-        new THREE.SphereGeometry(45, 32, 32),
-        new THREE.MeshBasicMaterial({ color: 0x090d16, side: THREE.BackSide })
-      ));
+      scene.add(hallEnvironmentGroup);
 
-      const starCount = 650;
+      const sky = new THREE.Mesh(
+        new THREE.SphereGeometry(42, 32, 24),
+        new THREE.MeshBasicMaterial({ color: 0x070b14, side: THREE.BackSide })
+      );
+      hallEnvironmentGroup.add(sky);
+
+      // Yıldızlı akustik kubbe
+      const starCount = 550;
       const pos = new Float32Array(starCount * 3);
       for (let i = 0; i < starCount * 3; i += 3) {
         const theta = Math.random() * 2 * Math.PI;
         const phi = Math.acos(2 * Math.random() - 1);
-        const r = 42;
+        const r = 38;
         pos[i] = r * Math.sin(phi) * Math.cos(theta);
-        pos[i + 1] = Math.abs(r * Math.cos(phi)) + 1;
+        pos[i + 1] = Math.abs(r * Math.cos(phi)) + 1.2;
         pos[i + 2] = r * Math.sin(phi) * Math.sin(theta);
       }
       const starGeo = new THREE.BufferGeometry();
       starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.16, transparent: true, opacity: 0.85 })));
+      hallEnvironmentGroup.add(new THREE.Points(
+        starGeo,
+        new THREE.PointsMaterial({ color: 0xe2e8f0, size: 0.14, transparent: true, opacity: 0.8 })
+      ));
 
+      // Ahşap akustik konser sahnesi
       const stage = new THREE.Mesh(
-        new THREE.CylinderGeometry(5.5, 5.8, 0.35, 48),
-        new THREE.MeshStandardMaterial({ color: 0x221c18, roughness: 0.25, metalness: 0.25 })
+        new THREE.CylinderGeometry(5.2, 5.5, 0.32, 48),
+        new THREE.MeshStandardMaterial({ color: 0x231b15, roughness: 0.38, metalness: 0.12 })
       );
-      stage.position.set(0, -0.175, -0.4);
+      stage.position.set(0, -0.16, -0.45);
       stage.receiveShadow = true;
-      scene.add(stage);
+      hallEnvironmentGroup.add(stage);
 
-      const c = document.createElement('canvas');
-      c.width = 1024; c.height = 340;
-      const ctx = c.getContext('2d');
-      const grad = ctx.createLinearGradient(0, 0, 1024, 340);
-      grad.addColorStop(0, '#0f172a'); grad.addColorStop(0.5, '#1e293b'); grad.addColorStop(1, '#0f172a');
-      ctx.fillStyle = grad; ctx.fillRect(0, 0, 1024, 340);
-      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 6; ctx.strokeRect(16, 16, 992, 308);
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 56px "Plus Jakarta Sans", sans-serif'; ctx.fillStyle = '#f59e0b';
-      ctx.fillText('TORBALI BİLSEM', 512, 125);
-      ctx.font = '600 32px "Plus Jakarta Sans", sans-serif'; ctx.fillStyle = '#38bdf8';
-      ctx.fillText('VR 360 AKUSTİK KONSER SALONU', 512, 190);
-      ctx.font = 'italic 22px serif'; ctx.fillStyle = '#f8fafc';
-      ctx.fillText('Beyaz Konser Eldiveni & Meta Quest 3 WebXR Studio', 512, 245);
-      const banner = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.6, 1.2),
-        new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(c), roughness: 0.4 })
+      // Sahne kenarı altın ışık halkası
+      const stageRing = new THREE.Mesh(
+        new THREE.RingGeometry(5.12, 5.19, 64),
+        new THREE.MeshBasicMaterial({ color: 0xf59e0b, side: THREE.DoubleSide, transparent: true, opacity: 0.35 })
       );
-      banner.position.set(0, 2.1, -2.6);
-      scene.add(banner);
+      stageRing.rotation.x = -Math.PI / 2;
+      stageRing.position.set(0, 0.002, -0.45);
+      hallEnvironmentGroup.add(stageRing);
+
+      // 360° Konser Salonu akustik ahşap sütunlar (karanlık siyah blok görünümü yerine sıcak sahne mimarisi)
+      const pillarMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.25 });
+      const stripMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.45 });
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2 + Math.PI / 8;
+        const radius = 5.0;
+        const px = Math.sin(ang) * radius;
+        const pz = -0.45 + Math.cos(ang) * radius;
+        const col = new THREE.Group();
+        col.position.set(px, 1.6, pz);
+        col.lookAt(0, 1.6, -0.45);
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.2, 0.16), pillarMat);
+        const led = new THREE.Mesh(new THREE.PlaneGeometry(0.035, 2.8), stripMat);
+        led.position.z = 0.085;
+        col.add(beam, led);
+        hallEnvironmentGroup.add(col);
+      }
+
+      // Arka sahne panosu: üst 2D başlığın arkasına taşmayacak şekilde sahne derinliğine yerleştirildi
+      const c = document.createElement('canvas');
+      c.width = 1024; c.height = 320;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 1024, 320);
+      grad.addColorStop(0, '#0f172a'); grad.addColorStop(0.5, '#1e293b'); grad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = grad; ctx.fillRect(0, 0, 1024, 320);
+      ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 5; ctx.strokeRect(14, 14, 996, 292);
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 54px "Plus Jakarta Sans", sans-serif'; ctx.fillStyle = '#fbbf24';
+      ctx.fillText('TORBALI BİLSEM', 512, 118);
+      ctx.font = '700 30px "Plus Jakarta Sans", sans-serif'; ctx.fillStyle = '#38bdf8';
+      ctx.fillText('VR 360 AKUSTİK KONSER SALONU', 512, 182);
+      ctx.font = '600 22px "Plus Jakarta Sans", sans-serif'; ctx.fillStyle = '#e2e8f0';
+      ctx.fillText('Doğal El Takibi • Beyaz Konser Eldiveni • Akustik Piyano Stüdyosu', 512, 240);
+
+      const banner = new THREE.Mesh(
+        new THREE.PlaneGeometry(3.2, 1.0),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c) })
+      );
+      banner.position.set(0, 2.38, -4.15);
+      hallEnvironmentGroup.add(banner);
     }
 
     // =========================================================================
-    // 3. PİYANO (C3 - C6, 37 tuş)
+    // 3. PİYANO GÖVDESİ VE TUŞ TAKIMI (C3–C6, 37 TUŞ, GERÇEKÇİ KABİN + AYAK + PEDAL)
     // =========================================================================
-    const WHITE_W = 0.038, WHITE_L = 0.165, WHITE_H = 0.024;
-    const BLACK_W = 0.022, BLACK_L = 0.105, BLACK_H = 0.022;
-    const KEY_DEFAULTS = { white: 0xffffff, black: 0x161820 };
+    const KEY_DEFAULTS = { white: 0xfbfcff, black: 0x151821 };
+
+    function drawWhiteKeyCanvas(kc, midi) {
+      const k = kc.getContext('2d');
+      const n = midi % 12;
+      const oct = Math.floor(midi / 12) - 1;
+      const isMiddleC = midi === 60;
+
+      const g = k.createLinearGradient(0, 0, 0, 512);
+      g.addColorStop(0, '#f1f5f9');
+      g.addColorStop(0.15, '#ffffff');
+      g.addColorStop(1, isMiddleC ? '#fffbeb' : '#f8fafc');
+      k.fillStyle = g;
+      k.fillRect(0, 0, 128, 512);
+
+      k.strokeStyle = '#cbd5e1';
+      k.lineWidth = 4;
+      k.strokeRect(2, 2, 124, 508);
+
+      if (labelMode !== 'off') {
+        k.textAlign = 'center';
+        const mainText = labelMode === 'tr' ? NOTE_NAMES_TR[n] : (NOTE_NAMES_EN[n] + oct);
+        const subText = labelMode === 'tr' ? (NOTE_NAMES_EN[n] + oct) : '';
+
+        if (isMiddleC) {
+          k.fillStyle = 'rgba(245, 158, 11, 0.18)';
+          roundRect(k, 14, 355, 100, 136, 16);
+          k.fill();
+        }
+
+        k.font = '800 44px "Plus Jakarta Sans", sans-serif';
+        k.fillStyle = isMiddleC ? '#b45309' : '#1e293b';
+        k.fillText(mainText, 64, 434, 112);
+
+        if (subText) {
+          k.font = '700 26px "Plus Jakarta Sans", sans-serif';
+          k.fillStyle = isMiddleC ? '#d97706' : '#64748b';
+          k.fillText(subText, 64, 476, 112);
+        }
+        if (isMiddleC) {
+          k.font = '800 20px "Plus Jakarta Sans", sans-serif';
+          k.fillStyle = '#b45309';
+          k.fillText('ORTA', 64, 384, 108);
+        }
+      }
+    }
+
+    function drawBlackKeyCanvas(kc, midi) {
+      const k = kc.getContext('2d');
+      const n = midi % 12;
+      k.fillStyle = '#151821';
+      k.fillRect(0, 0, 96, 256);
+      k.strokeStyle = '#2d3344';
+      k.lineWidth = 3;
+      k.strokeRect(2, 2, 92, 252);
+      if (labelMode !== 'off') {
+        k.textAlign = 'center';
+        k.font = '700 28px "Plus Jakarta Sans", sans-serif';
+        k.fillStyle = '#cbd5e1';
+        const txt = labelMode === 'tr' ? NOTE_NAMES_TR[n] : NOTE_NAMES_EN[n];
+        k.fillText(txt, 48, 218, 84);
+      }
+    }
+
+    function updateAllKeyLabels() {
+      keys.forEach(kd => {
+        if (!kd.labelCanvas || !kd.labelTex) return;
+        if (kd.isBlack) drawBlackKeyCanvas(kd.labelCanvas, kd.midi);
+        else drawWhiteKeyCanvas(kd.labelCanvas, kd.midi);
+        kd.labelTex.needsUpdate = true;
+      });
+    }
+
+    function cycleLabelMode() {
+      const order = ['tr', 'en', 'off'];
+      labelMode = order[(order.indexOf(labelMode) + 1) % order.length];
+      updateAllKeyLabels();
+      updateHudButtons();
+      refreshVRButtons();
+    }
 
     function buildPiano() {
-      pianoGroup.position.set(0, 0.82, -0.42);
+      pianoGroup.position.set(0, 0.78, -0.40);
       scene.add(pianoGroup);
-
-      const body = new THREE.Mesh(
-        new THREE.BoxGeometry(1.08, 0.18, 0.42),
-        new THREE.MeshStandardMaterial({ color: 0x0c0f17, roughness: 0.12, metalness: 0.5 })
-      );
-      // Gövdenin üst yüzeyi beyaz tuşların altında kalır (eskiden tuşlar gövdeye gömülüydü)
-      body.position.set(0, -WHITE_H / 2 - 0.09 - 0.001, -0.09);
-      body.castShadow = true; body.receiveShadow = true;
-      pianoGroup.add(body);
-
-      // Tuşların arkasındaki kırmızı keçe şerit
-      const felt = new THREE.Mesh(new THREE.BoxGeometry(0.98, 0.015, 0.02), new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.8 }));
-      felt.position.set(0, -0.004, -0.095);
-      pianoGroup.add(felt);
-
-      // Ön yüzde altın Torbalı Bilsem arması
-      const crest = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.03, 0.005), new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.9, roughness: 0.15 }));
-      crest.position.set(0, -0.06, 0.1225);
-      pianoGroup.add(crest);
 
       let totalWhite = 0;
       for (let m = KEY_START; m <= KEY_END; m++) if (!BLACK_IN_OCT.includes(m % 12)) totalWhite++;
-      const startX = -((totalWhite * WHITE_W) / 2) + WHITE_W / 2;
+      totalKeysWidth = totalWhite * WHITE_W;
+      const cheekW = 0.036;
+      const cabinetW = totalKeysWidth + cheekW * 2;
+
+      const ebonyMat = new THREE.MeshStandardMaterial({ color: 0x0d111a, roughness: 0.18, metalness: 0.35 });
+      const goldTrimMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.25, metalness: 0.75 });
+
+      // Alt tuş yatağı (keybed)
+      const keybed = new THREE.Mesh(new THREE.BoxGeometry(cabinetW, 0.052, 0.34), ebonyMat);
+      keybed.position.set(0, -WHITE_H / 2 - 0.026 - 0.001, -0.065);
+      keybed.castShadow = true; keybed.receiveShadow = true;
+      pianoGroup.add(keybed);
+
+      // Sol ve sağ yan kollar (cheek blocks: tuş takımını çerçeveler, dışarı taşan parça bırakmaz)
+      [-1, 1].forEach(side => {
+        const cheek = new THREE.Mesh(new THREE.BoxGeometry(cheekW, 0.056, WHITE_L + 0.03), ebonyMat);
+        cheek.position.set(side * (totalKeysWidth / 2 + cheekW / 2), 0.006, -0.008);
+        cheek.castShadow = true; cheek.receiveShadow = true;
+        pianoGroup.add(cheek);
+      });
+
+      // Arka akustik gövde / tuş kapağı (fallboard)
+      const backCabinet = new THREE.Mesh(new THREE.BoxGeometry(cabinetW, 0.135, 0.145), ebonyMat);
+      backCabinet.position.set(0, 0.022, -WHITE_L / 2 - 0.072);
+      backCabinet.castShadow = true; backCabinet.receiveShadow = true;
+      pianoGroup.add(backCabinet);
+
+      // Tuşların tam arkasındaki bordo kadife keçe şerit (tam tuş genişliğinde, yanlardan taşmaz!)
+      const felt = new THREE.Mesh(
+        new THREE.BoxGeometry(totalKeysWidth - 0.002, 0.010, 0.014),
+        new THREE.MeshStandardMaterial({ color: 0x991b1b, roughness: 0.9 })
+      );
+      felt.position.set(0, WHITE_H / 2 + 0.002, -WHITE_L / 2 + 0.005);
+      pianoGroup.add(felt);
+
+      // Tuş kapağı üzerindeki Torbalı BİLSEM altın arması (piyaniste dönük, her açıdan okunaklı)
+      const npCanvas = document.createElement('canvas');
+      npCanvas.width = 512; npCanvas.height = 64;
+      const npCtx = npCanvas.getContext('2d');
+      npCtx.fillStyle = '#0d111a'; npCtx.fillRect(0, 0, 512, 64);
+      npCtx.strokeStyle = '#f59e0b'; npCtx.lineWidth = 3; npCtx.strokeRect(4, 4, 504, 56);
+      npCtx.fillStyle = '#fbbf24';
+      npCtx.font = '800 24px "Plus Jakarta Sans", sans-serif';
+      npCtx.textAlign = 'center'; npCtx.textBaseline = 'middle';
+      npCtx.fillText('TORBALI BİLSEM • CONCERT GRAND', 256, 33);
+      const nameplate = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.28, 0.035),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(npCanvas) })
+      );
+      nameplate.position.set(0, 0.048, -WHITE_L / 2 + 0.001);
+      pianoGroup.add(nameplate);
+
+      // Piyano ayakları ve 3'lü pedal lir sistemi (havada asılı kutu görünümünü giderir; AR modunda gizlenir)
+      standGroup = new THREE.Group();
+      const legH = 0.72;
+      const legGeo = new THREE.CylinderGeometry(0.024, 0.016, legH, 16);
+      [[-cabinetW / 2 + 0.045, 0.03], [cabinetW / 2 - 0.045, 0.03], [0, -0.17]].forEach(([lx, lz]) => {
+        const leg = new THREE.Mesh(legGeo, ebonyMat);
+        leg.position.set(lx, -WHITE_H / 2 - 0.052 - legH / 2, lz);
+        leg.castShadow = true;
+        standGroup.add(leg);
+      });
+
+      // Pedal kutusu (lyre) ve 3 pirinç pedal
+      const lyreY = -WHITE_H / 2 - 0.052 - legH + 0.04;
+      [-0.055, 0.055].forEach(px => {
+        const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, legH - 0.04, 10), ebonyMat);
+        rod.position.set(px, -WHITE_H / 2 - 0.052 - (legH - 0.04) / 2, -0.06);
+        standGroup.add(rod);
+      });
+      const pedalBox = new THREE.Mesh(new THREE.BoxGeometry(0.20, 0.045, 0.06), ebonyMat);
+      pedalBox.position.set(0, lyreY, -0.06);
+      standGroup.add(pedalBox);
+
+      [-0.052, 0, 0.052].forEach((px, idx) => {
+        const pPivot = new THREE.Group();
+        pPivot.position.set(px, lyreY - 0.006, -0.04);
+        const pMesh = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.008, 0.075), goldTrimMat);
+        pMesh.position.z = 0.035;
+        pPivot.add(pMesh);
+        standGroup.add(pPivot);
+        if (idx === 2) sustainPedalMesh = pPivot;
+      });
+      pianoGroup.add(standGroup);
+
+      // --- Beyaz Tuşlar ---
+      const startX = -(totalKeysWidth / 2) + WHITE_W / 2;
       const whiteX = {};
       let wi = 0;
+      const maxAniso = renderer.capabilities.getMaxAnisotropy();
 
       for (let m = KEY_START; m <= KEY_END; m++) {
         const n = m % 12;
@@ -743,81 +1339,118 @@
 
         const pivot = new THREE.Group();
         pivot.position.set(x, 0, -WHITE_L / 2);
-        const geo = new THREE.BoxGeometry(WHITE_W - 0.002, WHITE_H, WHITE_L);
+        const geo = new THREE.BoxGeometry(WHITE_W - 0.0018, WHITE_H, WHITE_L);
         geo.translate(0, 0, WHITE_L / 2);
 
-        const label = NOTE_NAMES[n] + (Math.floor(m / 12) - 1);
-        const isMiddleC = m === 60;
         const kc = document.createElement('canvas');
         kc.width = 128; kc.height = 512;
-        const k = kc.getContext('2d');
-        k.fillStyle = '#ffffff'; k.fillRect(0, 0, 128, 512);
-        k.strokeStyle = '#cbd5e1'; k.lineWidth = 4; k.strokeRect(2, 2, 124, 508);
-        k.textAlign = 'center';
-        // Etiket, siyah tuşların önündeki görünür beyaz alanda (tuşun ön 6 cm'i)
-        k.font = 'bold 58px "Plus Jakarta Sans", sans-serif';
-        k.fillStyle = isMiddleC ? '#b45309' : '#334155';
-        k.fillText(label, 64, 450, 120);
-        if (isMiddleC) { k.font = 'bold 26px sans-serif'; k.fillStyle = '#d97706'; k.fillText('ORTA DO', 64, 385, 124); }
-
+        drawWhiteKeyCanvas(kc, m);
         const keyTex = new THREE.CanvasTexture(kc);
-        keyTex.anisotropy = renderer.capabilities.getMaxAnisotropy();   // eğik bakışta etiketler bulanıklaşmasın
-        const mat = new THREE.MeshStandardMaterial({ map: keyTex, color: KEY_DEFAULTS.white, roughness: 0.3, metalness: 0.0 });
-        const mesh = new THREE.Mesh(geo, mat);
+        keyTex.anisotropy = maxAniso;
+
+        const sideMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.35, metalness: 0.02 });
+        const topMat = new THREE.MeshStandardMaterial({ map: keyTex, color: KEY_DEFAULTS.white, roughness: 0.28, metalness: 0.02 });
+        const mats = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
+
+        const mesh = new THREE.Mesh(geo, mats);
         mesh.castShadow = true; mesh.receiveShadow = true;
         pivot.add(mesh);
         pianoGroup.add(pivot);
 
-        // Piyano yerel uzayında dokunma kutusu (piyano dönse de doğru çalışır)
         const localBox = new THREE.Box3(
-          new THREE.Vector3(x - (WHITE_W - 0.002) / 2, -WHITE_H / 2, -WHITE_L / 2),
-          new THREE.Vector3(x + (WHITE_W - 0.002) / 2, WHITE_H / 2, WHITE_L / 2)
+          new THREE.Vector3(x - (WHITE_W - 0.0018) / 2, -WHITE_H / 2, -WHITE_L / 2),
+          new THREE.Vector3(x + (WHITE_W - 0.0018) / 2, WHITE_H / 2, WHITE_L / 2)
         );
-        addKey(m, false, mesh, pivot, localBox);
+        addKey(m, false, mesh, topMat, kc, keyTex, pivot, localBox);
         wi++;
       }
 
+      // --- Siyah Tuşlar ---
       for (let m = KEY_START; m <= KEY_END; m++) {
-        if (!BLACK_IN_OCT.includes(m % 12)) continue;
-        const x = (whiteX[m - 1] + whiteX[m + 1]) / 2;
-        const y = WHITE_H * 0.55;
+        const n = m % 12;
+        if (!BLACK_IN_OCT.includes(n)) continue;
+        const baseMid = (whiteX[m - 1] + whiteX[m + 1]) / 2;
+        const x = baseMid + (BLACK_OFFSET_RATIO[n] || 0) * WHITE_W;
+        const y = WHITE_H / 2 + BLACK_H / 2 - 0.002;
+
         const pivot = new THREE.Group();
         pivot.position.set(x, y, -WHITE_L / 2);
         const geo = new THREE.BoxGeometry(BLACK_W, BLACK_H, BLACK_L);
         geo.translate(0, 0, BLACK_L / 2);
-        const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: KEY_DEFAULTS.black, roughness: 0.25, metalness: 0.35 }));
+
+        const kc = document.createElement('canvas');
+        kc.width = 96; kc.height = 256;
+        drawBlackKeyCanvas(kc, m);
+        const keyTex = new THREE.CanvasTexture(kc);
+        keyTex.anisotropy = maxAniso;
+
+        const sideMat = new THREE.MeshStandardMaterial({ color: 0x11131a, roughness: 0.28, metalness: 0.3 });
+        const topMat = new THREE.MeshStandardMaterial({ map: keyTex, color: 0xffffff, roughness: 0.26, metalness: 0.25 });
+        const mats = [sideMat, sideMat, topMat, sideMat, sideMat, sideMat];
+
+        const mesh = new THREE.Mesh(geo, mats);
         mesh.castShadow = true;
         pivot.add(mesh);
         pianoGroup.add(pivot);
+
         const localBox = new THREE.Box3(
           new THREE.Vector3(x - BLACK_W / 2, y - BLACK_H / 2, -WHITE_L / 2),
           new THREE.Vector3(x + BLACK_W / 2, y + BLACK_H / 2, -WHITE_L / 2 + BLACK_L)
         );
-        addKey(m, true, mesh, pivot, localBox);
+        addKey(m, true, mesh, topMat, kc, keyTex, pivot, localBox);
       }
 
       keysHitOrder = [...keys].sort((a, b) => (b.isBlack ? 1 : 0) - (a.isBlack ? 1 : 0));
     }
 
-    function addKey(midi, isBlack, mesh, pivot, localBox) {
-      const kd = { midi, isBlack, mesh, pivot, localBox, sources: new Set(), pressAmount: 0, wrongUntil: 0, touchSticky: false };
+    function addKey(midi, isBlack, mesh, topMat, labelCanvas, labelTex, pivot, localBox) {
+      const kd = {
+        midi, isBlack, mesh, topMat, labelCanvas, labelTex, pivot, localBox,
+        sources: new Set(),
+        pressAmount: 0,
+        analogDepth: 0,
+        wrongUntil: 0,
+        touchSticky: false
+      };
       keys.push(kd);
       keyMeshMap.set(mesh, kd);
     }
 
     function keyByMidi(m) { return keys.find(k => k.midi === m) || null; }
 
-    // Bir tuş birden çok kaynaktan basılı olabilir (parmak, lazer, fare, klavye, demo)
+    function activeUserMidis() {
+      const list = [];
+      keys.forEach(k => {
+        if (k.sources.size > 0 && !(k.sources.size === 1 && k.sources.has('demo'))) list.push(k.midi);
+      });
+      return list;
+    }
+
+    let lastPlayedInfo = '';
+    let lastPlayedClearTimer = null;
+
     function pressKey(k, source, velocity) {
       if (!k) return;
+      const vel = Math.max(0.2, Math.min(1.0, velocity || 0.8));
       const wasIdle = k.sources.size === 0;
       k.sources.add(source);
       if (!wasIdle) return;
-      noteOn(k.midi, velocity);
+
+      noteOn(k.midi, vel);
       k.pressAmount = 1;
       refreshKeyVisual(k);
       spawnNoteParticle(k);
-      if (source !== 'demo') onUserNote(k);
+
+      if (source !== 'demo' && source !== 'recplay') {
+        if (recorder.state === 'recording') {
+          recorder.events.push({ type: 'on', midi: k.midi, vel, t: performance.now() - recorder.startAt });
+        }
+        onUserNote(k);
+        lastPlayedInfo = describeActiveNotes(activeUserMidis());
+        if (lastPlayedClearTimer) clearTimeout(lastPlayedClearTimer);
+        lastPlayedClearTimer = setTimeout(() => { lastPlayedInfo = ''; updateStatus(); }, 2200);
+        updateStatus();
+      }
     }
 
     function releaseKey(k, source) {
@@ -826,39 +1459,44 @@
       if (k.sources.size > 0) return;
       noteOff(k.midi);
       refreshKeyVisual(k);
+      if (source !== 'demo' && source !== 'recplay' && recorder.state === 'recording') {
+        recorder.events.push({ type: 'off', midi: k.midi, vel: 0, t: performance.now() - recorder.startAt });
+      }
     }
 
     function releaseAllKeys() {
       keys.forEach(k => {
         if (k.sources.size) { k.sources.clear(); noteOff(k.midi); }
         k.touchSticky = false;
+        k.analogDepth = 0;
         refreshKeyVisual(k);
       });
+      fingerStates.clear();
     }
 
     function refreshKeyVisual(k) {
-      const m = k.mesh.material;
+      const m = k.topMat;
       const now = performance.now();
       if (k.sources.size > 0) {
         m.color.setHex(k.isBlack ? 0x38bdf8 : 0xfef08a);
         m.emissive.setHex(k.isBlack ? 0x0284c7 : 0xd97706);
-        m.emissiveIntensity = 1;
+        m.emissiveIntensity = k.isBlack ? 0.85 : 0.45;
       } else if (k.wrongUntil > now) {
-        m.color.setHex(k.isBlack ? 0xb91c1c : 0xfca5a5);
+        m.color.setHex(k.isBlack ? 0xef4444 : 0xfecaca);
         m.emissive.setHex(0xdc2626);
-        m.emissiveIntensity = 0.5;
+        m.emissiveIntensity = 0.55;
       } else if (tutor && tutor.mode === 'learn' && tutor.target === k) {
-        m.color.setHex(k.isBlack ? 0x16a34a : 0xbbf7d0);
+        m.color.setHex(k.isBlack ? 0x22c55e : 0xbbf7d0);
         m.emissive.setHex(0x16a34a);
-        m.emissiveIntensity = 0.6;
+        m.emissiveIntensity = 0.55;
       } else {
-        m.color.setHex(k.isBlack ? KEY_DEFAULTS.black : KEY_DEFAULTS.white);
+        m.color.setHex(k.isBlack ? 0xffffff : KEY_DEFAULTS.white);
         m.emissive.setHex(0x000000);
-        m.emissiveIntensity = 1;
+        m.emissiveIntensity = 0;
       }
     }
 
-    // Nota parçacıkları: dokular bir kez üretilir, malzemeler silinirken temizlenir
+    // Nota parçacıkları
     function makeParticleTextures() {
       particleTextures = ['♪', '♫', '♬', '✨'].flatMap(sym => ['#f59e0b', '#38bdf8'].map(color => {
         const c = document.createElement('canvas');
@@ -878,10 +1516,10 @@
       const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: t.tex, transparent: true, opacity: 0.95, depthWrite: false }));
       k.mesh.getWorldPosition(_v1);
       sprite.position.copy(_v1);
-      sprite.position.y += 0.05;
-      sprite.scale.set(0.08, 0.08, 0.08);
+      sprite.position.y += 0.045;
+      sprite.scale.set(0.065, 0.065, 0.065);
       scene.add(sprite);
-      noteParticles.push({ sprite, vy: 0.28 + Math.random() * 0.15, vx: (Math.random() - 0.5) * 0.08, life: 1.0 });
+      noteParticles.push({ sprite, vy: 0.25 + Math.random() * 0.14, vx: (Math.random() - 0.5) * 0.07, life: 1.0 });
     }
 
     function removeParticle(i) {
@@ -892,72 +1530,83 @@
     }
 
     // =========================================================================
-    // 4. GÖZLÜK İÇİ MENÜ (etiketli düğmeler; lazer, çimdik veya parmakla dokunma)
+    // 4. NOTA SEHPASI 3D DOKUNMATİK KONTROL PANELİ (PARMAKLA DOĞRUDAN DOKUNMA)
     // =========================================================================
     const vrButtons = [];
     let statusMesh = null, statusCanvas = null, statusTex = null;
-    const BTN_W = 0.138, BTN_H = 0.044, BTN_D = 0.012;
+    const BTN_W = 0.104, BTN_H = 0.038, BTN_D = 0.012;
 
     function createVRMenu() {
       const panel = new THREE.Group();
-      panel.position.set(0, 0.17, -0.25);
-      panel.rotation.x = -0.3;            // nota sehpası gibi geriye yatık
+      panel.position.set(0, 0.175, -0.205);
+      panel.rotation.x = -0.34;           // Nota sehpası eğimi: işaret parmağıyla rahat dokunuş
       pianoGroup.add(panel);
 
+      const panelW = 6 * BTN_W + 5 * 0.006 + 0.036;
       const bg = new THREE.Mesh(
-        new THREE.BoxGeometry(0.9, 0.215, 0.01),
-        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.4, metalness: 0.5 })
+        new THREE.BoxGeometry(panelW, 0.195, 0.012),
+        new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.38, metalness: 0.45 })
       );
       panel.add(bg);
 
-      // Durum şeridi
+      const rim = new THREE.Mesh(
+        new THREE.BoxGeometry(panelW + 0.006, 0.201, 0.008),
+        new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.4, metalness: 0.6 })
+      );
+      rim.position.z = -0.003;
+      panel.add(rim);
+
       statusCanvas = document.createElement('canvas');
       statusCanvas.width = 1024; statusCanvas.height = 72;
       statusTex = new THREE.CanvasTexture(statusCanvas);
-      statusMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.858, 0.06), new THREE.MeshBasicMaterial({ map: statusTex, transparent: true }));
-      statusMesh.position.set(0, 0.075, 0.007);
+      statusMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(panelW - 0.024, 0.048),
+        new THREE.MeshBasicMaterial({ map: statusTex, transparent: true })
+      );
+      statusMesh.position.set(0, 0.066, 0.008);
       panel.add(statusMesh);
 
+      const songKeys = ['kucuk_yildiz', 'ode_to_joy', 'arkadasim_esek', 'fur_elise'];
       const rows = [
-        // 1. sıra: enstrümanlar + sustain
+        // 1. sıra: 5 Enstrüman + Sustain
         INSTRUMENTS.map(inst => ({
           text: inst.emoji + ' ' + inst.short, action: () => setInstrument(inst.id),
           active: () => activeInstrument === inst.id, color: '#f59e0b'
         })).concat([{ text: '👣 Sustain', action: () => toggleSustain(), active: () => sustainEnabled, color: '#10b981' }]),
-        // 2. sıra: şarkılar (öğren) + dinle + durdur
-        Object.keys(SONGS).map(id => ({
+
+        // 2. sıra: Şarkılar + Dinle + Durdur
+        songKeys.map(id => ({
           text: '🎓 ' + SONGS[id].short, action: () => startTutor(id, 'learn'),
-          active: () => !!tutor && tutor.id === id, color: '#22c55e'
+          active: () => !!tutor && tutor.id === id && tutor.mode === 'learn', color: '#22c55e'
         })).concat([
           { text: '▶ Dinle', action: () => startTutor(lastSongId, 'listen'), active: () => !!tutor && tutor.mode === 'listen', color: '#38bdf8' },
-          { text: '⏹ Durdur', action: () => stopTutor(), active: () => false, color: '#ef4444' }
+          { text: '⏹ Durdur', action: () => { stopTutor(); stopRecorderPlayback(); }, active: () => false, color: '#ef4444' }
         ]),
-        // 3. sıra: konum
+
+        // 3. sıra: Do-Re-Mi + Ergonomik El Konumlandırma
         [
-          { text: '⬆ Yukarı', action: () => movePiano(0, 0.03, 0) },
-          { text: '⬇ Aşağı', action: () => movePiano(0, -0.03, 0) },
-          { text: '↙ Yaklaş', action: () => movePiano(0, 0, 0.04) },
-          { text: '↗ Uzaklaş', action: () => movePiano(0, 0, -0.04) },
+          { text: '🔤 Notasyon', action: () => cycleLabelMode(), active: () => labelMode !== 'off', color: '#a855f7' },
+          { text: '⬆ Yukarı', action: () => movePiano(0, 0.025, 0) },
+          { text: '⬇ Aşağı', action: () => movePiano(0, -0.025, 0) },
+          { text: '↙ Yaklaş', action: () => movePiano(0, 0, 0.035) },
           { text: '🎯 Hizala', action: () => centerPianoToUser() },
           { text: '🔄 Sıfırla', action: () => resetPianoPosition() }
         ]
       ];
 
-      const rowY = [0.032, -0.022, -0.076];
+      const rowY = [0.024, -0.022, -0.068];
+      const totalRowW = 6 * BTN_W + 5 * 0.006;
       rows.forEach((row, r) => {
         row.forEach((def, i) => {
-          const x = -0.429 + BTN_W / 2 + i * (BTN_W + 0.006);
+          const x = -totalRowW / 2 + BTN_W / 2 + i * (BTN_W + 0.006);
           const c = document.createElement('canvas');
-          c.width = 256; c.height = 80;
+          c.width = 256; c.height = 84;
           const tex = new THREE.CanvasTexture(c);
-          const mats = [
-            new THREE.MeshStandardMaterial({ color: 0x1e293b }), new THREE.MeshStandardMaterial({ color: 0x1e293b }),
-            new THREE.MeshStandardMaterial({ color: 0x1e293b }), new THREE.MeshStandardMaterial({ color: 0x1e293b }),
-            new THREE.MeshBasicMaterial({ map: tex }), new THREE.MeshStandardMaterial({ color: 0x1e293b })
-          ];
+          const sideM = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+          const mats = [sideM, sideM, sideM, sideM, new THREE.MeshBasicMaterial({ map: tex }), sideM];
           const mesh = new THREE.Mesh(new THREE.BoxGeometry(BTN_W, BTN_H, BTN_D), mats);
-          mesh.position.set(x, rowY[r], 0.011);
-          mesh.userData = { isButton: true, def, canvas: c, tex, flashUntil: 0, poked: false, lastFire: 0 };
+          mesh.position.set(x, rowY[r], 0.010);
+          mesh.userData = { isButton: true, def, canvas: c, tex, flashUntil: 0, pokedBy: null, lastFire: 0, baseZ: 0.010 };
           panel.add(mesh);
           vrButtons.push(mesh);
           drawVRButton(mesh);
@@ -975,14 +1624,14 @@
       const u = mesh.userData, def = u.def, ctx = u.canvas.getContext('2d');
       const isActive = def.active ? def.active() : false;
       const flash = u.flashUntil > performance.now();
-      ctx.clearRect(0, 0, 256, 80);
+      ctx.clearRect(0, 0, 256, 84);
       ctx.fillStyle = flash ? '#f8fafc' : (isActive ? (def.color || '#38bdf8') : '#1e293b');
-      roundRect(ctx, 2, 2, 252, 76, 14); ctx.fill();
+      roundRect(ctx, 2, 2, 252, 80, 14); ctx.fill();
       ctx.lineWidth = 3; ctx.strokeStyle = isActive ? '#ffffff' : '#475569'; ctx.stroke();
       ctx.fillStyle = (isActive || flash) ? '#0f172a' : '#f1f5f9';
-      ctx.font = 'bold 30px "Plus Jakarta Sans", "Segoe UI Emoji", sans-serif';
+      ctx.font = 'bold 26px "Plus Jakarta Sans", "Segoe UI Emoji", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(def.text, 128, 42, 240);
+      ctx.fillText(def.text, 128, 43, 238);
       u.tex.needsUpdate = true;
     }
 
@@ -990,41 +1639,46 @@
 
     function fireVRButton(mesh) {
       const u = mesh.userData, now = performance.now();
-      if (now - u.lastFire < 350) return;
+      if (now - u.lastFire < 360) return;
       u.lastFire = now;
-      u.flashUntil = now + 150;
+      u.flashUntil = now + 160;
+      mesh.position.z = u.baseZ - 0.004;
+      initAudio();
+      playUiTick(700);
       u.def.action();
       drawVRButton(mesh);
-      setTimeout(() => drawVRButton(mesh), 170);
-      haptic(0.5);
+      setTimeout(() => {
+        mesh.position.z = u.baseZ;
+        drawVRButton(mesh);
+      }, 170);
     }
 
-    function drawStatus(text) {
+    function drawStatus(text, isWarn) {
       if (!statusCanvas) return;
       const ctx = statusCanvas.getContext('2d');
       ctx.clearRect(0, 0, 1024, 72);
-      ctx.fillStyle = tutor ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.07)';
+      ctx.fillStyle = isWarn ? 'rgba(245,158,11,0.28)' : (tutor ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.08)');
       roundRect(ctx, 2, 2, 1020, 68, 16); ctx.fill();
-      ctx.fillStyle = tutor ? '#bbf7d0' : '#e2e8f0';
-      ctx.font = 'bold 34px "Plus Jakarta Sans", "Segoe UI Emoji", sans-serif';
+      ctx.fillStyle = isWarn ? '#fde68a' : (tutor ? '#bbf7d0' : '#f1f5f9');
+      ctx.font = 'bold 31px "Plus Jakarta Sans", "Segoe UI Emoji", sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(text, 512, 38, 1000);
+      ctx.fillText(text, 512, 37, 996);
       statusTex.needsUpdate = true;
     }
 
-    // Piyanoyu kendi yönüne göre taşı (döndürülmüş olsa da doğru yöne gider)
     function movePiano(dx, dy, dz) {
       pianoGroup.translateX(dx);
       pianoGroup.translateZ(dz);
-      const minY = usingFloor ? 0.4 : -1.2, maxY = usingFloor ? 1.5 : 0.5;
+      const minY = usingFloor ? 0.42 : -1.2, maxY = usingFloor ? 1.45 : 0.5;
       pianoGroup.position.y = Math.max(minY, Math.min(maxY, pianoGroup.position.y + dy));
     }
 
     function resetPianoPosition() {
-      pianoGroup.position.set(0, 0.82, -0.42);
+      pianoGroup.position.set(0, 0.78, -0.40);
       pianoGroup.rotation.set(0, 0, 0);
     }
 
+    // Piyanoyu kullanıcının ellerine veya bakış yönüne ergonomik yüksekliğe hizalar
     function centerPianoToUser() {
       if (renderer.xr.isPresenting) {
         const xrCam = renderer.xr.getCamera(camera);
@@ -1035,57 +1689,72 @@
         dir.y = 0;
         if (dir.lengthSq() < 1e-6) dir.set(0, 0, -1);
         dir.normalize();
-        const target = head.clone().addScaledVector(dir, 0.44);
-        target.y = head.y - 0.38;
-        if (usingFloor) target.y = Math.max(0.45, Math.min(1.5, target.y));
+
+        // İki el de görünürse ellerin orta yüksekliğini referans al, değilse ergonomik dirsek yüksekliği
+        let targetY = head.y - 0.42;
+        if (leftGlove.group.visible && rightGlove.group.visible) {
+          const lw = leftGlove.joints['wrist'], rw = rightGlove.joints['wrist'];
+          if (lw && rw && lw.visible && rw.visible) {
+            targetY = (lw.position.y + rw.position.y) * 0.5 - 0.045;
+          }
+        }
+        if (usingFloor) targetY = Math.max(0.46, Math.min(1.38, targetY));
+
+        const target = head.clone().addScaledVector(dir, 0.40);
+        target.y = targetY;
         pianoGroup.position.copy(target);
         pianoGroup.rotation.set(0, Math.atan2(-dir.x, -dir.z), 0);
       } else {
         resetPianoPosition();
+        resetView();
       }
-      haptic(0.6);
+      playUiTick(600);
     }
 
     // =========================================================================
-    // 5. ŞARKI ÖĞRETİCİ (Öğren: yeşil tuşa bas • Dinle: bir kez çalar)
+    // 5. ŞARKI ÖĞRETİCİ (HIZ SEÇENEKLİ, DO-RE-Mİ REHBERLİ)
     // =========================================================================
     let tutor = null;
-    let lastSongId = 'ode_to_joy';
+    let lastSongId = 'arkadasim_esek';
+    let tutorSpeed = 1.0;          // 0.7 (Yavaş), 1.0 (Normal), 1.25 (Hızlı)
     let tutorArrow = null;
 
     function createTutorArrow() {
       const c = document.createElement('canvas');
       c.width = 128; c.height = 128;
       const ctx = c.getContext('2d');
-      ctx.font = 'bold 100px sans-serif'; ctx.fillStyle = '#22c55e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = 'bold 96px sans-serif'; ctx.fillStyle = '#22c55e'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('▼', 64, 64);
       tutorArrow = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false }));
-      tutorArrow.scale.set(0.045, 0.045, 0.045);
+      tutorArrow.scale.set(0.042, 0.042, 0.042);
       tutorArrow.visible = false;
       scene.add(tutorArrow);
     }
 
     function startTutor(id, mode) {
       stopTutor(true);
+      stopRecorderPlayback();
       const song = SONGS[id];
       if (!song) return;
       lastSongId = id;
       initAudio();
       tutor = { id, mode, song, idx: 0, timers: [] };
+
       if (mode === 'listen') {
         let t = 0;
-        song.notes.forEach(([midi, d], i) => {
+        song.notes.forEach(([midi, rawDur], i) => {
+          const d = Math.round(rawDur / tutorSpeed);
           const k = keyByMidi(midi);
           tutor.timers.push(setTimeout(() => {
             if (!tutor || tutor.mode !== 'listen') return;
             tutor.idx = i + 1;
-            pressKey(k, 'demo', 0.85);
+            pressKey(k, 'demo', 0.84);
             updateStatus();
           }, t));
-          tutor.timers.push(setTimeout(() => releaseKey(k, 'demo'), t + Math.min(d * 0.85, 600)));
+          tutor.timers.push(setTimeout(() => releaseKey(k, 'demo'), t + Math.min(d * 0.84, 580)));
           t += d;
         });
-        tutor.timers.push(setTimeout(() => stopTutor(), t + 400));   // bir kez çalar, döngü yok
+        tutor.timers.push(setTimeout(() => stopTutor(), t + 420));
       } else {
         setTutorTarget();
       }
@@ -1110,15 +1779,18 @@
           tutor.target = null;
           refreshKeyVisual(done);
           tutor.finished = true;
-          for (let i = 0; i < 8; i++) setTimeout(() => spawnNoteParticle(keys[Math.floor(Math.random() * keys.length)]), i * 60);
+          for (let i = 0; i < 10; i++) {
+            setTimeout(() => spawnNoteParticle(keys[Math.floor(Math.random() * keys.length)]), i * 55);
+          }
           updateStatus();
-          tutor.timers.push(setTimeout(() => stopTutor(), 2500));
+          tutor.timers.push(setTimeout(() => stopTutor(), 2600));
           return;
         }
         setTutorTarget();
       } else {
-        k.wrongUntil = performance.now() + 250;
-        setTimeout(() => refreshKeyVisual(k), 260);
+        k.wrongUntil = performance.now() + 260;
+        refreshKeyVisual(k);
+        setTimeout(() => refreshKeyVisual(k), 270);
       }
       updateStatus();
     }
@@ -1136,38 +1808,48 @@
     }
 
     // =========================================================================
-    // 6. BEYAZ KONSER ELDİVENİ (el takibi)
+    // 6. BEYAZ KONSER ELDİVENİ & KONTROLCÜSÜZ DOĞAL EL TAKİBİ (10 PARMAK FİZİĞİ)
     // =========================================================================
-    let controller1, controller2, hand1, hand2, leftGlove, rightGlove;
+    let hand1 = null, hand2 = null, leftGlove = null, rightGlove = null;
+    let controllerWarningActive = false;
     const raycaster = new THREE.Raycaster();
-    const tempMatrix = new THREE.Matrix4();
 
     const JOINT_RADII = {
-      'wrist': 0.024,
-      'thumb-metacarpal': 0.016, 'thumb-phalanx-proximal': 0.014, 'thumb-phalanx-distal': 0.013, 'thumb-tip': 0.012,
-      'index-finger-metacarpal': 0.015, 'index-finger-phalanx-proximal': 0.013, 'index-finger-phalanx-intermediate': 0.012, 'index-finger-phalanx-distal': 0.011, 'index-finger-tip': 0.011,
-      'middle-finger-metacarpal': 0.015, 'middle-finger-phalanx-proximal': 0.013, 'middle-finger-phalanx-intermediate': 0.012, 'middle-finger-phalanx-distal': 0.011, 'middle-finger-tip': 0.011,
-      'ring-finger-metacarpal': 0.014, 'ring-finger-phalanx-proximal': 0.012, 'ring-finger-phalanx-intermediate': 0.011, 'ring-finger-phalanx-distal': 0.010, 'ring-finger-tip': 0.010,
-      'pinky-finger-metacarpal': 0.013, 'pinky-finger-phalanx-proximal': 0.011, 'pinky-finger-phalanx-intermediate': 0.010, 'pinky-finger-phalanx-distal': 0.009, 'pinky-finger-tip': 0.009
+      'wrist': 0.022,
+      'thumb-metacarpal': 0.015, 'thumb-phalanx-proximal': 0.013, 'thumb-phalanx-distal': 0.0115, 'thumb-tip': 0.0105,
+      'index-finger-metacarpal': 0.014, 'index-finger-phalanx-proximal': 0.012, 'index-finger-phalanx-intermediate': 0.0105, 'index-finger-phalanx-distal': 0.0095, 'index-finger-tip': 0.009,
+      'middle-finger-metacarpal': 0.014, 'middle-finger-phalanx-proximal': 0.012, 'middle-finger-phalanx-intermediate': 0.0105, 'middle-finger-phalanx-distal': 0.0095, 'middle-finger-tip': 0.009,
+      'ring-finger-metacarpal': 0.013, 'ring-finger-phalanx-proximal': 0.0115, 'ring-finger-phalanx-intermediate': 0.010, 'ring-finger-phalanx-distal': 0.009, 'ring-finger-tip': 0.0085,
+      'pinky-finger-metacarpal': 0.012, 'pinky-finger-phalanx-proximal': 0.010, 'pinky-finger-phalanx-intermediate': 0.009, 'pinky-finger-phalanx-distal': 0.008, 'pinky-finger-tip': 0.008
     };
     const FINGERS = ['thumb', 'index-finger', 'middle-finger', 'ring-finger', 'pinky-finger'];
 
     function createWhiteGlove() {
       const group = new THREE.Group();
       scene.add(group);
-      const fabric = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35, metalness: 0.05, emissive: 0xffffff, emissiveIntensity: 0.12 });
-      const cuffMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.45, metalness: 0.1, emissive: 0xf1f5f9, emissiveIntensity: 0.08 });
-      const jointGeo = new THREE.SphereGeometry(1, 16, 16);
+      const baseFabric = new THREE.MeshStandardMaterial({
+        color: 0xffffff, roughness: 0.34, metalness: 0.05, emissive: 0xe2e8f0, emissiveIntensity: 0.12
+      });
+      const cuffMat = new THREE.MeshStandardMaterial({
+        color: 0xf8fafc, roughness: 0.42, metalness: 0.12, emissive: 0xf59e0b, emissiveIntensity: 0.08
+      });
+      const jointGeo = new THREE.SphereGeometry(1, 14, 14);
       const joints = {};
+      const tipMaterials = {};
+
       for (const name in JOINT_RADII) {
-        const mesh = new THREE.Mesh(jointGeo, fabric);
+        const isTip = name.endsWith('-tip');
+        const mat = isTip ? baseFabric.clone() : baseFabric;
+        if (isTip) tipMaterials[name] = mat;
+        const mesh = new THREE.Mesh(jointGeo, mat);
         const r = JOINT_RADII[name];
         mesh.scale.set(r, r, r);
         mesh.visible = false;
         group.add(mesh);
         joints[name] = mesh;
       }
-      const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.034, 0.038, 0.035, 20), cuffMat);
+
+      const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.030, 0.034, 0.032, 18), cuffMat);
       cuff.visible = false;
       group.add(cuff);
 
@@ -1176,16 +1858,24 @@
         const chain = f === 'thumb'
           ? ['thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip']
           : [f + '-metacarpal', f + '-phalanx-proximal', f + '-phalanx-intermediate', f + '-phalanx-distal', f + '-tip'];
-        for (let i = 0; i < chain.length - 1; i++) segDefs.push([chain[i], chain[i + 1], JOINT_RADII[chain[i]] * 0.92, JOINT_RADII[chain[i + 1]] * 0.92]);
-        segDefs.push(['wrist', chain[0], 0.019, JOINT_RADII[chain[0]] * 0.92]);
+        for (let i = 0; i < chain.length - 1; i++) {
+          segDefs.push([chain[i], chain[i + 1], JOINT_RADII[chain[i]] * 0.90, JOINT_RADII[chain[i + 1]] * 0.90]);
+        }
+        segDefs.push(['wrist', chain[0], 0.017, JOINT_RADII[chain[0]] * 0.92]);
       });
+      // Avuç içi tarak kemiklerini birbirine bağlayan eldiven köprüleri
+      const palmChain = ['index-finger-metacarpal', 'middle-finger-metacarpal', 'ring-finger-metacarpal', 'pinky-finger-metacarpal'];
+      for (let i = 0; i < palmChain.length - 1; i++) {
+        segDefs.push([palmChain[i], palmChain[i + 1], 0.012, 0.012]);
+      }
+
       const segments = segDefs.map(s => {
-        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(s[3], s[2], 1, 14), fabric);
+        const mesh = new THREE.Mesh(new THREE.CylinderGeometry(s[3], s[2], 1, 12), baseFabric);
         mesh.visible = false;
         group.add(mesh);
         return { from: s[0], to: s[1], mesh };
       });
-      return { group, joints, segments, cuff };
+      return { group, joints, segments, cuff, tipMaterials };
     }
 
     function setupWhiteGloves() {
@@ -1193,36 +1883,86 @@
       rightGlove = createWhiteGlove();
     }
 
+    // Kontrolcü modelleri, lazer ışınları ve tetik tuşları TAMAMEN KALDIRILDI; yalnızca doğal el takibi kullanılır
+    function setupWebXRHandSystem() {
+      hand1 = renderer.xr.getHand(0);
+      hand2 = renderer.xr.getHand(1);
+      scene.add(hand1);
+      scene.add(hand2);
+
+      renderer.xr.addEventListener('sessionstart', () => {
+        initAudio();
+        stopWebcamHandTracking();
+        hallEnvironmentGroup.visible = !isARSession;
+        if (standGroup) standGroup.visible = !isARSession;
+        scene.background = isARSession ? null : new THREE.Color(0x070a12);
+        setTimeout(centerPianoToUser, 450);
+      });
+
+      renderer.xr.addEventListener('sessionend', () => {
+        isARSession = false;
+        controllerWarningActive = false;
+        hallEnvironmentGroup.visible = true;
+        if (standGroup) standGroup.visible = true;
+        scene.background = new THREE.Color(0x070a12);
+        leftGlove.group.visible = false;
+        rightGlove.group.visible = false;
+        releaseAllKeys();
+        resetPianoPosition();
+        resetView();
+        updateStatus();
+      });
+    }
+
     const _p1 = new THREE.Vector3(), _p2 = new THREE.Vector3(), _mid = new THREE.Vector3(), _dir = new THREE.Vector3();
     const _up = new THREE.Vector3(0, 1, 0);
 
-    function updateWhiteGlove(glove, xrHand, handTag, touchPoints) {
-      if (!xrHand || !xrHand.joints) { glove.group.visible = false; return; }
+    // Eklem haritasından (jointPoses: Map/Object name -> {x,y,z,radius}) eldiveni günceller ve 5 parmak ucunu toplar
+    function applyPoseMapToGlove(glove, poseMap, handTag, touchPoints) {
+      if (!poseMap) { glove.group.visible = false; return false; }
       let tracked = false;
       for (const name in glove.joints) {
-        const j = xrHand.joints[name];
+        const jp = poseMap[name];
         const mesh = glove.joints[name];
-        if (j && j.visible) {
-          j.getWorldPosition(_p1);
-          mesh.position.copy(_p1);
+        if (jp) {
+          mesh.position.set(jp.x, jp.y, jp.z);
+          const r = jp.radius || JOINT_RADII[name];
+          mesh.scale.set(r, r, r);
           mesh.visible = true;
           tracked = true;
-          if (name.endsWith('-tip')) {
-            touchPoints.push({ id: handTag + ':' + name, world: _p1.clone(), radius: JOINT_RADII[name], source: null });
-          }
         } else {
           mesh.visible = false;
         }
       }
       glove.group.visible = tracked;
-      if (!tracked) return;
+      if (!tracked) return false;
+
+      // Parmak uçları: başparmakta yan-alt yastık noktasını hesaba kat
+      FINGERS.forEach(f => {
+        const tipName = f + '-tip';
+        const tip = poseMap[tipName];
+        if (!tip) return;
+        const worldPos = new THREE.Vector3(tip.x, tip.y, tip.z);
+        if (f === 'thumb' && poseMap['thumb-phalanx-distal']) {
+          const dist = poseMap['thumb-phalanx-distal'];
+          worldPos.lerp(new THREE.Vector3(dist.x, dist.y, dist.z), 0.22);
+        }
+        touchPoints.push({
+          id: handTag + ':' + tipName,
+          tipName,
+          glove,
+          isIndex: f === 'index-finger',
+          world: worldPos,
+          radius: tip.radius || JOINT_RADII[tipName]
+        });
+      });
 
       glove.segments.forEach(seg => {
-        const j1 = xrHand.joints[seg.from], j2 = xrHand.joints[seg.to];
+        const j1 = glove.joints[seg.from], j2 = glove.joints[seg.to];
         if (j1 && j2 && j1.visible && j2.visible) {
-          j1.getWorldPosition(_p1); j2.getWorldPosition(_p2);
+          _p1.copy(j1.position); _p2.copy(j2.position);
           const dist = _p1.distanceTo(_p2);
-          if (dist > 0.005 && dist < 0.25) {
+          if (dist > 0.004 && dist < 0.24) {
             seg.mesh.position.copy(_mid.addVectors(_p1, _p2).multiplyScalar(0.5));
             seg.mesh.quaternion.setFromUnitVectors(_up, _dir.subVectors(_p2, _p1).normalize());
             seg.mesh.scale.set(1, dist, 1);
@@ -1233,251 +1973,526 @@
         seg.mesh.visible = false;
       });
 
-      const wrist = xrHand.joints['wrist'], mm = xrHand.joints['middle-finger-metacarpal'];
+      const wrist = glove.joints['wrist'], mm = glove.joints['middle-finger-metacarpal'];
       if (wrist && mm && wrist.visible && mm.visible) {
-        wrist.getWorldPosition(_p1); mm.getWorldPosition(_p2);
+        _p1.copy(wrist.position); _p2.copy(mm.position);
         _dir.subVectors(_p2, _p1).normalize();
-        glove.cuff.position.copy(_mid.copy(_p1).addScaledVector(_dir, -0.02));
+        glove.cuff.position.copy(_mid.copy(_p1).addScaledVector(_dir, -0.018));
         glove.cuff.quaternion.setFromUnitVectors(_up, _dir);
         glove.cuff.visible = true;
       } else {
         glove.cuff.visible = false;
       }
+      return true;
     }
 
-    // =========================================================================
-    // 7. WEBXR KONTROLCÜLER, DOKUNMA, LAZER
-    // =========================================================================
-    function setupWebXRControllers() {
-      [0, 1].forEach(i => {
-        const ctrl = renderer.xr.getController(i);
-        ctrl.userData.index = i;
-        ctrl.addEventListener('connected', e => {
-          ctrl.userData.inputSource = e.data;
-          ctrl.userData.isHand = !!e.data.hand;
-          const sphere = ctrl.getObjectByName('touchSphere');
-          if (sphere) sphere.visible = !ctrl.userData.isHand;   // el takibinde hayali dokunma noktası yok
-        });
-        ctrl.addEventListener('disconnected', () => {
-          if (ctrl.userData.laserKey) { releaseKey(ctrl.userData.laserKey, 'laser' + i); ctrl.userData.laserKey = null; }
-          ctrl.userData.inputSource = null;
-        });
-        ctrl.addEventListener('selectstart', onSelectStart);
-        ctrl.addEventListener('selectend', onSelectEnd);
-        ctrl.addEventListener('squeezestart', () => toggleSustain());
-        addLaserPointer(ctrl, i === 0 ? 0x38bdf8 : 0xf59e0b);
-        scene.add(ctrl);
-        if (i === 0) controller1 = ctrl; else controller2 = ctrl;
-      });
-
-      hand1 = renderer.xr.getHand(0); scene.add(hand1);
-      hand2 = renderer.xr.getHand(1); scene.add(hand2);
-
-      renderer.xr.addEventListener('sessionstart', () => {
-        initAudio();
-        setTimeout(centerPianoToUser, 500);
-      });
-      renderer.xr.addEventListener('sessionend', () => {
-        releaseAllKeys();
-        resetPianoPosition();
-        resetView();
-      });
-    }
-
-    function addLaserPointer(ctrl, color) {
-      const line = new THREE.Line(
-        new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1.5)]),
-        new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.65 })
-      );
-      line.name = 'laserLine';
-      ctrl.add(line);
-      const sphere = new THREE.Mesh(
-        new THREE.SphereGeometry(0.016, 16, 16),
-        new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.4, roughness: 0.3 })
-      );
-      sphere.name = 'touchSphere';
-      sphere.position.set(0, 0, -0.04);
-      ctrl.add(sphere);
-    }
-
-    // Titreşim yalnızca ilgili kontrolcüde (el takibinde titreşim yoktur)
-    function haptic(intensity, inputSource) {
-      try {
-        const sources = inputSource ? [inputSource] : [];
-        sources.forEach(src => {
-          const act = src && src.gamepad && src.gamepad.hapticActuators && src.gamepad.hapticActuators[0];
-          if (act) act.pulse(intensity, 40);
-        });
-      } catch (e) {}
-    }
-
-    function setRayFromController(ctrl) {
-      ctrl.updateMatrixWorld(true);
-      tempMatrix.identity().extractRotation(ctrl.matrixWorld);
-      raycaster.ray.origin.setFromMatrixPosition(ctrl.matrixWorld);
-      raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
-    }
-
-    function onSelectStart(e) {
-      initAudio();
-      const ctrl = e.target;
-      setRayFromController(ctrl);
-      const btnHit = raycaster.intersectObjects(vrButtons, false)[0];
-      if (btnHit) { fireVRButton(btnHit.object); haptic(0.5, ctrl.userData.inputSource); return; }
-      const keyHit = raycaster.intersectObjects(keys.map(k => k.mesh), false)[0];
-      if (keyHit) {
-        const k = keyMeshMap.get(keyHit.object);
-        ctrl.userData.laserKey = k;               // bırakırken başka yere bakılsa da doğru tuş bırakılır
-        pressKey(k, 'laser' + ctrl.userData.index, 0.85);
-        haptic(0.8, ctrl.userData.inputSource);
-      }
-    }
-
-    function onSelectEnd(e) {
-      const ctrl = e.target;
-      if (ctrl.userData.laserKey) {
-        releaseKey(ctrl.userData.laserKey, 'laser' + ctrl.userData.index);
-        ctrl.userData.laserKey = null;
-      }
-    }
-
-    // --- Doğrudan dokunma (parmak uçları ve kontrolcü küreleri) ---
-    const PRESS_MARGIN = 0.003;     // tuş yüzeyinin en fazla 3 mm üstünde basılmış sayılır
-    const RELEASE_MARGIN = 0.012;   // bırakmak için 12 mm yukarı kalkmak gerekir (titreme olmaz)
-    const SIDE_MARGIN = 0.002;
-    const prevTip = new Map();      // id -> { y, t }
-    const _local = new THREE.Vector3();
-
-    function collectTouchPoints() {
+    // WebXR oturumunda doğrudan XRFrame.getJointPose ile en yüksek doğrulukta el takibi okur
+    function collectXRHandTouchPoints(xrFrame) {
       const pts = [];
-      updateWhiteGlove(leftGlove, hand1, 'h0', pts);
-      updateWhiteGlove(rightGlove, hand2, 'h1', pts);
-      [controller1, controller2].forEach(ctrl => {
-        if (!ctrl || !ctrl.visible || ctrl.userData.isHand || !ctrl.userData.inputSource) return;
-        const sphere = ctrl.getObjectByName('touchSphere');
-        if (!sphere) return;
-        const p = new THREE.Vector3();
-        sphere.getWorldPosition(p);
-        pts.push({ id: 'c' + ctrl.userData.index, world: p, radius: 0.016, source: ctrl.userData.inputSource });
-      });
+      const session = renderer.xr.getSession();
+      const refSpace = renderer.xr.getReferenceSpace();
+      let leftMap = null, rightMap = null;
+      let sawControllerWithoutHand = false;
+
+      if (session && xrFrame && refSpace && session.inputSources) {
+        for (const src of session.inputSources) {
+          if (src.hand && typeof xrFrame.getJointPose === 'function') {
+            const map = {};
+            for (const [jointName, jointSpace] of src.hand.entries()) {
+              const pose = xrFrame.getJointPose(jointSpace, refSpace);
+              if (pose) {
+                const p = pose.transform.position;
+                map[jointName] = { x: p.x, y: p.y, z: p.z, radius: pose.radius || JOINT_RADII[jointName] };
+              }
+            }
+            if (src.handedness === 'left') leftMap = map;
+            else rightMap = map;
+          } else if (src.targetRayMode === 'tracked-pointer' && !src.hand) {
+            sawControllerWithoutHand = true;
+          }
+        }
+      }
+
+      // Yedek: Three.js xrHand.joints nesneleri (emülatör ve birim test uyumluluğu)
+      if (!leftMap && hand1 && hand1.joints && Object.keys(hand1.joints).length) {
+        const m = {};
+        for (const name in JOINT_RADII) {
+          const j = hand1.joints[name];
+          if (j && j.visible) { j.getWorldPosition(_p1); m[name] = { x: _p1.x, y: _p1.y, z: _p1.z, radius: j.jointRadius || JOINT_RADII[name] }; }
+        }
+        if (Object.keys(m).length) leftMap = m;
+      }
+      if (!rightMap && hand2 && hand2.joints && Object.keys(hand2.joints).length) {
+        const m = {};
+        for (const name in JOINT_RADII) {
+          const j = hand2.joints[name];
+          if (j && j.visible) { j.getWorldPosition(_p1); m[name] = { x: _p1.x, y: _p1.y, z: _p1.z, radius: j.jointRadius || JOINT_RADII[name] }; }
+        }
+        if (Object.keys(m).length) rightMap = m;
+      }
+
+      const lOk = applyPoseMapToGlove(leftGlove, leftMap, 'L', pts);
+      const rOk = applyPoseMapToGlove(rightGlove, rightMap, 'R', pts);
+
+      const warnNow = !lOk && !rOk && sawControllerWithoutHand;
+      if (warnNow !== controllerWarningActive) {
+        controllerWarningActive = warnNow;
+        updateStatus();
+      }
       return pts;
     }
 
-    function keyContains(k, p, sticky) {
-      const b = k.localBox;
-      const side = sticky ? SIDE_MARGIN + 0.003 : SIDE_MARGIN;
-      if (p.x < b.min.x - side || p.x > b.max.x + side) return false;
-      if (p.z < b.min.z - side || p.z > b.max.z + side) return false;
-      const top = b.max.y + (sticky ? RELEASE_MARGIN : PRESS_MARGIN);
-      return p.y <= top && p.y >= b.min.y - 0.035;
+    // --- 10-Parmak Bağımsız Mekanik Piyano Eylemi (processDirectTouch) ---
+    // Her parmak kendi durumunu tutar: yan tuşa kayma / siyah tuşa yandan çarpma hatalarını önler
+    const fingerStates = new Map();     // fingerId -> { activeKey, prevY, prevZ, prevT, smoothSpeed }
+    const _local = new THREE.Vector3();
+    const _btnLocal = new THREE.Vector3();
+
+    function findCandidateKeyForFinger(localPos, currentKey, prevY) {
+      // 1. Parmak zaten bir tuşu basılı tutuyorsa, bırakma toleransı (hysteresis) ile önce onu kontrol et
+      if (currentKey) {
+        const b = currentKey.localBox;
+        const travel = currentKey.isBlack ? 0.0095 : 0.0115;
+        const releaseTop = b.max.y - travel * 0.16;
+        const xMargin = 0.0038;
+        const zMargin = 0.006;
+        if (
+          localPos.x >= b.min.x - xMargin && localPos.x <= b.max.x + xMargin &&
+          localPos.z >= b.min.z - zMargin && localPos.z <= b.max.z + zMargin &&
+          localPos.y <= releaseTop && localPos.y >= b.min.y - 0.032
+        ) {
+          return currentKey;
+        }
+      }
+
+      // 2. Yeni tuş vuruşu: parmak tuşun üst yüzeyinden aşağı doğru girmeli (yandan/alttan çarpmaları yoksay)
+      for (const k of keysHitOrder) {
+        const b = k.localBox;
+        const xPad = k.isBlack ? 0.0012 : -0.0005;
+        if (localPos.x < b.min.x - xPad || localPos.x > b.max.x + xPad) continue;
+        if (localPos.z < b.min.z - 0.002 || localPos.z > b.max.z + 0.003) continue;
+
+        // Siyah tuşların arka bölgesindeyken beyaz tuşları kontrol etmeden önce:
+        // Eğer parmak zaten beyaz tuş seviyesine inmişse (prevY çok aşağıdaysa), siyah tuşa yandan çarpmasını engelle
+        if (k.isBlack && prevY !== undefined && prevY < b.max.y - 0.0065) continue;
+
+        const travel = k.isBlack ? 0.0095 : 0.0115;
+        const strikeTop = b.max.y - travel * 0.34;
+        if (localPos.y <= strikeTop && localPos.y >= b.min.y - 0.026) {
+          if (prevY === undefined || prevY >= b.max.y - 0.0085) {
+            return k;
+          }
+        }
+      }
+      return null;
+    }
+
+    function updateAnalogKeyDepression(localPos) {
+      // Parmağın tuş yüzeyine temas ettiği anda (henüz ses eşiğine inmeden) tuşun hafifçe esnemesini sağlar
+      for (const k of keysHitOrder) {
+        const b = k.localBox;
+        if (localPos.x < b.min.x || localPos.x > b.max.x) continue;
+        if (localPos.z < b.min.z || localPos.z > b.max.z) continue;
+        if (localPos.y <= b.max.y + 0.002 && localPos.y >= b.min.y - 0.02) {
+          const travel = k.isBlack ? 0.0095 : 0.0115;
+          const depth = Math.max(0, Math.min(1, (b.max.y - localPos.y) / travel));
+          k.analogDepth = Math.max(k.analogDepth, depth);
+          break;
+        }
+      }
     }
 
     function processDirectTouch(pts, nowSec) {
-      const touched = new Map();      // key -> { speed, source }
       pianoGroup.updateMatrixWorld(true);
+      keys.forEach(k => { k.analogDepth = 0; });
+
+      // Tüm parmak ucu parlamalarını sıfırla
+      [leftGlove, rightGlove].forEach(g => {
+        if (!g) return;
+        for (const t in g.tipMaterials) {
+          g.tipMaterials[t].emissive.setHex(0xe2e8f0);
+          g.tipMaterials[t].emissiveIntensity = 0.12;
+        }
+      });
+
       const seen = new Set();
 
       pts.forEach(tp => {
-        // Parmak ucunu piyanonun kendi koordinatlarına çevir (piyano dönse de tuşlar doğru eşleşir)
+        const id = tp.id;
+        seen.add(id);
+
         _local.copy(tp.world);
         pianoGroup.worldToLocal(_local);
-        _local.y -= tp.radius * 0.6;     // parmak ucunun alt yüzeyi
+        const padRadius = tp.radius || 0.009;
+        _local.y -= padRadius * 0.62;
 
-        const prev = prevTip.get(tp.id);
-        let downSpeed = 0;
-        if (prev && nowSec > prev.t) downSpeed = Math.max(0, (prev.y - _local.y) / (nowSec - prev.t));
-        prevTip.set(tp.id, { y: _local.y, t: nowSec });
-        seen.add(tp.id);
+        let st = fingerStates.get(id);
+        if (!st) {
+          st = { activeKey: null, prevY: _local.y + 0.012, prevT: nowSec, smoothSpeed: 0.25 };
+          fingerStates.set(id, st);
+        }
 
-        for (const k of keysHitOrder) {
-          if (keyContains(k, _local, k.touchSticky)) {
-            if (!touched.has(k)) touched.set(k, { speed: downSpeed, source: tp.source });
-            break;
+        const dt = nowSec - st.prevT;
+        if (dt > 0.0005 && dt < 0.25) {
+          const instSpeed = Math.max(0, (st.prevY - _local.y) / dt);
+          st.smoothSpeed = st.smoothSpeed * 0.35 + instSpeed * 0.65;
+        }
+
+        updateAnalogKeyDepression(_local);
+
+        const nextKey = findCandidateKeyForFinger(_local, st.activeKey, st.prevY);
+        const sourceTag = 'finger:' + id;
+
+        if (nextKey !== st.activeKey) {
+          if (st.activeKey) {
+            st.activeKey.touchSticky = false;
+            releaseKey(st.activeKey, sourceTag);
+          }
+          st.activeKey = nextKey;
+          if (nextKey) {
+            nextKey.touchSticky = true;
+            const vel = Math.max(0.28, Math.min(1.0, 0.28 + st.smoothSpeed * 1.15));
+            pressKey(nextKey, sourceTag, vel);
           }
         }
 
-        // Gözlük içi menü düğmelerine parmakla dokunma
-        for (const btn of vrButtons) {
-          const lp = btn.worldToLocal(tp.world.clone());
-          const inside = Math.abs(lp.x) < BTN_W / 2 && Math.abs(lp.y) < BTN_H / 2 && lp.z < BTN_D / 2 + 0.006 && lp.z > -0.03;
-          if (inside && !btn.userData.poked) { btn.userData.poked = tp.id; fireVRButton(btn); }
-          else if (!inside && btn.userData.poked === tp.id) btn.userData.poked = false;
+        // Aktif tuşa basan parmak ucunu altın/camgöbeği parlat
+        if (st.activeKey && tp.glove && tp.tipName && tp.glove.tipMaterials[tp.tipName]) {
+          const mat = tp.glove.tipMaterials[tp.tipName];
+          mat.emissive.setHex(st.activeKey.isBlack ? 0x38bdf8 : 0xf59e0b);
+          mat.emissiveIntensity = 0.75;
         }
-      });
-      for (const id of prevTip.keys()) if (!seen.has(id)) prevTip.delete(id);
 
-      keys.forEach(k => {
-        const hit = touched.get(k);
-        if (hit && !k.touchSticky) {
-          k.touchSticky = true;
-          // Vuruş hızı → ses şiddeti (yavaş basış = piyano, hızlı = forte)
-          const vel = Math.max(0.3, Math.min(1.0, 0.3 + hit.speed * 0.9));
-          pressKey(k, 'touch', vel);
-          haptic(0.75, hit.source);
-        } else if (!hit && k.touchSticky) {
-          k.touchSticky = false;
-          releaseKey(k, 'touch');
-        }
-      });
-    }
+        st.prevY = _local.y;
+        st.prevT = nowSec;
 
-    // =========================================================================
-    // 8. VR DÜĞMESİ
-    // =========================================================================
-    function setupVRButton() {
-      const btn = document.getElementById('custom-vr-button');
-      const txt = document.getElementById('vr-btn-text');
-      const disable = (msg) => { txt.textContent = msg; btn.classList.add('disabled'); btn.onclick = null; };
-
-      if (!('xr' in navigator)) { disable('WEBXR DESTEKLENMİYOR'); return; }
-
-      navigator.xr.isSessionSupported('immersive-vr').then(supported => {
-        if (!supported) { disable('VR BAŞLIK BULUNAMADI'); return; }
-        let current = null;
-
-        async function begin() {
-          let session;
-          try {
-            session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] });
-          } catch (e) {
-            txt.textContent = 'VR BAŞLATILAMADI – TEKRAR DENE';
-            return;
-          }
-          try {
-            usingFloor = true;
-            renderer.xr.setReferenceSpaceType('local-floor');
-            await renderer.xr.setSession(session);
-          } catch (e) {
-            // Zemin referansı yoksa 'local' ile devam et
-            try {
-              usingFloor = false;
-              renderer.xr.setReferenceSpaceType('local');
-              await renderer.xr.setSession(session);
-            } catch (e2) {
-              try { session.end(); } catch (e3) {}
-              txt.textContent = 'VR BAŞLATILAMADI – TEKRAR DENE';
-              return;
+        // 3D Nota Sehpası Menü Düğmeleri: yalnızca işaret parmağı (veya tekil test noktası) ile dokunma
+        if (tp.isIndex !== false) {
+          for (const btn of vrButtons) {
+            _btnLocal.copy(tp.world);
+            btn.worldToLocal(_btnLocal);
+            const inside =
+              Math.abs(_btnLocal.x) < BTN_W * 0.48 &&
+              Math.abs(_btnLocal.y) < BTN_H * 0.48 &&
+              _btnLocal.z < BTN_D / 2 + 0.008 &&
+              _btnLocal.z > -0.026;
+            if (inside && !btn.userData.pokedBy) {
+              btn.userData.pokedBy = id;
+              fireVRButton(btn);
+            } else if (!inside && btn.userData.pokedBy === id) {
+              btn.userData.pokedBy = null;
             }
           }
-          current = session;
-          txt.textContent = "VR'DAN ÇIK";
-          session.addEventListener('end', () => {
-            current = null;
-            txt.textContent = "VR'A GİR (QUEST 3)";
-          });
         }
+      });
 
-        btn.onclick = () => {
-          initAudio();
-          if (current) current.end(); else begin();
-        };
-      }).catch(() => disable('VR KONTROLÜ BAŞARISIZ'));
+      // Görüşten çıkan parmakların bastığı tuşları güvenle bırak
+      for (const [id, st] of fingerStates.entries()) {
+        if (!seen.has(id)) {
+          if (st.activeKey) {
+            st.activeKey.touchSticky = false;
+            releaseKey(st.activeKey, 'finger:' + id);
+          }
+          vrButtons.forEach(btn => { if (btn.userData.pokedBy === id) btn.userData.pokedBy = null; });
+          fingerStates.delete(id);
+        }
+      }
     }
 
     // =========================================================================
-    // 9. MASAÜSTÜ, TABLET VE KLAVYE
+    // 7. WEB KAMERASI İLE EL TAKİBİ (MASAÜSTÜ / DİZÜSTÜ / AKILLI TAHTA İÇİN)
     // =========================================================================
-    const pointerKeys = new Map();     // pointerId -> tuş (çoklu dokunma = akor)
+    let camState = { active: false, loading: false, hands: null, stream: null, rafId: 0, latestPts: [], prevTipY: new Map() };
+
+    const MP_CONNECTIONS = [
+      [0,1],[1,2],[2,3],[3,4],
+      [0,5],[5,6],[6,7],[7,8],
+      [0,9],[9,10],[10,11],[11,12],
+      [0,13],[13,14],[14,15],[15,16],
+      [0,17],[17,18],[18,19],[19,20],
+      [5,9],[9,13],[13,17]
+    ];
+
+    const MP_INDEX_TO_JOINT = [
+      'wrist',
+      'thumb-metacarpal', 'thumb-phalanx-proximal', 'thumb-phalanx-distal', 'thumb-tip',
+      'index-finger-metacarpal', 'index-finger-phalanx-proximal', 'index-finger-phalanx-intermediate', 'index-finger-phalanx-distal', 'index-finger-tip',
+      'middle-finger-metacarpal', 'middle-finger-phalanx-proximal', 'middle-finger-phalanx-intermediate', 'middle-finger-phalanx-distal', 'middle-finger-tip',
+      'ring-finger-metacarpal', 'ring-finger-phalanx-proximal', 'ring-finger-phalanx-intermediate', 'ring-finger-phalanx-distal', 'ring-finger-tip',
+      'pinky-finger-metacarpal', 'pinky-finger-phalanx-proximal', 'pinky-finger-phalanx-intermediate', 'pinky-finger-phalanx-distal', 'pinky-finger-tip'
+    ];
+
+    const TIP_MCP_PAIRS = { 4: 2, 8: 5, 12: 9, 16: 13, 20: 17 };
+
+    async function toggleWebcamHandTracking() {
+      if (camState.active || camState.loading) {
+        stopWebcamHandTracking();
+        return;
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showToast('⚠️', 'Bu tarayıcıda kamera erişimi desteklenmiyor.');
+        return;
+      }
+
+      initAudio();
+      camState.loading = true;
+      updateHudButtons();
+      showToast('📷', 'Kamera el takibi modülü yükleniyor...');
+
+      try {
+        if (typeof window.Hands === 'undefined') {
+          const ok = await window.__loadExternalScriptFirst([
+            'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js',
+            'https://unpkg.com/@mediapipe/hands/hands.js'
+          ]);
+          if (!ok || typeof window.Hands === 'undefined') {
+            throw new Error('MediaPipe yüklenemedi');
+          }
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+          audio: false
+        });
+        camState.stream = stream;
+
+        const video = document.getElementById('cam-video');
+        video.srcObject = stream;
+        await video.play();
+
+        if (!camState.hands) {
+          const hands = new window.Hands({
+            locateFile: file => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + file
+          });
+          hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.62,
+            minTrackingConfidence: 0.58
+          });
+          hands.onResults(onWebcamHandResults);
+          camState.hands = hands;
+        }
+
+        camState.active = true;
+        camState.loading = false;
+        document.getElementById('cam-preview-card').classList.add('show');
+        updateHudButtons();
+        showToast('✋', 'Kamera El Takibi Aktif: Ellerinizi kameraya gösterip parmaklarınızı aşağı bükerek tuşlara basın.');
+
+        const pump = async () => {
+          if (!camState.active) return;
+          if (video.readyState >= 2 && camState.hands) {
+            try { await camState.hands.send({ image: video }); } catch (e) {}
+          }
+          camState.rafId = requestAnimationFrame(pump);
+        };
+        camState.rafId = requestAnimationFrame(pump);
+      } catch (err) {
+        camState.loading = false;
+        stopWebcamHandTracking();
+        showToast('⚠️', 'Kamera açılamadı veya izin verilmedi. Kamera iznini kontrol edin.');
+      }
+    }
+
+    function stopWebcamHandTracking() {
+      camState.active = false;
+      camState.loading = false;
+      camState.latestPts = [];
+      camState.prevTipY.clear();
+      if (camState.rafId) { cancelAnimationFrame(camState.rafId); camState.rafId = 0; }
+      if (camState.stream) {
+        camState.stream.getTracks().forEach(t => t.stop());
+        camState.stream = null;
+      }
+      const card = document.getElementById('cam-preview-card');
+      if (card) card.classList.remove('show');
+      if (!renderer.xr.isPresenting) {
+        leftGlove.group.visible = false;
+        rightGlove.group.visible = false;
+        releaseAllKeys();
+      }
+      updateHudButtons();
+    }
+
+    function onWebcamHandResults(results) {
+      if (!camState.active || renderer.xr.isPresenting) return;
+      const canvas = document.getElementById('cam-overlay');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Tuş vuruş bölgesi rehber çizgisi
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height * 0.62);
+      ctx.lineTo(canvas.width, canvas.height * 0.62);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const multiLandmarks = results.multiHandLandmarks || [];
+      const multiHandedness = results.multiHandedness || [];
+
+      let leftMap = null, rightMap = null;
+      pianoGroup.updateMatrixWorld(true);
+      const halfSpan = totalKeysWidth * 0.52;
+
+      multiLandmarks.forEach((lm, idx) => {
+        // Önizleme iskelet çizimi
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2;
+        MP_CONNECTIONS.forEach(([a, b]) => {
+          ctx.beginPath();
+          ctx.moveTo(lm[a].x * canvas.width, lm[a].y * canvas.height);
+          ctx.lineTo(lm[b].x * canvas.width, lm[b].y * canvas.height);
+          ctx.stroke();
+        });
+        [4, 8, 12, 16, 20].forEach(ti => {
+          ctx.fillStyle = '#fbbf24';
+          ctx.beginPath();
+          ctx.arc(lm[ti].x * canvas.width, lm[ti].y * canvas.height, 4, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Aynalanmış görüntüde (1 - x) yatay tuş eksenine eşlenir
+        const poseMap = {};
+        for (let j = 0; j < 21; j++) {
+          const jName = MP_INDEX_TO_JOINT[j];
+          const mirroredX = 1 - lm[j].x;
+          const localX = (mirroredX - 0.5) * 2 * halfSpan;
+
+          // Parmak bükülmesi ve dikey konum ile tuş basma yüksekliği
+          let localY = WHITE_H / 2 + 0.030 - (lm[j].y - 0.48) * 0.11;
+          if (TIP_MCP_PAIRS[j] !== undefined) {
+            const mcp = lm[TIP_MCP_PAIRS[j]];
+            const flexDown = (lm[j].y - mcp.y);  // parmak aşağı kıvrıldığında pozitif artar
+            localY = WHITE_H / 2 + 0.018 - flexDown * 0.16 - Math.max(0, lm[j].y - 0.58) * 0.07;
+          }
+          const localZ = 0.028 + Math.max(-0.08, Math.min(0.04, lm[j].z * 0.22));
+          const wp = new THREE.Vector3(localX, localY, localZ);
+          pianoGroup.localToWorld(wp);
+          poseMap[jName] = { x: wp.x, y: wp.y, z: wp.z, radius: JOINT_RADII[jName] };
+        }
+
+        // MediaPipe aynasız kamerada Left/Right ters etiketler; ekranın solundaki eli sol eldivene ata
+        const rawLabel = multiHandedness[idx] && multiHandedness[idx].label;
+        const isUserLeft = rawLabel ? (rawLabel === 'Right') : ((1 - lm[0].x) < 0.5);
+        if (isUserLeft && !leftMap) leftMap = poseMap;
+        else if (!rightMap) rightMap = poseMap;
+        else leftMap = poseMap;
+      });
+
+      const pts = [];
+      applyPoseMapToGlove(leftGlove, leftMap, 'camL', pts);
+      applyPoseMapToGlove(rightGlove, rightMap, 'camR', pts);
+      camState.latestPts = pts;
+
+      const lbl = document.getElementById('cam-status-lbl');
+      if (lbl) {
+        lbl.textContent = multiLandmarks.length
+          ? ('✋ ' + multiLandmarks.length + ' el izleniyor • Parmakla çalın')
+          : '✋ Ellerinizi kameraya gösterin';
+      }
+    }
+
+    // =========================================================================
+    // 8. WEBXR BAŞLATMA DÜĞMELERİ (VR 360 SALON + QUEST 3 KARMA GERÇEKLİK AR)
+    // =========================================================================
+    function showToast(icon, message) {
+      const toast = document.getElementById('vr-hint-toast');
+      const ic = document.getElementById('toast-icon');
+      const tx = document.getElementById('toast-text');
+      if (!toast || !tx) return;
+      if (ic) ic.textContent = icon;
+      tx.textContent = message;
+      toast.classList.remove('hide');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.classList.add('hide'), 6000);
+    }
+
+    function setupXRButtons() {
+      const vrBtn = document.getElementById('custom-vr-button');
+      const vrTxt = document.getElementById('vr-btn-text');
+      const arBtn = document.getElementById('custom-ar-button');
+      const arTxt = document.getElementById('ar-btn-text');
+
+      const setDesktopFallbackToast = () => {
+        showToast('🎹', 'Fare/dokunmatik, klavye veya "✋ Kamera ile El Çal" düğmesiyle ellerinizle çalabilirsiniz.');
+      };
+
+      const disableVR = (msg) => {
+        vrTxt.textContent = msg;
+        vrBtn.classList.add('disabled');
+        vrBtn.onclick = null;
+        setDesktopFallbackToast();
+      };
+
+      if (!('xr' in navigator)) {
+        disableVR('VR BAŞLIK BAĞLI DEĞİL (WEB/KAMERA MODU)');
+        return;
+      }
+
+      let activeSession = null;
+
+      async function launchXR(mode, btnTextEl, defaultLabel) {
+        if (activeSession) { activeSession.end(); return; }
+        initAudio();
+        let session;
+        try {
+          session = await navigator.xr.requestSession(mode, {
+            optionalFeatures: ['hand-tracking', 'local-floor', 'bounded-floor']
+          });
+        } catch (e) {
+          btnTextEl.textContent = 'BAŞLATILAMADI – TEKRAR DENE';
+          return;
+        }
+        isARSession = (mode === 'immersive-ar');
+        try {
+          usingFloor = true;
+          renderer.xr.setReferenceSpaceType('local-floor');
+          await renderer.xr.setSession(session);
+        } catch (e) {
+          try {
+            usingFloor = false;
+            renderer.xr.setReferenceSpaceType('local');
+            await renderer.xr.setSession(session);
+          } catch (e2) {
+            try { session.end(); } catch (e3) {}
+            btnTextEl.textContent = 'BAŞLATILAMADI – TEKRAR DENE';
+            return;
+          }
+        }
+        activeSession = session;
+        btnTextEl.textContent = 'OTURUMDAN ÇIK';
+        session.addEventListener('end', () => {
+          activeSession = null;
+          btnTextEl.textContent = defaultLabel;
+        });
+      }
+
+      navigator.xr.isSessionSupported('immersive-vr').then(vrSupported => {
+        if (vrSupported) {
+          vrBtn.onclick = () => launchXR('immersive-vr', vrTxt, 'VR SALONA GİR (EL TAKİBİ)');
+          showToast('🧤', 'Quest 3 El Takibi Hazır: Kontrolcüleri bırakıp ellerinizle doğrudan çalabilirsiniz.');
+        } else {
+          disableVR('VR BAŞLIK BULUNAMADI');
+        }
+      }).catch(() => disableVR('VR KONTROLÜ BAŞARISIZ'));
+
+      // Quest 3 Karma Gerçeklik (Passthrough AR): kendi gerçek ellerinizi ve masanızı görerek çalma
+      navigator.xr.isSessionSupported('immersive-ar').then(arSupported => {
+        if (arSupported && arBtn) {
+          arBtn.style.display = 'inline-flex';
+          arBtn.onclick = () => launchXR('immersive-ar', arTxt, 'KARMA GERÇEKLİK (AR)');
+        }
+      }).catch(() => {});
+    }
+
+    // =========================================================================
+    // 9. MASAÜSTÜ, ÇOKLU DOKUNMATİK (AKILLI TAHTA / TABLET) VE KLAVYE GİRİŞİ
+    // =========================================================================
+    const pointerKeys = new Map();
     const mouseNdc = new THREE.Vector2();
 
     function pickAt(clientX, clientY) {
@@ -1497,23 +2512,28 @@
       KeyQ: 12, Digit2: 13, KeyW: 14, Digit3: 15, KeyE: 16, KeyR: 17, Digit5: 18, KeyT: 19, Digit6: 20, KeyY: 21,
       Digit7: 22, KeyU: 23, KeyI: 24, Digit9: 25, KeyO: 26, Digit0: 27, KeyP: 28, BracketLeft: 29, Equal: 30, BracketRight: 31
     };
-    let octaveShift = 0;              // 0 → C3'ten, 1 → C4'ten başlar
+    let octaveShift = 0;
     const codeToKey = new Map();
 
     function setupDesktopInput() {
       const container = document.getElementById('webgl-canvas-container');
 
-      // Yakalama (capture) aşaması: OrbitControls'tan önce çalışır; tuşa basılırsa kamera dönmez
       container.addEventListener('pointerdown', e => {
         if (renderer.xr.isPresenting) return;
+        // Farede sağ veya orta tuş her zaman kamerayı döndürür/kaydırır (tuşların üzerindeyken bile!)
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
         initAudio();
         const hit = pickAt(e.clientX, e.clientY);
         if (!hit) return;
         controls.enabled = false;
-        if (hit.button) { fireVRButton(hit.button); return; }
+        if (hit.button) {
+          fireVRButton(hit.button);
+          setTimeout(() => { if (pointerKeys.size === 0) controls.enabled = true; }, 50);
+          return;
+        }
         try { renderer.domElement.setPointerCapture(e.pointerId); } catch (err) {}
         pointerKeys.set(e.pointerId, hit.key);
-        pressKey(hit.key, 'p' + e.pointerId, 0.8);
+        pressKey(hit.key, 'p' + e.pointerId, 0.82);
       }, true);
 
       container.addEventListener('pointermove', e => {
@@ -1524,7 +2544,7 @@
         if (next === cur) return;
         if (cur) releaseKey(cur, 'p' + e.pointerId);
         pointerKeys.set(e.pointerId, next);
-        if (next) pressKey(next, 'p' + e.pointerId, 0.8);    // sürükleyerek glissando
+        if (next) pressKey(next, 'p' + e.pointerId, 0.78);
       });
 
       const end = e => {
@@ -1543,14 +2563,14 @@
         controls.enabled = true;
       });
 
-      // Klavye: fiziksel tuş konumu (e.code) kullanılır → Türkçe Q klavyede de çalışır
       window.addEventListener('keydown', e => {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
-        if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) { initAudio(); toggleSustain(); } return; }
+        if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) toggleSustain(); return; }
         if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
           e.preventDefault();
           octaveShift = Math.max(0, Math.min(1, octaveShift + (e.code === 'ArrowRight' ? 1 : -1)));
-          document.getElementById('oct-lbl').textContent = 'C' + (3 + octaveShift);
+          const octEl = document.getElementById('oct-lbl');
+          if (octEl) octEl.textContent = 'C' + (3 + octaveShift);
           return;
         }
         if (e.code === 'Escape') { stopTutor(); closeSongList(); return; }
@@ -1559,8 +2579,9 @@
         if (!k) return;
         initAudio();
         codeToKey.set(e.code, k);
-        pressKey(k, 'kb:' + e.code, 0.8);
+        pressKey(k, 'kb:' + e.code, 0.82);
       });
+
       window.addEventListener('keyup', e => {
         if (e.code === 'Space') { e.preventDefault(); return; }
         const k = codeToKey.get(e.code);
@@ -1569,7 +2590,7 @@
     }
 
     // =========================================================================
-    // 10. 2D ARAYÜZ
+    // 10. 2D KULLANICI ARAYÜZÜ
     // =========================================================================
     function setupHud() {
       const sel = document.getElementById('instrument-selector');
@@ -1580,42 +2601,103 @@
         b.dataset.inst = inst.id;
         b.innerHTML = '<span>' + inst.emoji + '</span><span class="lbl-long">' + inst.label + '</span>';
         b.title = inst.label;
-        b.addEventListener('click', () => setInstrument(inst.id));
+        b.addEventListener('click', () => { initAudio(); setInstrument(inst.id); });
         sel.appendChild(b);
       });
 
       const list = document.getElementById('song-list');
+      const headerRow = document.createElement('div');
+      headerRow.className = 'song-header-row';
+      headerRow.innerHTML = '<span class="song-header-title">Şarkı Öğretici & Tempo</span>';
+      const speedGroup = document.createElement('div');
+      speedGroup.className = 'speed-group';
+      [
+        { label: '🐢 Yavaş', val: 0.7 },
+        { label: '▶ Normal', val: 1.0 },
+        { label: '⚡ Hızlı', val: 1.25 }
+      ].forEach(sp => {
+        const sb = document.createElement('button');
+        sb.type = 'button';
+        sb.className = 'speed-btn' + (sp.val === tutorSpeed ? ' active' : '');
+        sb.textContent = sp.label;
+        sb.addEventListener('click', () => {
+          tutorSpeed = sp.val;
+          speedGroup.querySelectorAll('.speed-btn').forEach(el => el.classList.remove('active'));
+          sb.classList.add('active');
+        });
+        speedGroup.appendChild(sb);
+      });
+      headerRow.appendChild(speedGroup);
+      list.appendChild(headerRow);
+
       Object.keys(SONGS).forEach(id => {
+        const s = SONGS[id];
         const row = document.createElement('div');
         row.className = 'song-row';
-        row.innerHTML = '<span class="song-name">' + SONGS[id].name + '</span>';
+        const info = document.createElement('div');
+        info.className = 'song-info';
+        info.innerHTML = '<div class="song-name">' + s.name + '</div><div class="song-meta">' + s.level + ' • ' + s.notes.length + ' nota</div>';
         const listen = document.createElement('button');
         listen.type = 'button'; listen.className = 'song-btn'; listen.textContent = '▶ Dinle';
         listen.addEventListener('click', () => startTutor(id, 'listen'));
         const learn = document.createElement('button');
         learn.type = 'button'; learn.className = 'song-btn learn'; learn.textContent = '🎓 Öğren';
         learn.addEventListener('click', () => startTutor(id, 'learn'));
-        row.appendChild(listen); row.appendChild(learn);
+        row.appendChild(info); row.appendChild(listen); row.appendChild(learn);
         list.appendChild(row);
       });
+
       const stop = document.createElement('button');
       stop.type = 'button'; stop.className = 'song-btn song-stop'; stop.textContent = '⏹ Durdur / Serbest Çal';
       stop.addEventListener('click', () => stopTutor());
       list.appendChild(stop);
 
-      document.getElementById('song-toggle').addEventListener('click', () => list.classList.toggle('show'));
+      document.getElementById('song-toggle').addEventListener('click', () => {
+        list.classList.toggle('show');
+        if (list.classList.contains('show')) alignSongDropdown();
+      });
       document.getElementById('sustain-btn').addEventListener('click', () => toggleSustain());
+      document.getElementById('label-mode-btn').addEventListener('click', () => cycleLabelMode());
+      document.getElementById('metro-btn').addEventListener('click', () => cycleMetronome());
+      document.getElementById('rec-btn').addEventListener('click', () => toggleRecorder());
+      document.getElementById('rec-btn').addEventListener('contextmenu', e => { e.preventDefault(); clearRecording(); });
+      document.getElementById('cam-hand-btn').addEventListener('click', () => toggleWebcamHandTracking());
+      document.getElementById('cam-close-btn').addEventListener('click', () => stopWebcamHandTracking());
       document.getElementById('center-btn').addEventListener('click', () => centerPianoToUser());
-      document.getElementById('reset-view-btn').addEventListener('click', () => { resetView(); resetPianoPosition(); });
+      document.getElementById('reset-view-btn').addEventListener('click', () => { resetPianoPosition(); resetView(); });
 
-      // Tıklanan düğme odakta kalmasın (Boşluk tuşu düğmeyi yeniden tetiklemesin)
-      document.querySelectorAll('#hud-overlay button, #custom-vr-button').forEach(b => {
+      const volSlider = document.getElementById('volume-slider');
+      if (volSlider) {
+        volSlider.addEventListener('input', e => {
+          initAudio();
+          setMasterVolume(Number(e.target.value) / 100);
+        });
+      }
+
+      document.querySelectorAll('#hud-overlay button, .xr-launch-btn').forEach(b => {
         b.addEventListener('click', () => b.blur());
       });
       document.addEventListener('click', e => {
         if (!e.target.closest('.song-dropdown')) closeSongList();
       });
       updateHudButtons();
+    }
+
+    function alignSongDropdown() {
+      const list = document.getElementById('song-list');
+      if (!list) return;
+      if (window.innerWidth <= 820) {
+        list.style.left = '';
+        list.style.right = '';
+        return;
+      }
+      list.style.left = '';
+      list.style.right = '0';
+      const rect = list.getBoundingClientRect();
+      if (rect.left < 12) {
+        list.style.right = 'auto';
+        list.style.left = '0';
+      }
     }
 
     function closeSongList() {
@@ -1625,38 +2707,99 @@
 
     function updateHudButtons() {
       document.querySelectorAll('.inst-btn').forEach(b => b.classList.toggle('active', b.dataset.inst === activeInstrument));
+
       const sb = document.getElementById('sustain-btn');
       if (sb) {
         sb.classList.toggle('active', sustainEnabled);
         document.getElementById('sustain-lbl').textContent = 'Sustain: ' + (sustainEnabled ? 'Açık' : 'Kapalı');
+      }
+
+      const lb = document.getElementById('label-mode-btn');
+      if (lb) {
+        lb.classList.toggle('active', labelMode !== 'off');
+        const mapTxt = { tr: 'Do-Re-Mi', en: 'C-D-E', off: 'Etiket: Kapalı' };
+        document.getElementById('label-mode-lbl').textContent = mapTxt[labelMode];
+      }
+
+      const mb = document.getElementById('metro-btn');
+      if (mb) {
+        const bpm = METRO_BPMS[metroIdx];
+        mb.classList.toggle('active', bpm > 0);
+        document.getElementById('metro-lbl').textContent = bpm > 0 ? (bpm + ' BPM') : 'Metronom';
+      }
+
+      const rb = document.getElementById('rec-btn');
+      if (rb) {
+        rb.classList.toggle('rec-active', recorder.state === 'recording');
+        rb.classList.toggle('active', recorder.state === 'playing' || recorder.state === 'ready');
+        const ic = document.getElementById('rec-icon');
+        const rl = document.getElementById('rec-lbl');
+        if (recorder.state === 'recording') { ic.textContent = '⏹'; rl.textContent = 'Kaydı Bitir'; }
+        else if (recorder.state === 'playing') { ic.textContent = '⏹'; rl.textContent = 'Durdur'; }
+        else if (recorder.state === 'ready') { ic.textContent = '▶'; rl.textContent = 'Kaydı Dinle'; }
+        else { ic.textContent = '⏺'; rl.textContent = 'Kaydet'; }
+      }
+
+      const cb = document.getElementById('cam-hand-btn');
+      if (cb) {
+        cb.classList.toggle('cam-active', camState.active || camState.loading);
+        document.getElementById('cam-btn-lbl').textContent = camState.loading
+          ? 'Kamera Açılıyor...'
+          : (camState.active ? 'Kamera: Açık' : 'Kamera ile El Çal');
       }
     }
 
     function updateStatus() {
       const inst = INSTRUMENTS.find(i => i.id === activeInstrument);
       let text;
-      if (tutor && tutor.mode === 'learn') {
-        text = tutor.finished
-          ? '🎉 Tebrikler! ' + tutor.song.short + ' tamamlandı'
-          : '🎓 ' + tutor.song.short + ': ' + tutor.idx + ' / ' + tutor.song.notes.length + ' • Yeşil tuşa bas';
+      let isWarn = false;
+
+      if (controllerWarningActive && renderer.xr.isPresenting) {
+        text = '✋ Kontrolcüleri bırakın • Piyano doğrudan ellerinizle çalınır';
+        isWarn = true;
+      } else if (recorder.state === 'recording') {
+        text = '🔴 Kaydediliyor... Çalmayı bitirince "Kaydı Bitir"e dokunun';
+      } else if (recorder.state === 'playing') {
+        text = '▶ Kayıt dinleniyor...';
+      } else if (tutor && tutor.mode === 'learn') {
+        if (tutor.finished) {
+          text = '🎉 Tebrikler! ' + tutor.song.short + ' tamamlandı';
+        } else {
+          const nextMidi = tutor.song.notes[tutor.idx][0];
+          text = '🎓 ' + tutor.song.short + ' (' + (tutor.idx + 1) + '/' + tutor.song.notes.length + ') • Bas: ' + formatMidiDual(nextMidi);
+        }
       } else if (tutor && tutor.mode === 'listen') {
         text = '▶ Dinleniyor: ' + tutor.song.short + ' (' + tutor.idx + ' / ' + tutor.song.notes.length + ')';
+      } else if (lastPlayedInfo) {
+        text = lastPlayedInfo + ' • ' + inst.short;
       } else {
         text = inst.emoji + ' ' + inst.label + ' • Sustain ' + (sustainEnabled ? 'açık' : 'kapalı');
       }
+
       const chip = document.getElementById('status-chip');
-      if (chip) { chip.textContent = text; chip.classList.toggle('tutor', !!tutor); }
-      drawStatus(text);
+      if (chip) {
+        chip.textContent = text;
+        chip.classList.toggle('tutor', !!tutor && !isWarn);
+        chip.classList.toggle('warn', isWarn);
+        chip.classList.toggle('rec', recorder.state === 'recording');
+      }
+      drawStatus(text, isWarn);
     }
 
-    // Dar/dikey ekranlarda (telefon) piyanonun tamamı sığsın diye kamerayı geri çeker
+    // Dar/dikey ekranlarda (telefon dahil) tüm 37 tuş ve 3D nota sehpası eksiksiz sığar
     function resetView() {
-      const target = new THREE.Vector3(0, 0.82, -0.42);
-      const offset = new THREE.Vector3(0, 0.43, 0.87);
-      const hfov = 2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * camera.aspect);
-      const needed = 0.62 / Math.tan(hfov / 2);
-      if (needed > offset.length()) offset.setLength(needed);
-      camera.position.copy(target).add(offset);
+      const target = new THREE.Vector3(0, 0.81, -0.44);
+      const baseOffset = new THREE.Vector3(0, 0.36, 0.72);
+      const vfov = THREE.MathUtils.degToRad(camera.fov);
+      const hfov = 2 * Math.atan(Math.tan(vfov / 2) * camera.aspect);
+
+      const halfWidthNeeded = (totalKeysWidth / 2) + 0.085;
+      const distW = halfWidthNeeded / Math.tan(hfov / 2);
+      const distH = 0.34 / Math.tan(vfov / 2);
+      const needed = Math.max(baseOffset.length(), distW, distH);
+
+      baseOffset.setLength(needed);
+      camera.position.copy(target).add(baseOffset);
       controls.target.copy(target);
       controls.update();
     }
@@ -1665,26 +2808,32 @@
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
+      if (!renderer.xr.isPresenting) resetView();
     }
 
     // =========================================================================
-    // 11. RENDER DÖNGÜSÜ
+    // 11. ANA RENDER DÖNGÜSÜ
     // =========================================================================
     const clock = new THREE.Clock();
 
-    function renderLoop() {
+    function renderLoop(time, xrFrame) {
       const delta = Math.min(clock.getDelta(), 0.1);
       const nowSec = clock.elapsedTime;
 
       keys.forEach(k => {
-        if (k.sources.size > 0) { k.pressAmount = 1; }
-        else if (k.pressAmount > 0) { k.pressAmount = Math.max(0, k.pressAmount - delta * 9); }
-        k.pivot.rotation.x = k.pressAmount * 0.088;
+        if (k.sources.size > 0) {
+          k.pressAmount = Math.max(0.85, k.analogDepth || 1);
+        } else if (k.analogDepth > 0.02) {
+          k.pressAmount = k.analogDepth * 0.65;
+        } else if (k.pressAmount > 0) {
+          k.pressAmount = Math.max(0, k.pressAmount - delta * 10);
+        }
+        k.pivot.rotation.x = k.pressAmount * 0.085;
       });
 
       for (let i = noteParticles.length - 1; i >= 0; i--) {
         const p = noteParticles[i];
-        p.life -= delta * 0.9;
+        p.life -= delta * 0.92;
         p.sprite.position.y += p.vy * delta;
         p.sprite.position.x += p.vx * delta;
         p.sprite.material.opacity = Math.max(0, p.life);
@@ -1692,32 +2841,48 @@
       }
 
       if (tutor && tutor.mode === 'learn' && tutor.target) {
-        _v1.set(0, 0, tutor.target.isBlack ? BLACK_L * 0.6 : WHITE_L * 0.7);
+        _v1.set(0, 0, tutor.target.isBlack ? BLACK_L * 0.58 : WHITE_L * 0.68);
         tutor.target.mesh.localToWorld(_v1);
-        tutorArrow.position.set(_v1.x, _v1.y + 0.06 + Math.sin(nowSec * 6) * 0.008, _v1.z);
+        tutorArrow.position.set(_v1.x, _v1.y + 0.052 + Math.sin(nowSec * 6) * 0.007, _v1.z);
         tutorArrow.visible = true;
       } else if (tutorArrow) {
         tutorArrow.visible = false;
       }
 
       if (renderer.xr.isPresenting) {
-        processDirectTouch(collectTouchPoints(), nowSec);
+        const pts = collectXRHandTouchPoints(xrFrame);
+        processDirectTouch(pts, nowSec);
       } else {
+        if (camState.active) {
+          processDirectTouch(camState.latestPts, nowSec);
+        }
         controls.update();
       }
 
       renderer.render(scene, camera);
     }
 
-    // Test/teşhis için dışarıya açılan küçük arayüz
     return {
       start: startApp,
       _debug: () => ({
-        liveVoices: liveVoiceCount, voiceMap: voices.size, particles: noteParticles.length,
-        sustain: sustainEnabled, instrument: activeInstrument, tutor: tutor ? { id: tutor.id, mode: tutor.mode, idx: tutor.idx } : null,
+        liveVoices: liveVoiceCount,
+        voiceMap: voices.size,
+        particles: noteParticles.length,
+        sustain: sustainEnabled,
+        instrument: activeInstrument,
+        labelMode,
+        webcamHands: camState.active,
+        controllerFreeHandOnly: true,
+        tutor: tutor ? { id: tutor.id, mode: tutor.mode, idx: tutor.idx } : null,
+        recorder: recorder.state,
         audioState: audioCtx ? audioCtx.state : 'none'
       }),
-      _internals: () => ({ keys, keyByMidi, pressKey, releaseKey, pianoGroup, processDirectTouch, startTutor, stopTutor, setInstrument, toggleSustain, vrButtons, centerPianoToUser, THREE, camera, controls })
+      _internals: () => ({
+        keys, keyByMidi, pressKey, releaseKey, pianoGroup, processDirectTouch,
+        startTutor, stopTutor, setInstrument, toggleSustain, vrButtons,
+        centerPianoToUser, leftGlove, rightGlove, applyPoseMapToGlove,
+        THREE, camera, controls
+      })
     };
   }
   </script>
