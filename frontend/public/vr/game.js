@@ -1,50 +1,76 @@
 /* ============================================================
-   Ritim Adası Dil Atölyesi — Oyun Mantığı (okunur kaynak)
-   Nasıl oynanır: Yönergede bir Türkçe kelime gösterilir ve İngilizcesi
-   seslendirilir. Oyuncu, önündeki 4 karttan doğru olanı seçer.
-   - Quest 3: karta bakarak (gaze) ya da kumanda ışınıyla seçer.
-   - Bilgisayar: fareyle karta tıklar.
-   - Tablet/telefon: alttaki butonlara dokunur (çoklu dokunuş gerekmez).
-   İlerleme tarayıcıda (localStorage) saklanır; kaldığı yerden devam eder.
-   Ses yolu, sayfanın bulunduğu klasöre göre otomatik belirlenir (taşınabilir).
+   İzmir Torbalı BİLSEM — VR Duyu & Dil Atölyesi Oyun Mantığı
+   Yenilikler & Düzeltmeler:
+   - "/vr" (eğik çizgisiz) ve "/vr/" yollarında kesintisiz çalışan ses/betik taban yolu.
+   - Başlangıç ("Başla") perdesi kaldırıldı; doğrudan kategori menüsü ve 3D sahne açılır.
+   - 3 Öğrenme Modu: Klasik (Görsel+Yazı), Dinleme (Sesi Dinle → Görseli Seç), Okuma (Yalnızca İngilizce Yazı).
+   - VR Başlık İçi Tam Kontrol: 3D Kategori Seçimi, 3D Tekrar Dinle / Kategoriler / Mod düğmeleri!
+   - Renk kartlarında Stroop renk çakışması giderildi.
+   - Mobil dikey ekranda 2×2 3D kart dizilimi ve 2×2 cevap çubuğu.
+   - Seri (🔥), puan, yıldız derecesi ve 3D kutlama efektleri.
    ============================================================ */
 (function () {
   "use strict";
 
-  // ---------- Ses dosyalarının taban yolu (taşınabilir) ----------
-  // /vr/ içinde de, başka bir yolda da doğru çalışsın diye konumdan türetilir.
-  const DIR = location.pathname.replace(/[^/]*$/, ""); // sonda "/" ile biter
-  const AUDIO_BASE = DIR + "audio/";
+  // "/vr", "/vr/", "/vr/index.html" ve yerel sunucu "/" yollarının tamamında doğru taban yolu
+  const BASE_DIR = window.__VR_BASE || (function () {
+    const p = location.pathname;
+    if (p.endsWith("/")) return p;
+    if (/\.[a-z0-9]+$/i.test(p)) return p.replace(/[^/]*$/, "");
+    return p + "/";
+  })();
+  const AUDIO_BASE = BASE_DIR + "audio/";
 
-  // ---------- İlerleme kaydı ----------
-  const STORE_KEY = "vr_lang_progress_v1";
+  // ---------- İlerleme ve İstatistik Kaydı ----------
+  const STORE_KEY = "vr_lang_progress_v2";
+  const LEGACY_KEY = "vr_lang_progress_v1";
   const Progress = {
-    data: {},
+    data: { cats: {}, score: 0 },
     load() {
-      try { this.data = JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
-      catch (e) { this.data = {}; }
+      try {
+        const raw = JSON.parse(localStorage.getItem(STORE_KEY));
+        if (raw && raw.cats) {
+          this.data = raw;
+          return;
+        }
+        const old = JSON.parse(localStorage.getItem(LEGACY_KEY));
+        if (old && typeof old === "object") {
+          this.data = { cats: old, score: 0 };
+        }
+      } catch (e) {
+        this.data = { cats: {}, score: 0 };
+      }
     },
-    done(cat) { return new Set(this.data[cat] || []); },
-    mark(cat, id) {
-      const set = this.done(cat); set.add(id);
-      this.data[cat] = [...set];
+    save() {
       try { localStorage.setItem(STORE_KEY, JSON.stringify(this.data)); } catch (e) {}
+    },
+    done(cat) { return new Set(this.data.cats[cat] || []); },
+    mark(cat, id, points) {
+      const set = this.done(cat);
+      set.add(id);
+      this.data.cats[cat] = [...set];
+      this.data.score = (this.data.score || 0) + (points || 10);
+      this.save();
     },
     resetCat(cat) {
-      delete this.data[cat];
-      try { localStorage.setItem(STORE_KEY, JSON.stringify(this.data)); } catch (e) {}
+      delete this.data.cats[cat];
+      this.save();
     },
+    resetAll() {
+      this.data = { cats: {}, score: 0 };
+      this.save();
+    }
   };
 
-  // ---------- Ses motoru: mp3 + seslendirme yedeği + ödül sesleri ----------
+  // ---------- Ses Motoru (MP3 + Web Speech TTS + WebAudio Efekt) ----------
   const Sound = {
-    ctx: null, muted: false, cache: new Map(), voice: null,
+    ctx: null, muted: false, cache: new Map(), voice: null, rewardToggle: false,
     synth: ("speechSynthesis" in window) ? window.speechSynthesis : null,
     init() {
       if (!this.ctx) {
         try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
       }
-      if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+      if (this.ctx && this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
       this.pickVoice();
     },
     pickVoice() {
@@ -59,18 +85,24 @@
       if (this.muted && this.synth) this.synth.cancel();
       return this.muted;
     },
-    // Bir kelimeyi seslendirir: önce mp3, olmazsa tarayıcı seslendirmesi
     speak(word, onEnd) {
-      if (this.muted) { if (onEnd) onEnd(); return; }
+      if (this.muted || !word) { if (onEnd) onEnd(); return; }
       this.init();
+      if (word.hasMp3 === false) {
+        this.tts(word.en, onEnd);
+        return;
+      }
       const url = AUDIO_BASE + encodeURIComponent(word.id) + ".mp3";
       let a = this.cache.get(url);
       if (!a) { a = new Audio(url); this.cache.set(url, a); }
-      a.currentTime = 0; a.volume = 1;
+      try { a.currentTime = 0; } catch (e) {}
+      a.volume = 1;
       const p = a.play();
       if (p && p.then) {
         p.then(() => { if (onEnd) a.onended = onEnd; })
-         .catch(() => this.tts(word.en, onEnd));   // mp3 yoksa seslendirmeye düş
+         .catch(() => this.tts(word.en, onEnd));
+      } else {
+        this.tts(word.en, onEnd);
       }
     },
     tts(text, onEnd) {
@@ -78,7 +110,7 @@
       try {
         this.synth.cancel();
         const u = new SpeechSynthesisUtterance(text);
-        u.lang = "en-US"; u.rate = 0.85; u.pitch = 1.05;
+        u.lang = "en-US"; u.rate = 0.86; u.pitch = 1.04;
         if (this.voice) u.voice = this.voice;
         if (onEnd) u.onend = onEnd;
         this.synth.speak(u);
@@ -87,51 +119,43 @@
     reward(name) {
       if (this.muted) return;
       this.init();
-      const url = AUDIO_BASE + name + ".mp3";
+      const file = name === "awesome" ? ((this.rewardToggle = !this.rewardToggle) ? "awesome" : "correct") : name;
+      const url = AUDIO_BASE + file + ".mp3";
       let a = this.cache.get(url);
       if (!a) { a = new Audio(url); this.cache.set(url, a); }
-      a.currentTime = 0; a.volume = 1;
+      try { a.currentTime = 0; } catch (e) {}
+      a.volume = 0.95;
       const p = a.play();
-      if (p && p.catch) p.catch(() => this.chime());
+      if (p && p.catch) p.catch(() => (name === "try_again" ? this.buzz() : this.chime()));
     },
-    // mp3 yoksa kısa bir başarı tonu
     chime() {
       if (this.muted || !this.ctx) return;
-      [523, 659, 784].forEach((f, i) => {
+      [523.25, 659.25, 783.99].forEach((f, i) => {
         const o = this.ctx.createOscillator(), g = this.ctx.createGain();
-        o.type = "sine"; o.frequency.value = f;
-        const t = this.ctx.currentTime + i * 0.09;
+        o.type = "triangle"; o.frequency.value = f;
+        const t = this.ctx.currentTime + i * 0.085;
         g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.4, t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+        g.gain.exponentialRampToValueAtTime(0.32, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
         o.connect(g).connect(this.ctx.destination);
-        o.start(t); o.stop(t + 0.28);
+        o.start(t); o.stop(t + 0.26);
       });
     },
+    buzz() {
+      if (this.muted || !this.ctx) return;
+      const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+      o.type = "sawtooth"; o.frequency.value = 195;
+      const t = this.ctx.currentTime;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.20);
+      o.connect(g).connect(this.ctx.destination);
+      o.start(t); o.stop(t + 0.22);
+    }
   };
   if (Sound.synth) Sound.synth.onvoiceschanged = () => Sound.pickVoice();
 
-  // ---------- Kart yüzeyi: emoji + kelimeyi canvas'a çizip doku yapar ----------
-  // (A-Frame varsayılan yazı tipi Türkçe/emoji glifi içermeyebildiği için canvas kullanılır.)
-  function makeFaceCanvas(emoji, label, bg) {
-    const c = document.createElement("canvas");
-    c.width = 512; c.height = 640;
-    const x = c.getContext("2d");
-    // arka plan
-    x.fillStyle = bg || "#1e1b4b";
-    roundRect(x, 8, 8, c.width - 16, c.height - 16, 42); x.fill();
-    x.lineWidth = 10; x.strokeStyle = "rgba(255,255,255,.25)";
-    roundRect(x, 8, 8, c.width - 16, c.height - 16, 42); x.stroke();
-    // emoji
-    x.textAlign = "center"; x.textBaseline = "middle";
-    x.font = "260px 'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif";
-    x.fillText(emoji || "❓", c.width / 2, 280);
-    // etiket
-    x.fillStyle = "#ffffff";
-    x.font = "bold 70px 'Trebuchet MS',sans-serif";
-    x.fillText(label || "", c.width / 2, 540);
-    return c;
-  }
+  // ---------- Canvas Yardımcıları (Stroop Çakışmasız Modern Kartlar) ----------
   function roundRect(x, px, py, w, h, r) {
     x.beginPath();
     x.moveTo(px + r, py);
@@ -142,134 +166,207 @@
     x.closePath();
   }
 
-  // ---------- A-Frame bileşeni: tek bir kart ----------
+  const MODES = [
+    { key: "classic", label: "📘 Klasik", desc: "Görsel + Yazı + Ses" },
+    { key: "listen",  label: "🎧 Dinle & Bul", desc: "Sesi Dinle → Resmi Seç" },
+    { key: "read",    label: "✍️ Okuma", desc: "Türkçe → İngilizce Yazı" }
+  ];
+
+  // Nötr koyu lacivert kart yüzeyi + uyumlu çerçeve (renk kelimelerinde Stroop etkisi yaratmaz!)
+  const CARD_ACCENTS = ["#38bdf8", "#a78bfa", "#34d399", "#fbbf24", "#f472b6", "#2dd4bf"];
+
+  function makeFaceCanvas(opts) {
+    const c = document.createElement("canvas");
+    c.width = 512; c.height = 640;
+    const x = c.getContext("2d");
+
+    const grad = x.createLinearGradient(0, 0, 0, c.height);
+    grad.addColorStop(0, "#1e293b");
+    grad.addColorStop(1, "#0f172a");
+    x.fillStyle = grad;
+    roundRect(x, 10, 10, c.width - 20, c.height - 20, 44);
+    x.fill();
+
+    // Üst parıltı şeridi
+    const borderCol = opts.accent || "#38bdf8";
+    x.lineWidth = 10;
+    x.strokeStyle = borderCol;
+    roundRect(x, 10, 10, c.width - 20, c.height - 20, 44);
+    x.stroke();
+
+    if (opts.badge) {
+      x.fillStyle = "rgba(255,255,255,0.10)";
+      roundRect(x, 34, 32, 84, 54, 18);
+      x.fill();
+      x.fillStyle = "#cbd5e1";
+      x.font = "bold 32px 'Segoe UI',sans-serif";
+      x.textAlign = "center"; x.textBaseline = "middle";
+      x.fillText(opts.badge, 76, 60);
+    }
+
+    x.textAlign = "center"; x.textBaseline = "middle";
+
+    if (opts.onlyText) {
+      // Okuma modu: ortada büyük ve net İngilizce kelime
+      x.fillStyle = "rgba(56, 189, 248, 0.10)";
+      x.beginPath(); x.arc(c.width / 2, 260, 130, 0, Math.PI * 2); x.fill();
+      x.fillStyle = "#38bdf8";
+      x.font = "bold 76px 'Segoe UI Emoji',sans-serif";
+      x.fillText("🔤", c.width / 2, 210);
+      x.fillStyle = "#ffffff";
+      x.font = "bold 78px 'Trebuchet MS','Segoe UI',sans-serif";
+      x.fillText(opts.label || "", c.width / 2, 395, 452);
+    } else if (opts.onlyEmoji) {
+      // Dinleme modu: ortada büyük görsel/emoji, yazı kopyası yok!
+      if (opts.swatch) {
+        x.fillStyle = opts.swatch;
+        x.beginPath(); x.arc(c.width / 2, 310, 138, 0, Math.PI * 2); x.fill();
+        x.lineWidth = 8; x.strokeStyle = "rgba(255,255,255,0.65)"; x.stroke();
+      } else {
+        x.font = "270px 'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif";
+        x.fillText(opts.emoji || "❓", c.width / 2, 315);
+      }
+      x.fillStyle = "#94a3b8";
+      x.font = "bold 38px 'Trebuchet MS','Segoe UI',sans-serif";
+      x.fillText("🔊 Seç", c.width / 2, 548);
+    } else {
+      // Klasik mod veya 3D kategori kartı
+      if (opts.swatch) {
+        x.fillStyle = opts.swatch;
+        x.beginPath(); x.arc(c.width / 2, 255, 115, 0, Math.PI * 2); x.fill();
+        x.lineWidth = 8; x.strokeStyle = "rgba(255,255,255,0.65)"; x.stroke();
+      } else {
+        x.font = "235px 'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif";
+        x.fillText(opts.emoji || "❓", c.width / 2, 255);
+      }
+      x.fillStyle = "#ffffff";
+      x.font = opts.subLabel ? "bold 52px 'Trebuchet MS','Segoe UI',sans-serif" : "bold 68px 'Trebuchet MS','Segoe UI',sans-serif";
+      x.fillText(opts.label || "", c.width / 2, opts.subLabel ? 485 : 525, 456);
+      if (opts.subLabel) {
+        x.fillStyle = borderCol;
+        x.font = "bold 36px 'Trebuchet MS','Segoe UI',sans-serif";
+        x.fillText(opts.subLabel, c.width / 2, 558, 440);
+      }
+    }
+    return c;
+  }
+
+  function makeActionPillCanvas(text, accent) {
+    const c = document.createElement("canvas");
+    c.width = 512; c.height = 144;
+    const x = c.getContext("2d");
+    x.fillStyle = "rgba(15, 23, 42, 0.92)";
+    roundRect(x, 6, 6, c.width - 12, c.height - 12, 38); x.fill();
+    x.lineWidth = 6; x.strokeStyle = accent || "#38bdf8";
+    roundRect(x, 6, 6, c.width - 12, c.height - 12, 38); x.stroke();
+    x.fillStyle = "#f8fafc";
+    x.font = "bold 46px 'Segoe UI Emoji','Trebuchet MS','Segoe UI',sans-serif";
+    x.textAlign = "center"; x.textBaseline = "middle";
+    x.fillText(text, c.width / 2, c.height / 2 + 2, 476);
+    return c;
+  }
+
+  // ---------- A-Frame 3D Bileşenleri ----------
   if (window.AFRAME) {
     AFRAME.registerComponent("quiz-card", {
       init() {
-        this.texture = null;
-        this.el.classList.add("card");
-        this.el.setAttribute("geometry", "primitive: plane; width: 0.72; height: 0.9");
+        this.el.classList.add("card", "clickable");
+        this.el.setAttribute("geometry", "primitive: plane; width: 0.72; height: 0.90");
         this.el.setAttribute("material", "shader: flat; side: double; transparent: true");
-        // Seçim: tıklama / gaze / kumanda ışını hepsi "click" üretir
         this.el.addEventListener("click", () => {
-          if (this.el.dataset.wordId) window.VRGame.choose(this.el.dataset.wordId, this.el);
+          const action = this.el.dataset.action;
+          const id = this.el.dataset.wordId;
+          if (action === "cat" && id) window.VRGame.selectCategoryFrom3D(id);
+          else if (action === "replay-cat") window.VRGame.replayCurrentCategory();
+          else if (action === "go-menu") window.VRGame.openMenu();
+          else if (id) window.VRGame.choose(id, this.el);
         });
         this.el.addEventListener("mouseenter", () => this.el.setAttribute("scale", "1.08 1.08 1.08"));
         this.el.addEventListener("mouseleave", () => this.el.setAttribute("scale", "1 1 1"));
       },
-      setFace(word, bg) {
-        const canvas = makeFaceCanvas(word.emoji, word.en, bg);
+      setCustomFace(opts) {
+        const canvas = makeFaceCanvas(opts);
         const tex = new THREE.CanvasTexture(canvas);
-        tex.colorSpace = THREE.SRGBColorSpace;
+        if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
         const mesh = this.el.getObject3D("mesh");
-        if (mesh) { mesh.material.map = tex; mesh.material.needsUpdate = true; }
-        this.el.dataset.wordId = word.id;
+        if (mesh) {
+          if (mesh.material.map) mesh.material.map.dispose();
+          mesh.material.map = tex;
+          mesh.material.color.set("#ffffff");
+          mesh.material.needsUpdate = true;
+        }
+        this.el.dataset.wordId = opts.id || "";
+        this.el.dataset.action = opts.action || "answer";
         this.el.setAttribute("scale", "1 1 1");
       },
       flash(ok) {
         const mesh = this.el.getObject3D("mesh");
         if (!mesh) return;
         mesh.material.color.set(ok ? "#22c55e" : "#ef4444");
-        setTimeout(() => mesh.material.color.set("#ffffff"), 450);
-      },
+        setTimeout(() => mesh.material.color.set("#ffffff"), 440);
+      }
     });
 
-    // Yönerge afişi (Türkçe) — yine canvas doku
+    AFRAME.registerComponent("vr-action-btn", {
+      schema: { label: { type: "string", default: "" }, accent: { type: "string", default: "#38bdf8" }, cmd: { type: "string", default: "" } },
+      init() {
+        this.el.classList.add("card", "clickable");
+        this.el.setAttribute("geometry", "primitive: plane; width: 0.62; height: 0.175");
+        this.el.setAttribute("material", "shader: flat; side: double; transparent: true");
+        this.el.addEventListener("click", () => {
+          if (window.VRGame) window.VRGame.handle3DCommand(this.data.cmd);
+        });
+        this.el.addEventListener("mouseenter", () => this.el.setAttribute("scale", "1.07 1.07 1.07"));
+        this.el.addEventListener("mouseleave", () => this.el.setAttribute("scale", "1 1 1"));
+        this.redraw();
+      },
+      update() { this.redraw(); },
+      redraw() {
+        const canvas = makeActionPillCanvas(this.data.label, this.data.accent);
+        const tex = new THREE.CanvasTexture(canvas);
+        if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+        const mesh = this.el.getObject3D("mesh");
+        if (mesh) {
+          if (mesh.material.map) mesh.material.map.dispose();
+          mesh.material.map = tex;
+          mesh.material.needsUpdate = true;
+        }
+      }
+    });
+
     AFRAME.registerComponent("quiz-banner", {
       init() {
-        this.el.setAttribute("geometry", "primitive: plane; width: 2.2; height: 0.6");
+        this.el.setAttribute("geometry", "primitive: plane; width: 2.35; height: 0.62");
         this.el.setAttribute("material", "shader: flat; transparent: true");
       },
-      setText(tr) {
+      setBanner(topLine, mainLine, subLine) {
         const c = document.createElement("canvas");
         c.width = 1024; c.height = 280;
         const x = c.getContext("2d");
-        x.fillStyle = "rgba(15,23,42,.85)";
-        roundRect(x, 0, 0, c.width, c.height, 40); x.fill();
-        x.lineWidth = 6; x.strokeStyle = "rgba(56,189,248,.7)";
-        roundRect(x, 3, 3, c.width - 6, c.height - 6, 40); x.stroke();
+        x.fillStyle = "rgba(15, 23, 42, 0.90)";
+        roundRect(x, 4, 4, c.width - 8, c.height - 8, 42); x.fill();
+        x.lineWidth = 6; x.strokeStyle = "rgba(56, 189, 248, 0.75)";
+        roundRect(x, 4, 4, c.width - 8, c.height - 8, 42); x.stroke();
         x.textAlign = "center"; x.textBaseline = "middle";
-        x.fillStyle = "#38bdf8"; x.font = "bold 46px 'Trebuchet MS',sans-serif";
-        x.fillText("Hangisi?  →", c.width / 2, 70);
-        x.fillStyle = "#fff"; x.font = "bold 120px 'Trebuchet MS',sans-serif";
-        x.fillText(tr, c.width / 2, 180);
+        x.fillStyle = "#38bdf8"; x.font = "bold 40px 'Trebuchet MS','Segoe UI',sans-serif";
+        x.fillText(topLine || "", c.width / 2, 62, 960);
+        x.fillStyle = "#ffffff"; x.font = "bold 104px 'Trebuchet MS','Segoe UI',sans-serif";
+        x.fillText(mainLine || "", c.width / 2, subLine ? 156 : 172, 960);
+        if (subLine) {
+          x.fillStyle = "#fbbf24"; x.font = "bold 34px 'Trebuchet MS','Segoe UI',sans-serif";
+          x.fillText(subLine, c.width / 2, 236, 940);
+        }
         const tex = new THREE.CanvasTexture(c);
-        tex.colorSpace = THREE.SRGBColorSpace;
+        if (THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
         const mesh = this.el.getObject3D("mesh");
-        if (mesh) { mesh.material.map = tex; mesh.material.needsUpdate = true; }
-      },
+        if (mesh) {
+          if (mesh.material.map) mesh.material.map.dispose();
+          mesh.material.map = tex;
+          mesh.material.needsUpdate = true;
+        }
+      }
     });
   }
-
-  // ---------- Oyun durumu ve akışı ----------
-  const CARD_BG = ["#4338ca", "#be123c", "#047857", "#b45309"];
-  const Game = {
-    cat: null, pool: [], target: null, locked: false,
-    cards: [], banner: null,
-
-    start(catKey) {
-      this.cat = catKey;
-      const all = window.VR_WORDS.filter(w => w.cat === catKey);
-      const done = Progress.done(catKey);
-      // Önce öğrenilmemiş kelimeler; hepsi bitmişse baştan
-      this.pool = all.filter(w => !done.has(w.id));
-      if (this.pool.length === 0) this.pool = all.slice();
-      this.allWords = all;
-      UI.showGame();
-      this.nextRound();
-    },
-
-    nextRound() {
-      this.locked = false;
-      if (this.pool.length === 0) return UI.showComplete(this.cat);
-      // Hedef kelime
-      this.target = this.pool[Math.floor(Math.random() * this.pool.length)];
-      // Seçenekler: hedef + aynı kategoriden 3 çeldirici
-      const others = shuffle(this.allWords.filter(w => w.id !== this.target.id)).slice(0, 3);
-      const options = shuffle([this.target, ...others]);
-      this.renderOptions(options);
-      UI.setPrompt(this.target);
-      // Yönergeyi seslendir (kısa gecikmeyle)
-      setTimeout(() => Sound.speak(this.target), 350);
-    },
-
-    renderOptions(options) {
-      // 3D kartlar
-      this.cards.forEach((card, i) => {
-        const w = options[i];
-        if (w && card.components["quiz-card"]) card.components["quiz-card"].setFace(w, CARD_BG[i]);
-        card.setAttribute("visible", !!w);
-      });
-      if (this.banner && this.banner.components["quiz-banner"])
-        this.banner.components["quiz-banner"].setText(this.target.tr);
-      // 2D butonlar (tablet/telefon/masaüstü)
-      UI.renderButtons(options);
-    },
-
-    choose(id, cardEl) {
-      if (this.locked) return;
-      this.locked = true;
-      const ok = id === this.target.id;
-      if (ok) {
-        Sound.reward("awesome");
-        Progress.mark(this.cat, this.target.id);
-        this.pool = this.pool.filter(w => w.id !== this.target.id);
-        if (cardEl && cardEl.components["quiz-card"]) cardEl.components["quiz-card"].flash(true);
-        UI.flashButton(id, true);
-        UI.updateProgress(this.cat);
-        UI.toast("Aferin! ⭐ " + this.target.en.toUpperCase());
-        setTimeout(() => this.nextRound(), 1100);
-      } else {
-        Sound.reward("try_again");
-        if (cardEl && cardEl.components["quiz-card"]) cardEl.components["quiz-card"].flash(false);
-        UI.flashButton(id, false);
-        UI.toast("Tekrar dene 🤔");
-        this.locked = false; // yanlışta tekrar seçebilsin
-      }
-    },
-
-    replay() { if (this.target) Sound.speak(this.target); },
-  };
 
   function shuffle(a) {
     a = a.slice();
@@ -280,102 +377,609 @@
     return a;
   }
 
-  // ---------- 2D Arayüz (menü, HUD, butonlar, rehber) ----------
+  // ---------- Oyun Durumu ve Akışı ----------
+  const Game = {
+    state: "menu",              // 'menu' | 'play' | 'complete'
+    modeIdx: 0,                 // 0: classic, 1: listen, 2: read
+    cat: null,
+    pool: [],
+    allWords: [],
+    currentOptions: [],
+    target: null,
+    locked: false,
+    sessionTotal: 10,
+    sessionDone: 0,
+    mistakesThisRound: 0,
+    firstTryCount: 0,
+    streak: 0,
+    cards: [],
+    catCards3D: [],
+    banner: null,
+    actionBar3D: null,
+    inVR: false,
+
+    mode() { return MODES[this.modeIdx].key; },
+
+    cycleMode() {
+      this.modeIdx = (this.modeIdx + 1) % MODES.length;
+      UI.updateModeButtons();
+      if (this.actionBar3D) {
+        const mBtn = document.getElementById("vr-btn-mode");
+        if (mBtn) mBtn.setAttribute("vr-action-btn", "label", MODES[this.modeIdx].label);
+      }
+      if (this.state === "play" && this.target && this.currentOptions.length) {
+        this.renderOptions(this.currentOptions);
+        UI.setPrompt(this.target);
+        if (this.mode() === "listen") Sound.speak(this.target);
+      }
+    },
+
+    layout3DCards() {
+      const isPortrait = !this.inVR && (window.innerWidth / Math.max(1, window.innerHeight)) < 0.86;
+      const playPositions = isPortrait
+        ? ["-0.44 1.66 -2.45", "0.44 1.66 -2.45", "-0.44 0.86 -2.45", "0.44 0.86 -2.45"]
+        : ["-1.26 1.44 -2.25", "-0.42 1.44 -2.25", "0.42 1.44 -2.25", "1.26 1.44 -2.25"];
+      const playScale = isPortrait ? "0.86 0.86 0.86" : "1 1 1";
+
+      this.cards.forEach((c, i) => {
+        if (!c) return;
+        c.setAttribute("position", playPositions[i]);
+        c.dataset.baseScale = playScale;
+        c.setAttribute("scale", playScale);
+      });
+
+      if (this.banner) {
+        this.banner.setAttribute("position", isPortrait ? "0 2.34 -2.55" : "0 2.24 -2.35");
+        this.banner.setAttribute("scale", isPortrait ? "0.74 0.74 0.74" : "1 1 1");
+      }
+      if (this.actionBar3D) {
+        this.actionBar3D.setAttribute("position", isPortrait ? "0 0.28 -2.35" : "0 0.76 -2.15");
+      }
+    },
+
+    render3DCategoryMenu() {
+      // VR başlık içindeyken gözlüğü çıkarmadan 6 kategoriden birini doğrudan seçebilme
+      this.cards.forEach(c => c && c.setAttribute("visible", false));
+      if (this.actionBar3D) this.actionBar3D.setAttribute("visible", false);
+      if (this.banner && this.banner.components["quiz-banner"]) {
+        this.banner.components["quiz-banner"].setBanner(
+          "İZMİR TORBALI BİLSEM • VR DİL ATÖLYESİ",
+          "Kategori Seç",
+          "Puan: " + (Progress.data.score || 0) + "  •  Mod: " + MODES[this.modeIdx].label
+        );
+      }
+      this.catCards3D.forEach((el, idx) => {
+        const cat = window.VR_CATEGORIES[idx];
+        if (!el || !cat) return;
+        const total = window.VR_WORDS.filter(w => w.cat === cat.key).length;
+        const done = Progress.done(cat.key).size;
+        el.setAttribute("visible", true);
+        if (el.components["quiz-card"]) {
+          el.components["quiz-card"].setCustomFace({
+            id: cat.key,
+            action: "cat",
+            emoji: cat.emoji,
+            label: cat.label.split(" ")[0],
+            subLabel: done + " / " + total,
+            accent: cat.accent
+          });
+        }
+      });
+    },
+
+    hide3DCategoryMenu() {
+      this.catCards3D.forEach(el => el && el.setAttribute("visible", false));
+    },
+
+    selectCategoryFrom3D(catKey) {
+      Sound.init();
+      this.start(catKey);
+    },
+
+    openMenu() {
+      this.state = "menu";
+      this.locked = false;
+      UI.hideComplete();
+      if (this.inVR) {
+        UI.hideAll2D();
+      } else {
+        UI.showMenu();
+      }
+      this.render3DCategoryMenu();
+    },
+
+    start(catKey) {
+      this.cat = catKey;
+      this.state = "play";
+      this.hide3DCategoryMenu();
+      if (this.actionBar3D) this.actionBar3D.setAttribute("visible", true);
+
+      const all = window.VR_WORDS.filter(w => w.cat === catKey);
+      const done = Progress.done(catKey);
+      const remaining = all.filter(w => !done.has(w.id));
+      // Kategori daha önce tamamlanmışsa yeni oturum 0/10'dan sayar (eski takılı kalma hatası giderildi)
+      this.isReplayRun = remaining.length === 0;
+      this.pool = remaining.length > 0 ? remaining.slice() : all.slice();
+      this.allWords = all;
+      this.sessionTotal = this.pool.length;
+      this.sessionDone = 0;
+      this.firstTryCount = 0;
+
+      this.layout3DCards();
+      if (this.inVR) UI.hideAll2D();
+      else UI.showGame();
+      UI.updateProgress();
+      this.nextRound();
+    },
+
+    replayCurrentCategory() {
+      if (!this.cat) return this.openMenu();
+      Progress.resetCat(this.cat);
+      this.start(this.cat);
+    },
+
+    nextRound() {
+      this.locked = false;
+      this.mistakesThisRound = 0;
+      if (this.pool.length === 0) return this.finishCategory();
+
+      this.target = this.pool[Math.floor(Math.random() * this.pool.length)];
+      const others = shuffle(this.allWords.filter(w => w.id !== this.target.id)).slice(0, 3);
+      this.currentOptions = shuffle([this.target, ...others]);
+      this.renderOptions(this.currentOptions);
+      UI.setPrompt(this.target);
+      setTimeout(() => Sound.speak(this.target), 280);
+    },
+
+    renderOptions(options) {
+      const m = this.mode();
+      this.cards.forEach((card, i) => {
+        const w = options[i];
+        if (w && card && card.components["quiz-card"]) {
+          card.components["quiz-card"].setCustomFace({
+            id: w.id,
+            action: "answer",
+            emoji: w.emoji,
+            swatch: w.swatch || null,
+            label: w.en,
+            badge: String(i + 1),
+            accent: CARD_ACCENTS[i % CARD_ACCENTS.length],
+            onlyEmoji: m === "listen",
+            onlyText: m === "read"
+          });
+        }
+        if (card) card.setAttribute("visible", !!w);
+      });
+
+      if (this.banner && this.banner.components["quiz-banner"]) {
+        if (m === "listen") {
+          this.banner.components["quiz-banner"].setBanner(
+            "🎧 DİNLE VE DOĞRU GÖRSELİ SEÇ",
+            "🔊 Dinle...",
+            "Seri: 🔥 " + this.streak + "  •  " + (this.sessionDone + 1) + " / " + this.sessionTotal
+          );
+        } else {
+          this.banner.components["quiz-banner"].setBanner(
+            m === "read" ? "✍️ TÜRKÇESİ VERİLEN KELİMEYİ OKU & SEÇ" : "📘 İNGİLİZCESİ HANGİSİ?",
+            this.target.tr,
+            "Seri: 🔥 " + this.streak + "  •  " + (this.sessionDone + 1) + " / " + this.sessionTotal
+          );
+        }
+      }
+      UI.renderButtons(options, m);
+    },
+
+    choose(id, cardEl) {
+      if (this.locked || this.state !== "play" || !this.target) return;
+      Sound.init();
+      this.locked = true;
+      const ok = id === this.target.id;
+
+      if (ok) {
+        const firstTry = this.mistakesThisRound === 0;
+        if (firstTry) this.firstTryCount++;
+        this.streak++;
+        this.sessionDone++;
+        const pts = firstTry ? (10 + Math.min(10, this.streak * 2)) : 5;
+
+        Sound.reward("awesome");
+        Progress.mark(this.cat, this.target.id, pts);
+        this.pool = this.pool.filter(w => w.id !== this.target.id);
+
+        const targetCard = cardEl || this.cards.find(c => c && c.dataset.wordId === id);
+        if (targetCard && targetCard.components["quiz-card"]) targetCard.components["quiz-card"].flash(true);
+
+        UI.flashButton(id, true);
+        UI.updateProgress();
+        UI.toast("Harika! ⭐ " + this.target.en.toUpperCase() + " = " + this.target.tr + " (+" + pts + ")");
+        this.spawnCelebrationBurst();
+        setTimeout(() => this.nextRound(), 980);
+      } else {
+        this.mistakesThisRound++;
+        this.streak = 0;
+        Sound.reward("try_again");
+        const wrongCard = cardEl || this.cards.find(c => c && c.dataset.wordId === id);
+        if (wrongCard && wrongCard.components["quiz-card"]) wrongCard.components["quiz-card"].flash(false);
+        UI.flashButton(id, false);
+        UI.updateProgress();
+        UI.toast("Tekrar dene 🤔 Tekrar dinleyebilirsin (🔁)");
+        setTimeout(() => { this.locked = false; }, 320);
+      }
+    },
+
+    finishCategory() {
+      this.state = "complete";
+      const catObj = window.VR_CATEGORIES.find(c => c.key === this.cat) || { label: "" };
+      const ratio = this.sessionTotal ? (this.firstTryCount / this.sessionTotal) : 1;
+      const stars = ratio >= 0.85 ? "⭐⭐⭐" : (ratio >= 0.55 ? "⭐⭐" : "⭐");
+
+      Sound.reward("completed");
+      this.spawnCelebrationBurst();
+
+      // 3D sahnede de tamamlama kartlarını göster (VR başlık içinde kesintisiz devam)
+      this.cards.forEach((c, idx) => {
+        if (!c) return;
+        if (idx === 1 && c.components["quiz-card"]) {
+          c.setAttribute("visible", true);
+          c.components["quiz-card"].setCustomFace({
+            id: "again", action: "replay-cat", emoji: "🔄", label: "Tekrar Oyna", subLabel: catObj.label, accent: "#fbbf24"
+          });
+        } else if (idx === 2 && c.components["quiz-card"]) {
+          c.setAttribute("visible", true);
+          c.components["quiz-card"].setCustomFace({
+            id: "menu", action: "go-menu", emoji: "🏠", label: "Kategoriler", subLabel: "6 Grup", accent: "#38bdf8"
+          });
+        } else {
+          c.setAttribute("visible", false);
+        }
+      });
+
+      if (this.banner && this.banner.components["quiz-banner"]) {
+        this.banner.components["quiz-banner"].setBanner(
+          "🏆 TEBRİKLER! KATEGORİ TAMAMLANDI",
+          stars + "  " + this.firstTryCount + "/" + this.sessionTotal,
+          "Toplam Puan: " + (Progress.data.score || 0)
+        );
+      }
+
+      if (!this.inVR) {
+        UI.showComplete(catObj.label, stars, this.firstTryCount, this.sessionTotal);
+      }
+    },
+
+    handle3DCommand(cmd) {
+      Sound.init();
+      if (cmd === "replay") this.replay();
+      else if (cmd === "menu") this.openMenu();
+      else if (cmd === "mode") this.cycleMode();
+    },
+
+    replay() {
+      Sound.init();
+      if (this.target) Sound.speak(this.target);
+    },
+
+    spawnCelebrationBurst() {
+      const container = document.getElementById("fx-root");
+      if (!container || !window.AFRAME) return;
+      const colors = ["#fbbf24", "#38bdf8", "#34d399", "#f472b6", "#a78bfa"];
+      for (let i = 0; i < 12; i++) {
+        const p = document.createElement("a-sphere");
+        const x = (Math.random() - 0.5) * 2.2;
+        const y = 1.1 + Math.random() * 1.1;
+        const z = -2.1 + (Math.random() - 0.5) * 0.4;
+        const tx = x + (Math.random() - 0.5) * 0.9;
+        const ty = y + 0.6 + Math.random() * 0.6;
+        p.setAttribute("radius", "0.035");
+        p.setAttribute("color", colors[i % colors.length]);
+        p.setAttribute("shader", "flat");
+        p.setAttribute("position", `${x.toFixed(2)} ${y.toFixed(2)} ${z.toFixed(2)}`);
+        p.setAttribute("animation__move", `property: position; to: ${tx.toFixed(2)} ${ty.toFixed(2)} ${z.toFixed(2)}; dur: 850; easing: easeOutQuad`);
+        p.setAttribute("animation__scale", "property: scale; to: 0.01 0.01 0.01; dur: 850; easing: easeInQuad");
+        container.appendChild(p);
+        setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 900);
+      }
+    }
+  };
+
+  // ---------- 2D Arayüz ----------
   const UI = {
     el(id) { return document.getElementById(id); },
+
     buildMenu() {
       const grid = this.el("cat-grid");
+      if (!grid) return;
       grid.innerHTML = "";
+      let totalLearned = 0;
+      let totalWords = window.VR_WORDS.length;
+
       window.VR_CATEGORIES.forEach(c => {
         const total = window.VR_WORDS.filter(w => w.cat === c.key).length;
         const done = Progress.done(c.key).size;
+        totalLearned += done;
+        const pct = total ? Math.round((done / total) * 100) : 0;
         const b = document.createElement("button");
+        b.type = "button";
         b.className = "cat-card";
-        b.innerHTML = `<span class="cat-emoji">${c.emoji}</span><span class="cat-name">${c.label}</span>
-                       <span class="cat-prog">${done}/${total}</span>`;
+        b.style.setProperty("--cat-accent", c.accent || "#38bdf8");
+        b.innerHTML = `
+          <span class="cat-emoji">${c.emoji}</span>
+          <span class="cat-name">${c.label}</span>
+          <div class="cat-bar"><div class="cat-bar-fill" style="width:${pct}%"></div></div>
+          <span class="cat-prog">${done === total ? "✅ " : ""}${done} / ${total} kelime</span>
+        `;
         b.addEventListener("click", () => { Sound.init(); Game.start(c.key); });
         grid.appendChild(b);
       });
+
+      const summary = this.el("menu-summary");
+      if (summary) {
+        summary.textContent = `Öğrenilen: ${totalLearned} / ${totalWords} kelime  •  Toplam Puan: ⭐ ${Progress.data.score || 0}`;
+      }
+      this.updateModeButtons();
     },
-    showMenu() { this.el("menu").style.display = "grid"; this.el("game-hud").style.display = "none"; this.buildMenu(); },
-    showGame() { this.el("menu").style.display = "none"; this.el("game-hud").style.display = "flex"; this.updateProgress(Game.cat); },
-    showComplete(cat) {
-      const label = (window.VR_CATEGORIES.find(c => c.key === cat) || {}).label || "";
-      Sound.reward("completed");
-      this.toast("🎉 " + label + " tamamlandı!");
+
+    updateModeButtons() {
+      document.querySelectorAll(".mode-pill").forEach((btn, idx) => {
+        btn.classList.toggle("active", idx === Game.modeIdx);
+      });
+      const hudMode = this.el("btn-mode");
+      if (hudMode) {
+        hudMode.textContent = MODES[Game.modeIdx].label.split(" ")[0];
+        hudMode.title = "Mod Değiştir (" + MODES[Game.modeIdx].label + ")";
+      }
+    },
+
+    hideAll2D() {
+      this.el("menu").style.display = "none";
+      this.el("game-hud").style.display = "none";
+      this.el("complete").style.display = "none";
+      this.el("guide").style.display = "none";
+    },
+
+    showMenu() {
+      this.hideToast();
+      this.el("complete").style.display = "none";
+      this.el("game-hud").style.display = "none";
+      this.el("menu").style.display = "grid";
+      this.buildMenu();
+    },
+
+    showGame() {
+      this.el("menu").style.display = "none";
+      this.el("complete").style.display = "none";
+      this.el("game-hud").style.display = "flex";
+      this.updateModeButtons();
+    },
+
+    hideComplete() {
+      this.el("complete").style.display = "none";
+    },
+
+    showComplete(label, stars, firstTry, total) {
+      // Toast ile tamamlama modalının üst üste binmesi hatası giderildi
+      this.hideToast();
+      this.el("game-hud").style.display = "none";
+      this.el("complete-stars").textContent = stars;
+      this.el("complete-text").textContent = `${label} grubunu tamamladın! İlk denemede ${firstTry}/${total} doğru • Toplam Puan: ${Progress.data.score || 0}`;
       this.el("complete").style.display = "grid";
-      this.el("complete-text").textContent = label + " kategorisini bitirdin! 🏆";
     },
+
     setPrompt(word) {
-      this.el("prompt-tr").textContent = word.tr;
-      this.el("prompt-sub").textContent = "İngilizcesini seç";
+      const m = Game.mode();
+      if (m === "listen") {
+        this.el("prompt-tr").textContent = "🔊 Sesi Dinle";
+        this.el("prompt-sub").textContent = "Duyduğun İngilizce kelimenin resmini seç (🔁 tekrar)";
+      } else if (m === "read") {
+        this.el("prompt-tr").textContent = word.tr;
+        this.el("prompt-sub").textContent = "Doğru İngilizce yazılışı seç";
+      } else {
+        this.el("prompt-tr").textContent = word.tr;
+        this.el("prompt-sub").textContent = "İngilizcesini dinle ve doğru kartı seç";
+      }
     },
-    renderButtons(options) {
+
+    renderButtons(options, modeKey) {
       const bar = this.el("answer-bar");
       bar.innerHTML = "";
-      options.forEach(w => {
+      options.forEach((w, idx) => {
         const b = document.createElement("button");
-        b.className = "ans"; b.dataset.id = w.id;
-        b.innerHTML = `<span class="ans-emoji">${w.emoji}</span><span class="ans-word">${w.en}</span>`;
-        b.addEventListener("pointerdown", (e) => { e.preventDefault(); Game.choose(w.id, null); });
+        b.type = "button";
+        b.className = "ans";
+        b.dataset.id = w.id;
+        if (modeKey === "read") {
+          b.innerHTML = `<span class="ans-key">${idx + 1}</span><span class="ans-word only-word">${w.en}</span>`;
+        } else if (modeKey === "listen") {
+          const visual = w.swatch
+            ? `<span class="ans-swatch" style="background:${w.swatch}"></span>`
+            : `<span class="ans-emoji">${w.emoji}</span>`;
+          b.innerHTML = `<span class="ans-key">${idx + 1}</span>${visual}`;
+        } else {
+          const visual = w.swatch
+            ? `<span class="ans-swatch" style="background:${w.swatch}"></span>`
+            : `<span class="ans-emoji">${w.emoji}</span>`;
+          b.innerHTML = `<span class="ans-key">${idx + 1}</span>${visual}<span class="ans-word">${w.en}</span>`;
+        }
+        b.addEventListener("click", () => Game.choose(w.id, null));
         bar.appendChild(b);
       });
     },
+
     flashButton(id, ok) {
       const b = document.querySelector(`.ans[data-id="${CSS.escape(id)}"]`);
-      if (b) { b.classList.add(ok ? "ok" : "no"); setTimeout(() => b.classList.remove("ok", "no"), 450); }
+      if (b) {
+        b.classList.add(ok ? "ok" : "no");
+        setTimeout(() => b.classList.remove("ok", "no"), 440);
+      }
     },
-    updateProgress(cat) {
-      const total = window.VR_WORDS.filter(w => w.cat === cat).length;
-      const done = Progress.done(cat).size;
+
+    updateProgress() {
+      const total = Game.sessionTotal || 10;
+      const done = Game.sessionDone || 0;
       const pct = total ? Math.round((done / total) * 100) : 0;
       this.el("prog-fill").style.width = pct + "%";
-      this.el("prog-label").textContent = done + "/" + total;
+      this.el("prog-label").textContent = `${done}/${total}`;
+      const streakEl = this.el("streak-chip");
+      if (streakEl) streakEl.textContent = `🔥 ${Game.streak}  •  ⭐ ${Progress.data.score || 0}`;
     },
+
+    hideToast() {
+      clearTimeout(this._tt);
+      const t = this.el("toast");
+      if (t) t.classList.remove("show");
+    },
+
     toast(msg) {
       const t = this.el("toast");
-      t.textContent = msg; t.classList.add("show");
-      clearTimeout(this._tt); this._tt = setTimeout(() => t.classList.remove("show"), 1400);
-    },
+      if (!t) return;
+      t.textContent = msg;
+      t.classList.add("show");
+      clearTimeout(this._tt);
+      this._tt = setTimeout(() => t.classList.remove("show"), 1350);
+    }
   };
 
-  // ---------- Başlatma ----------
+  // ---------- Başlatma (Başlangıç perdesi olmadan doğrudan hazır!) ----------
+  function setupVRButton(scene) {
+    const vrBtn = UI.el("btn-enter-vr");
+    const hudVrBtn = UI.el("btn-hud-vr");
+    const buttons = [vrBtn, hudVrBtn].filter(Boolean);
+    if (!scene || !buttons.length) return;
+
+    const checkSupport = async () => {
+      let supported = false;
+      if (navigator.xr && navigator.xr.isSessionSupported) {
+        try { supported = await navigator.xr.isSessionSupported("immersive-vr"); } catch (e) {}
+      }
+      buttons.forEach(b => {
+        if (supported) {
+          b.disabled = false;
+          if (b === vrBtn) b.textContent = "🥽 VR Gözlüğe Geç (Quest 3)";
+        } else {
+          if (b === vrBtn) {
+            b.disabled = true;
+            b.textContent = "🖥️ 3D Web Modu Aktif (VR Başlık Yok)";
+          } else {
+            b.style.display = "none";
+          }
+        }
+      });
+    };
+    checkSupport();
+
+    buttons.forEach(b => {
+      b.addEventListener("click", () => {
+        Sound.init();
+        if (scene.is("vr-mode")) scene.exitVR();
+        else scene.enterVR();
+      });
+    });
+  }
+
   function boot() {
     Progress.load();
-    // 3D kart ve afiş düğümlerini bul
     Game.cards = [0, 1, 2, 3].map(i => document.getElementById("card-" + i));
+    Game.catCards3D = [0, 1, 2, 3, 4, 5].map(i => document.getElementById("cat3d-" + i));
     Game.banner = document.getElementById("banner");
+    Game.actionBar3D = document.getElementById("vr-action-bar");
 
-    UI.buildMenu();
+    // Mod seçici butonları
+    const modeWrap = UI.el("mode-selector");
+    if (modeWrap) {
+      MODES.forEach((m, idx) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "mode-pill" + (idx === 0 ? " active" : "");
+        b.innerHTML = `<strong>${m.label}</strong><span>${m.desc}</span>`;
+        b.addEventListener("click", () => {
+          Sound.init();
+          Game.modeIdx = idx;
+          UI.updateModeButtons();
+          Game.render3DCategoryMenu();
+        });
+        modeWrap.appendChild(b);
+      });
+    }
 
-    // Düğmeler
     UI.el("btn-sound").addEventListener("click", (e) => {
+      Sound.init();
       const m = Sound.toggleMute();
       e.currentTarget.textContent = m ? "🔇" : "🔊";
     });
-    UI.el("btn-home").addEventListener("click", () => UI.showMenu());
+    UI.el("btn-mode").addEventListener("click", () => { Sound.init(); Game.cycleMode(); });
+    UI.el("btn-home").addEventListener("click", () => Game.openMenu());
     UI.el("btn-replay").addEventListener("click", () => Game.replay());
-    UI.el("btn-guide").addEventListener("click", () => UI.el("guide").style.display = "grid");
-    UI.el("guide-close").addEventListener("click", () => UI.el("guide").style.display = "none");
-    UI.el("complete-menu").addEventListener("click", () => { UI.el("complete").style.display = "none"; UI.showMenu(); });
-    UI.el("complete-again").addEventListener("click", () => {
-      UI.el("complete").style.display = "none"; Progress.resetCat(Game.cat); Game.start(Game.cat);
+    UI.el("btn-guide").addEventListener("click", () => { UI.el("guide").style.display = "grid"; });
+    UI.el("guide-close").addEventListener("click", () => { UI.el("guide").style.display = "none"; });
+    UI.el("btn-reset-all").addEventListener("click", () => {
+      Progress.resetAll();
+      UI.buildMenu();
+      Game.render3DCategoryMenu();
+      UI.toast("İlerleme sıfırlandı ✨");
     });
 
-    // İlk dokunuş: sesi aç ve menüyü göster
-    UI.el("start-btn").addEventListener("click", () => {
-      Sound.init();
-      UI.el("start").style.display = "none";
-      UI.showMenu();
+    UI.el("complete-menu").addEventListener("click", () => Game.openMenu());
+    UI.el("complete-again").addEventListener("click", () => {
+      UI.hideComplete();
+      Game.replayCurrentCategory();
     });
-    const scene = document.querySelector("a-scene");
-    if (scene) scene.addEventListener("enter-vr", () => Sound.init());
+
+    // Klavye kısayolları (Masaüstü ve Akıllı Tahta kolaylığı: 1-4 seçim, R/Boşluk tekrar dinle, Esc menü)
+    window.addEventListener("keydown", (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+      if (e.key === "Escape") {
+        if (UI.el("guide").style.display === "grid") { UI.el("guide").style.display = "none"; return; }
+        if (Game.state !== "menu") Game.openMenu();
+        return;
+      }
+      if (Game.state !== "play") return;
+      const idx = ["1", "2", "3", "4"].indexOf(e.key);
+      if (idx >= 0 && Game.currentOptions[idx]) {
+        Game.choose(Game.currentOptions[idx].id, null);
+        return;
+      }
+      if (e.code === "Space" || e.key.toLowerCase() === "r") {
+        if (document.activeElement && document.activeElement.tagName === "BUTTON") document.activeElement.blur();
+        e.preventDefault();
+        Game.replay();
+      }
+    });
+
+    window.addEventListener("resize", () => Game.layout3DCards());
+
+    const scene = document.getElementById("scene");
+    if (scene) {
+      setupVRButton(scene);
+      scene.addEventListener("enter-vr", () => {
+        Sound.init();
+        Game.inVR = true;
+        Game.layout3DCards();
+        UI.hideAll2D();
+        if (Game.state === "menu") Game.render3DCategoryMenu();
+      });
+      scene.addEventListener("exit-vr", () => {
+        Game.inVR = false;
+        Game.layout3DCards();
+        if (Game.state === "play") UI.showGame();
+        else Game.openMenu();
+      });
+      if (scene.hasLoaded) {
+        Game.layout3DCards();
+        Game.render3DCategoryMenu();
+      } else {
+        scene.addEventListener("loaded", () => {
+          Game.layout3DCards();
+          Game.render3DCategoryMenu();
+        });
+      }
+    }
+
+    // Doğrudan kategori ekranını aç ("Başla" ara ekranı yok!)
+    UI.showMenu();
   }
 
-  // Dışarıdan erişim (kartların click olayı için)
   window.VRGame = Game;
 
-  if (document.readyState === "loading")
-    document.addEventListener("DOMContentLoaded", boot);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
   else boot();
 })();
