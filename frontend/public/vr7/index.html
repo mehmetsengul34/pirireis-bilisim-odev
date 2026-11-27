@@ -2,65 +2,114 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Klasik Gitar VR</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Torbalı BİLSEM Klasik Gitar VR | Doğal El Takibi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  /* Layout: full-bleed 3D stage; name and VR entry on top, chord dock at the bottom. Single night-stage theme. */
-  --night: #0b121d;
-  --panel: rgba(14, 24, 38, 0.82);
+  --night: #09101a;
+  --panel: rgba(13, 22, 36, 0.86);
+  --panel-strong: rgba(10, 17, 29, 0.94);
   --line: rgba(214, 228, 245, 0.16);
   --text: #eef2f6;
-  --muted: #a3b3c4;
+  --muted: #9fb1c4;
   --accent: #f2b84b;
   --accent-ink: #1d1503;
+  --teal: #2dd4bf;
   --font-display: "Bricolage Grotesque", "Trebuchet MS", system-ui, sans-serif;
   --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
   color-scheme: dark;
 }
-* { box-sizing: border-box; }
+* { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
 html, body { height: 100%; margin: 0; }
 body {
   background: var(--night);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 15px;
-  line-height: 1.4;
+  font-size: 14.5px;
+  line-height: 1.38;
   overflow: hidden;
 }
 #stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-.overlay { position: fixed; left: 0; right: 0; pointer-events: none; padding: 16px; }
-.bar { top: 0; display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
-.brand { max-width: 46ch; }
-.brand h1 { font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; margin: 0 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
-.brand p { margin: 0; color: var(--muted); }
-#hint { color: var(--text); margin-top: 6px; }
-button { font: inherit; color: inherit; cursor: pointer; pointer-events: auto; }
+.overlay { position: fixed; left: 0; right: 0; pointer-events: none; padding: 14px 18px; z-index: 10; }
+.bar {
+  top: 0; display: flex; gap: 12px 18px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap;
+}
+.brand {
+  max-width: 54ch; background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  padding: 10px 15px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+.brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.badge {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 999px; background: rgba(242, 184, 75, 0.18);
+  color: var(--accent); border: 1px solid rgba(242, 184, 75, 0.4);
+}
+.brand h1 {
+  font-family: var(--font-display); font-weight: 700; font-size: 22px; line-height: 1.1;
+  margin: 0; letter-spacing: -0.01em;
+}
+.brand p { margin: 0; font-size: 13px; color: var(--muted); }
+#hint { color: var(--text); margin-top: 4px; font-size: 13px; }
+
+.top-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; pointer-events: auto; }
+button { font: inherit; color: inherit; cursor: pointer; pointer-events: auto; transition: border-color 0.16s, background 0.16s, transform 0.14s; }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .primary {
-  background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 10px;
-  padding: 12px 20px; font-weight: 600; font-size: 16px;
+  background: linear-gradient(135deg, #f59e0b, #fbbf24); color: var(--accent-ink); border: 0; border-radius: 12px;
+  padding: 11px 18px; font-weight: 700; font-size: 14.5px; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.35);
 }
-.primary:disabled { background: transparent; color: var(--muted); border: 1px solid var(--line); cursor: default; }
-.dock { bottom: 0; display: flex; gap: 12px 24px; align-items: flex-end; flex-wrap: wrap; }
-.group { display: flex; flex-direction: column; gap: 6px; pointer-events: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; backdrop-filter: blur(8px); }
-.label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.primary:hover:not(:disabled) { transform: translateY(-1px); }
+.primary.ar {
+  background: linear-gradient(135deg, #14b8a6, #38bdf8); color: #041e24;
+  box-shadow: 0 8px 24px rgba(45, 212, 191, 0.3);
+}
+.primary:disabled {
+  background: var(--panel); color: var(--muted); border: 1px solid var(--line);
+  cursor: default; box-shadow: none; font-weight: 600;
+}
+
+.dock {
+  bottom: 0; display: flex; gap: 10px 12px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap;
+}
+.dock-left, .dock-right { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.group {
+  display: flex; flex-direction: column; gap: 5px; pointer-events: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  padding: 8px 11px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.chips { display: flex; gap: 5px; flex-wrap: wrap; }
 .chip {
-  background: transparent; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 44px;
-  font-weight: 600; display: inline-flex; gap: 6px; align-items: baseline; justify-content: center;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line); border-radius: 8px;
+  padding: 5px 8.5px; min-width: 36px; font-size: 13px; font-weight: 600;
+  display: inline-flex; gap: 4px; align-items: baseline; justify-content: center; white-space: nowrap;
 }
-.chip kbd { font: inherit; font-size: 11px; font-weight: 400; color: var(--muted); }
+.chip.top-chip { background: var(--panel); padding: 9px 13px; border-radius: 11px; }
+.chip kbd { font: inherit; font-size: 10.5px; font-weight: 500; color: var(--muted); }
 .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.chip[aria-pressed="true"] kbd { color: var(--accent-ink); opacity: 0.7; }
+.chip[aria-pressed="true"] kbd { color: var(--accent-ink); opacity: 0.72; }
 .chip:hover { border-color: var(--accent); }
-@media (max-width: 520px) {
-  .brand h1 { font-size: 21px; }
-  .overlay { padding: 12px 16px; }
+
+@media (max-width: 960px) {
+  .overlay { padding: 10px 12px; }
+  .brand { padding: 8px 12px; max-width: 100%; }
+  .brand h1 { font-size: 19px; }
+  .brand p, #hint { font-size: 12px; }
+  .group { padding: 7px 9px; }
+  .chip { padding: 5px 8px; font-size: 12.5px; min-width: 36px; }
+}
+@media (max-width: 580px) {
+  .brand h1 { font-size: 17.5px; }
+  #status { display: none; }
   .chip kbd { display: none; }
+  .dock { gap: 7px; }
+  .dock-left, .dock-right { width: 100%; justify-content: space-between; gap: 6px; }
+  .group.chords-group { width: 100%; }
+  .group.chords-group .chips { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
 }
 </style>
 </head>
@@ -69,58 +118,99 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 <header class="overlay bar">
   <div class="brand">
-    <h1>Klasik Gitar VR</h1>
-    <p id="status">VR desteği kontrol ediliyor.</p>
-    <p id="hint">Ses için bir kez tıklayın, sonra fareyi tellerin üzerinden geçirin.</p>
+    <div class="brand-row">
+      <h1>Klasik Gitar VR</h1>
+      <span class="badge">Doğal İnsan Eli</span>
+    </div>
+    <p id="status">VR desteği kontrol ediliyor...</p>
+    <p id="hint">Ses için bir kez tıklayın; tellerin üzerinden geçerek çalın. Sağ sürükle: açı değiştir.</p>
   </div>
-  <button id="vrBtn" class="primary" type="button" disabled>VR'a gir</button>
+  <div class="top-actions">
+    <button id="povBtn" class="chip top-chip" type="button" aria-pressed="false">
+      👁️ Çalan Açısı
+    </button>
+    <button id="handsPreviewBtn" class="chip top-chip" type="button" aria-pressed="false">
+      ✋ Elleri Göster
+    </button>
+    <button id="vrBtn" class="primary" type="button" disabled>🥽 VR'a Gir</button>
+    <button id="arBtn" class="primary ar" type="button" style="display:none">🌐 Karma Gerçeklik</button>
+  </div>
 </header>
 
 <footer class="overlay dock">
-  <div class="group">
-    <span class="label">Akor (sol el)</span>
-    <div id="chords" class="chips"></div>
-  </div>
-  <div class="group">
-    <span class="label">VR'da sol el</span>
-    <div class="chips">
-      <button id="modeChord" class="chip" type="button" aria-pressed="true">Akor bölgeleri</button>
-      <button id="modeFree" class="chip" type="button" aria-pressed="false">Serbest parmak</button>
+  <div class="dock-left">
+    <div class="group chords-group">
+      <span class="label">Akor (Sol El)</span>
+      <div id="chords" class="chips"></div>
     </div>
   </div>
-  <div class="group">
-    <span class="label">VR'da tutuş</span>
-    <div class="chips">
-      <button id="holdFree" class="chip" type="button" aria-pressed="true">Serbest</button>
-      <button id="holdStrap" class="chip" type="button" aria-pressed="false">Askılı</button>
+  <div class="dock-right">
+    <div class="group">
+      <span class="label">VR'da Sol El</span>
+      <div class="chips">
+        <button id="modeChord" class="chip" type="button" aria-pressed="true" title="Sap üzerindeki bölgelere dokunarak akor basın">Akor bölgeleri</button>
+        <button id="modeFree" class="chip" type="button" aria-pressed="false" title="Her parmağınızla istediğiniz perdeye basın">Serbest parmak</button>
+      </div>
     </div>
-  </div>
-  <div class="group">
-    <span class="label">Dinle</span>
-    <div class="chips">
-      <button id="demoBtn" class="chip" type="button" aria-pressed="false">Örnek çal</button>
+    <div class="group">
+      <span class="label">VR'da Tutuş</span>
+      <div class="chips">
+        <button id="holdStrap" class="chip" type="button" aria-pressed="true" title="Gitar askılı olarak gövdenizde hazır durur, düşmez">Askılı (Kolay)</button>
+        <button id="holdFree" class="chip" type="button" aria-pressed="false" title="Gitarı standdan elinizle kavrayıp alın">Standdan Al</button>
+      </div>
+    </div>
+    <div class="group">
+      <span class="label">Dinle & Ritim</span>
+      <div class="chips">
+        <button id="demoBtn" class="chip" type="button" aria-pressed="false">🎵 Örnek çal</button>
+        <button id="strumBtn" class="chip" type="button" title="Tüm tellere vur (Boşluk)">🎸 Ritim Vur</button>
+      </div>
     </div>
   </div>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// Çoklu CDN yedekli Three.js yükleyici
 (function () {
+  var CDNS = [
+    'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+    'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js',
+    'https://unpkg.com/three@0.128.0/build/three.min.js'
+  ];
+  function tryLoad(idx) {
+    if (typeof window.THREE !== 'undefined') { bootGuitar(); return; }
+    if (idx >= CDNS.length) {
+      document.getElementById('status').textContent = '3D motoru (Three.js) yüklenemedi. İnternet bağlantısını kontrol edin.';
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = CDNS[idx];
+    s.crossOrigin = 'anonymous';
+    s.onload = function () { bootGuitar(); };
+    s.onerror = function () { s.remove(); tryLoad(idx + 1); };
+    document.head.appendChild(s);
+  }
+  tryLoad(0);
+})();
+
+function bootGuitar() {
 'use strict';
 
-/* ---------- Guitar geometry constants (metres, guitar-local frame) ----------
-   +X: bridge -> headstock, +Y: toward bass strings, +Z: out of the soundboard.
-   Origin sits at the soundhole. */
-var L = 0.65;                       // scale length of a classical guitar
+/* ---------- Gitar geometri sabitleri (metre, gitar yerel ekseni) ----------
+   +X: köprüden burguluğa (sap yönü)
+   +Y: kalın (bas E2) tellere doğru yukarı
+   +Z: ses tahtasından dışarı (tellere doğru)
+   Orijin (0,0,0): ses deliğinin ön yüzeyi */
+var L = 0.65;
 var X_NUT = 0.50, X_BRIDGE = X_NUT - L;
 function fretX(n) { return X_NUT - L * (1 - Math.pow(2, -n / 12)); }
 var X_JOINT = fretX(12), X_FB_END = fretX(19);
-var FB_TOP = 0.006;
-var NUT_SP = 0.0086, BR_SP = 0.0116;
+var FB_TOP = 0.0065;
+var NUT_SP = 0.0088, BR_SP = 0.0118;
 function spacing(x) { return NUT_SP + (BR_SP - NUT_SP) * ((X_NUT - x) / L); }
 function stringY(i, x) { return (2.5 - i) * spacing(x); }
-function stringZ(x) { return 0.0078 + 0.0047 * ((X_NUT - x) / L); }
-function fbHalf(x) { return 0.026 + 0.005 * ((X_NUT - x) / (X_NUT - X_JOINT)); }
+function stringZ(x) { return 0.0086 + 0.0046 * ((X_NUT - x) / L); }
+function fbHalf(x) { return 0.0265 + 0.0052 * ((X_NUT - x) / (X_NUT - X_JOINT)); }
 function fretAt(x) {
   var d = X_NUT - x;
   if (d <= 0) return 0;
@@ -129,6 +219,7 @@ function fretAt(x) {
 function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 
 var OPEN_MIDI = [40, 45, 50, 55, 59, 64];   // E2 A2 D3 G3 B3 E4
+var STRING_NAMES = ['Mi (E2)', 'La (A2)', 'Re (D3)', 'Sol (G3)', 'Si (B3)', 'İnce Mi (E4)'];
 var CHORDS = {
   'Açık': [0, 0, 0, 0, 0, 0],
   'Em': [0, 2, 2, 0, 0, 0],
@@ -142,17 +233,19 @@ var CHORDS = {
   'A':  [-1, 0, 2, 2, 2, 0]
 };
 var CHORD_ORDER = ['Açık', 'Em', 'Am', 'C', 'G', 'D', 'F', 'Dm', 'E', 'A'];
-var ZONE_CHORDS = ['C', 'G', 'Am', 'F', 'Em', 'Dm'];   // from the nut toward the body
-var ZONE_START = X_NUT + 0.03, ZONE_LEN = (ZONE_START - X_JOINT) / ZONE_CHORDS.length;
+var ZONE_CHORDS = ['C', 'G', 'Am', 'F', 'Em', 'Dm'];
+var ZONE_START = X_NUT + 0.025, ZONE_LEN = (ZONE_START - X_JOINT) / ZONE_CHORDS.length;
 
 var frets = [0, 0, 0, 0, 0, 0];
 var chordName = 'Açık';
 var vrMode = 'chord';               // 'chord' | 'free'
-var holdMode = 'free';              // 'free': pick it up with your hands | 'strap': always worn
+var holdMode = 'strap';             // Varsayılan 'strap' (Askılı/Kolay): gitar elde/gövdede hazır ve düşmez!
 var state = 'rest';                 // 'rest' | 'carry' | 'play'
 var standReady = false;
+var desktopPOV = false;             // Masaüstünde çalan kişinin bakış açısı önizlemesi
+var previewHandsDesktop = false;    // Masaüstünde gerçekçi 3D insan ellerini gösterme
 
-/* ---------- Audio: Karplus-Strong plucked nylon string ---------- */
+/* ---------- Ses Motoru: Karplus-Strong akustik naylon & sarımlı bas teller ---------- */
 var ctx = null, bodyIn = null;
 var noteCache = {};
 var voices = [null, null, null, null, null, null];
@@ -163,48 +256,62 @@ function initAudio() {
   if (!AC) return;
   try { ctx = new AC(); } catch (e) { ctx = null; return; }
   bodyIn = ctx.createGain();
-  var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 70;
-  var pk1 = ctx.createBiquadFilter(); pk1.type = 'peaking'; pk1.frequency.value = 105; pk1.Q.value = 1.2; pk1.gain.value = 5;
-  var pk2 = ctx.createBiquadFilter(); pk2.type = 'peaking'; pk2.frequency.value = 215; pk2.Q.value = 1.5; pk2.gain.value = 3;
-  var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5200;
+  var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 68;
+  var pk1 = ctx.createBiquadFilter(); pk1.type = 'peaking'; pk1.frequency.value = 102; pk1.Q.value = 1.25; pk1.gain.value = 5.2;
+  var pk2 = ctx.createBiquadFilter(); pk2.type = 'peaking'; pk2.frequency.value = 218; pk2.Q.value = 1.45; pk2.gain.value = 3.2;
+  var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 5600;
   var comp = ctx.createDynamicsCompressor();
-  var out = ctx.createGain(); out.gain.value = 0.9;
+  comp.threshold.value = -10; comp.ratio.value = 8;
+  var out = ctx.createGain(); out.gain.value = 0.92;
   bodyIn.connect(hp); hp.connect(pk1); pk1.connect(pk2); pk2.connect(lp);
   lp.connect(comp);
-  // Small-room tail
+
   var conv = ctx.createConvolver();
-  var sr = ctx.sampleRate, n = Math.floor(sr * 1.3);
+  var sr = ctx.sampleRate, n = Math.floor(sr * 1.45);
   var ir = ctx.createBuffer(2, n, sr);
   for (var c = 0; c < 2; c++) {
     var d = ir.getChannelData(c);
-    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.2);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 3.1);
   }
   conv.buffer = ir;
-  var wet = ctx.createGain(); wet.gain.value = 0.2;
+  var wet = ctx.createGain(); wet.gain.value = 0.22;
   lp.connect(conv); conv.connect(wet); wet.connect(comp);
   comp.connect(out); out.connect(ctx.destination);
+
   var hint = document.getElementById('hint');
-  if (hint) hint.textContent = 'Fareyi gövdedeki tellerin üzerinden geçirin. Perdeye tıklayarak nota değiştirin. Boşluk: tüm tellere vur.';
+  if (hint) hint.textContent = 'Tellerin üzerinden geçerek çalın • Perdeye tıklayın • Sağ sürükle: açı • Boşluk: ritim vur.';
+}
+
+function playUiTick(freq) {
+  if (!ctx || ctx.state !== 'running') return;
+  try {
+    var now = ctx.currentTime;
+    var osc = ctx.createOscillator(), g = ctx.createGain();
+    osc.type = 'triangle'; osc.frequency.setValueAtTime(freq || 620, now);
+    g.gain.setValueAtTime(0.05, now); g.gain.exponentialRampToValueAtTime(0.0001, now + 0.035);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(now); osc.stop(now + 0.04);
+  } catch (e) {}
 }
 
 function noteBuffer(midi) {
   if (noteCache[midi]) return noteCache[midi];
   var sr = ctx.sampleRate, f = 440 * Math.pow(2, (midi - 69) / 12);
-  var dur = midi < 52 ? 4.0 : (midi < 64 ? 3.2 : 2.6);
+  var dur = midi < 52 ? 4.2 : (midi < 64 ? 3.3 : 2.7);
   var len = Math.floor(sr * dur);
   var buf = ctx.createBuffer(1, len, sr), out = buf.getChannelData(0);
-  var s = 0.5 - 0.14 * clamp((midi - 52) / 28, 0, 1);       // loop damping filter
+  var s = 0.5 - 0.14 * clamp((midi - 52) / 28, 0, 1);
   var P = sr / f, N = Math.floor(P - s), fr = P - s - N;
   if (fr < 0.1) { N -= 1; fr += 1; }
-  var C = (1 - fr) / (1 + fr);                               // all-pass for fine tuning
+  var C = (1 - fr) / (1 + fr);
   var dl = new Float32Array(N), i;
-  var a = midi < 55 ? 0.42 : 0.3, v1 = 0, v2 = 0, mean = 0;
+  var a = midi < 55 ? 0.44 : 0.32, v1 = 0, v2 = 0, mean = 0;
   for (i = 0; i < N; i++) { var w = Math.random() * 2 - 1; v1 += a * (w - v1); v2 += a * (v1 - v2); dl[i] = v2; mean += v2; }
   mean /= N;
   var off = Math.max(1, Math.floor(N * 0.2)), tmp = new Float32Array(N), peak = 0;
   for (i = 0; i < N; i++) { tmp[i] = (dl[i] - mean) - 0.55 * (dl[(i + off) % N] - mean); if (Math.abs(tmp[i]) > peak) peak = Math.abs(tmp[i]); }
   for (i = 0; i < N; i++) dl[i] = tmp[i] / (peak || 1) * 0.9;
-  var t60 = 4.6 - 2.6 * clamp((midi - 40) / 40, 0, 1);
+  var t60 = 4.7 - 2.6 * clamp((midi - 40) / 40, 0, 1);
   var g = Math.pow(10, -3 / (t60 * f));
   var ptr = 0, x1 = 0, apx = 0, apy = 0, fade = Math.floor(sr * 0.06);
   for (var n = 0; n < len; n++) {
@@ -226,24 +333,30 @@ function playString(i, vel, delay) {
   if (old) {
     try { old.g.gain.cancelScheduledValues(t); old.g.gain.setTargetAtTime(0, t, 0.012); old.src.stop(t + 0.12); } catch (e) {}
   }
-  var src = ctx.createBufferSource(); src.buffer = noteBuffer(OPEN_MIDI[i] + frets[i]);
-  var flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 900 + vel * 5200;
-  var g = ctx.createGain(); g.gain.value = Math.pow(vel, 1.3) * 0.55;
+  var src = ctx.createBufferSource(); src.buffer = noteBuffer(OPEN_MIDI[i] + Math.max(0, frets[i]));
+  var flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 1050 + vel * 5400;
+  var g = ctx.createGain(); g.gain.value = Math.pow(vel, 1.25) * 0.58;
   src.connect(flt); flt.connect(g); g.connect(bodyIn);
   src.start(t);
   voices[i] = { src: src, g: g };
 }
 
-/* ---------- Scene ---------- */
+/* ---------- 3D Sahne ve Akustik Stüdyo Ortamı ---------- */
 var canvas = document.getElementById('stage');
-var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.outputEncoding = THREE.sRGBEncoding;
+if (THREE.ACESFilmicToneMapping !== undefined) {
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.06;
+}
 renderer.xr.enabled = true;
 
 var scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b121d);
+scene.background = new THREE.Color(0x09101a);
 var camera = new THREE.PerspectiveCamera(50, 1, 0.01, 60);
+var envGroup = new THREE.Group();
+scene.add(envGroup);
 
 function canvasTex(w, h, draw) {
   var c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -251,37 +364,56 @@ function canvasTex(w, h, draw) {
   var t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return t;
 }
 
-// Sky dome and floor pool of light
-scene.add(new THREE.Mesh(
-  new THREE.SphereGeometry(25, 24, 16),
+envGroup.add(new THREE.Mesh(
+  new THREE.SphereGeometry(26, 28, 18),
   new THREE.MeshBasicMaterial({ side: THREE.BackSide, map: canvasTex(8, 256, function (g, w, h) {
     var gr = g.createLinearGradient(0, 0, 0, h);
-    gr.addColorStop(0, '#070c14'); gr.addColorStop(0.48, '#1b3044'); gr.addColorStop(0.56, '#16222f'); gr.addColorStop(1, '#090d13');
+    gr.addColorStop(0, '#050911'); gr.addColorStop(0.46, '#17293d'); gr.addColorStop(0.56, '#131e2b'); gr.addColorStop(1, '#070a10');
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   }) })
 ));
+
 var floor = new THREE.Mesh(
-  new THREE.CircleGeometry(4.5, 48),
+  new THREE.CircleGeometry(4.8, 56),
   new THREE.MeshBasicMaterial({ map: canvasTex(256, 256, function (g, w, h) {
     var gr = g.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2);
-    gr.addColorStop(0, '#6a4a2e'); gr.addColorStop(0.35, '#3a2a1d'); gr.addColorStop(1, '#0c1017');
+    gr.addColorStop(0, '#5c3f26'); gr.addColorStop(0.38, '#332317'); gr.addColorStop(1, '#090e16');
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   }) })
 );
 floor.rotation.x = -Math.PI / 2;
-scene.add(floor);
+envGroup.add(floor);
 
-scene.add(new THREE.HemisphereLight(0xd3e2ff, 0x3a2a1c, 0.85));
-var key = new THREE.DirectionalLight(0xffe6c4, 0.95); key.position.set(0.8, 2.2, 1.5); scene.add(key);
-var rim = new THREE.DirectionalLight(0x8fb0ff, 0.45); rim.position.set(-1.5, 1.2, -1.2); scene.add(rim);
+// Akustik stüdyo çevre sütunları
+(function buildStudioPillars() {
+  var pMat = new THREE.MeshStandardMaterial({ color: 0x182334, roughness: 0.55, metalness: 0.2 });
+  var lMat = new THREE.MeshBasicMaterial({ color: 0xf2b84b, transparent: true, opacity: 0.35 });
+  for (var i = 0; i < 8; i++) {
+    var a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    var r = 4.55;
+    var grp = new THREE.Group();
+    grp.position.set(Math.sin(a) * r, 1.45, Math.cos(a) * r);
+    grp.lookAt(0, 1.45, 0);
+    var m1 = new THREE.Mesh(new THREE.BoxGeometry(0.24, 2.9, 0.12), pMat);
+    var m2 = new THREE.Mesh(new THREE.PlaneGeometry(0.026, 2.5), lMat);
+    m2.position.z = 0.064;
+    grp.add(m1, m2);
+    envGroup.add(grp);
+  }
+})();
 
-/* ---------- Guitar model ---------- */
+scene.add(new THREE.HemisphereLight(0xdbe8ff, 0x45301f, 0.82));
+var keyLight = new THREE.DirectionalLight(0xffe6c4, 0.92); keyLight.position.set(0.7, 2.3, 1.6); scene.add(keyLight);
+var rimLight = new THREE.DirectionalLight(0x93c5fd, 0.42); rimLight.position.set(-1.6, 1.4, -1.1); scene.add(rimLight);
+var playerFill = new THREE.PointLight(0xffe8cc, 0.18, 3.5); playerFill.position.set(0, 1.75, 0.35); scene.add(playerFill);
+
+/* ---------- Klasik Gitar 3D Modeli (Klavye Taşma Hatası Giderilmiş + Sedef Perde İşaretleri + Askı) ---------- */
 var guitar = new THREE.Group(); scene.add(guitar);
 var V3 = THREE.Vector3;
 
 function cyl(a, b, r, mat, seg) {
   var d = new V3().subVectors(b, a);
-  var m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), seg || 8, 1), mat);
+  var m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), seg || 10, 1), mat);
   m.position.copy(a).addScaledVector(d, 0.5);
   m.quaternion.setFromUnitVectors(new V3(0, 1, 0), d.clone().normalize());
   return m;
@@ -290,23 +422,26 @@ function box(sx, sy, sz, x, y, z, mat) {
   var m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), mat); m.position.set(x, y, z); return m;
 }
 
-var matTop = new THREE.MeshStandardMaterial({ roughness: 0.42, metalness: 0, map: (function () {
+var matTop = new THREE.MeshStandardMaterial({ roughness: 0.38, metalness: 0.02, map: (function () {
   var t = canvasTex(256, 256, function (g, w, h) {
-    g.fillStyle = '#d9a75e'; g.fillRect(0, 0, w, h);
-    for (var i = 0; i < 110; i++) {
-      g.strokeStyle = 'rgba(' + (110 + Math.random() * 40 | 0) + ',' + (62 + Math.random() * 25 | 0) + ',18,' + (0.05 + Math.random() * 0.16) + ')';
-      g.lineWidth = 1 + Math.random() * 1.5;
+    g.fillStyle = '#dba860'; g.fillRect(0, 0, w, h);
+    for (var i = 0; i < 120; i++) {
+      g.strokeStyle = 'rgba(' + (112 + Math.random() * 38 | 0) + ',' + (64 + Math.random() * 24 | 0) + ',18,' + (0.05 + Math.random() * 0.14) + ')';
+      g.lineWidth = 1 + Math.random() * 1.4;
       var y = Math.random() * h; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
     }
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(2, 9); return t;
 })() });
-var matSide = new THREE.MeshStandardMaterial({ color: 0x4d2515, roughness: 0.4 });
-var matNeck = new THREE.MeshStandardMaterial({ color: 0x6e3c20, roughness: 0.5 });
-var matEbony = new THREE.MeshStandardMaterial({ color: 0x1c1310, roughness: 0.6 });
-var matFret = new THREE.MeshStandardMaterial({ color: 0xcfd2d4, roughness: 0.3, metalness: 0.85 });
-var matBone = new THREE.MeshStandardMaterial({ color: 0xf2ead6, roughness: 0.5 });
-var matDark = new THREE.MeshStandardMaterial({ color: 0x0e0907, roughness: 0.9 });
+var matSide = new THREE.MeshStandardMaterial({ color: 0x4d2515, roughness: 0.38 });
+var matNeck = new THREE.MeshStandardMaterial({ color: 0x6e3c20, roughness: 0.46 });
+var matEbony = new THREE.MeshStandardMaterial({ color: 0x181210, roughness: 0.48 });
+var matFret = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.24, metalness: 0.88 });
+var matBone = new THREE.MeshStandardMaterial({ color: 0xf6efe0, roughness: 0.42 });
+var matInlay = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+var matDark = new THREE.MeshStandardMaterial({ color: 0x0b0705, roughness: 0.92 });
+var grabGlowMat = new THREE.MeshBasicMaterial({ color: 0xf2b84b, transparent: true, opacity: 0.0, side: THREE.DoubleSide });
+var strapGroup = new THREE.Group();
 
 (function buildBody() {
   var half = [[0.175, 0], [0.171, 0.055], [0.15, 0.112], [0.09, 0.14], [0.03, 0.128], [-0.02, 0.118],
@@ -323,9 +458,9 @@ var matDark = new THREE.MeshStandardMaterial({ color: 0x0e0907, roughness: 0.9 }
   var back = new THREE.Mesh(new THREE.ShapeGeometry(shape), new THREE.MeshStandardMaterial({ color: 0x4d2515, roughness: 0.4, side: THREE.BackSide }));
   back.position.z = -(depth + 2 * bev) - 0.0004; guitar.add(back);
 
-  // Rosette and soundhole
+  // Rozet ve ses deliği
   var ros = new THREE.Mesh(new THREE.CircleGeometry(0.062, 64), new THREE.MeshStandardMaterial({
-    transparent: true, roughness: 0.6, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+    transparent: true, roughness: 0.55, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
     map: canvasTex(256, 256, function (g, w) {
       var c = w / 2, k;
       g.clearRect(0, 0, w, w);
@@ -338,14 +473,34 @@ var matDark = new THREE.MeshStandardMaterial({ color: 0x0e0907, roughness: 0.9 }
       g.fillStyle = '#3a1d10'; g.beginPath(); g.arc(c, c, 100, 0, 7); g.fill();
       g.strokeStyle = '#f3e6c4'; g.lineWidth = 2;
       g.beginPath(); g.arc(c, c, 121, 0, 7); g.stroke(); g.beginPath(); g.arc(c, c, 95, 0, 7); g.stroke();
-      g.fillStyle = '#080504'; g.beginPath(); g.arc(c, c, 89, 0, 7); g.fill();
+      g.fillStyle = '#070403'; g.beginPath(); g.arc(c, c, 89, 0, 7); g.fill();
     })
   }));
-  ros.position.set(0.015, 0, 0.0006); guitar.add(ros);
+  ros.position.set(0.015, 0, 0.0007); guitar.add(ros);
 
-  // Bridge and saddle
+  // Köprü ve eşik
   guitar.add(box(0.028, 0.185, 0.009, X_BRIDGE - 0.006, 0, 0.0045, matSide));
-  guitar.add(box(0.003, 0.085, 0.004, X_BRIDGE, 0, 0.0105, matBone));
+  guitar.add(box(0.0034, 0.088, 0.005, X_BRIDGE, 0, 0.0108, matBone));
+
+  // Deri omuz askısı (Askılı tutuş modunda görünür)
+  var strapMat = new THREE.MeshStandardMaterial({ color: 0x291a12, roughness: 0.75, metalness: 0.1, side: THREE.DoubleSide });
+  var pinMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, roughness: 0.3, metalness: 0.85 });
+  var pin1 = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.004, 0.012, 12), pinMat);
+  pin1.rotation.z = Math.PI / 2; pin1.position.set(-0.32, 0, -0.048); guitar.add(pin1);
+  var pin2 = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.004, 0.012, 12), pinMat);
+  pin2.rotation.x = Math.PI / 2; pin2.position.set(0.175, 0.02, -0.055); guitar.add(pin2);
+
+  var strapCurve = new THREE.CatmullRomCurve3([
+    new V3(-0.32, 0.0, -0.05),
+    new V3(-0.28, 0.22, -0.14),
+    new V3(-0.04, 0.36, -0.22),
+    new V3(0.16, 0.20, -0.15),
+    new V3(0.175, 0.02, -0.055)
+  ]);
+  var strapTube = new THREE.Mesh(new THREE.TubeGeometry(strapCurve, 36, 0.014, 8, false), strapMat);
+  strapTube.scale.z = 0.35;
+  strapGroup.add(strapTube);
+  guitar.add(strapGroup);
 })();
 
 (function buildNeck() {
@@ -354,16 +509,62 @@ var matDark = new THREE.MeshStandardMaterial({ color: 0x0e0907, roughness: 0.9 }
     s.moveTo(x0, -fbHalf(x0)); s.lineTo(x1, -fbHalf(x1)); s.lineTo(x1, fbHalf(x1)); s.lineTo(x0, fbHalf(x0)); s.closePath();
     return s;
   }
+  // Abanoz klavye (z = 0 .. +FB_TOP)
   guitar.add(new THREE.Mesh(new THREE.ExtrudeGeometry(trap(X_FB_END, X_NUT), { depth: FB_TOP, bevelEnabled: false }), matEbony));
-  var slab = new THREE.ExtrudeGeometry(trap(X_JOINT, X_NUT), { depth: 0.012, bevelEnabled: false }); slab.translate(0, 0, -0.012);
-  guitar.add(new THREE.Mesh(slab, matNeck));
-  var round = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.031, X_NUT - X_JOINT, 18), matNeck);
-  round.rotation.z = -Math.PI / 2; round.scale.z = 0.6; round.position.set((X_NUT + X_JOINT) / 2, 0, -0.010); guitar.add(round);
-  guitar.add(box(0.035, 0.05, 0.085, X_JOINT + 0.0175, 0, -0.0525, matNeck));
-  for (var n = 1; n <= 19; n++) guitar.add(box(0.0018, 2 * fbHalf(fretX(n)), 0.0012, fretX(n), 0, FB_TOP + 0.0006, matFret));
-  guitar.add(box(0.005, 0.052, 0.009, X_NUT + 0.0025, 0, 0.004, matBone));
 
-  // Headstock
+  // Sap arka profili: YALNIZCA z <= 0 bölgesinde yarım silindir C-profil (cos(theta) <= 0 için thetaStart = +Math.PI/2)
+  var neckLen = X_NUT - X_JOINT;
+  var halfCyl = new THREE.CylinderGeometry(0.0255, 0.0305, neckLen, 20, 1, false, Math.PI / 2, Math.PI);
+  var round = new THREE.Mesh(halfCyl, matNeck);
+  round.rotation.z = -Math.PI / 2;
+  round.scale.z = 0.72;               // z = 0 düzleminden z = -0.022'ye kadar pürüzsüz arka C-sap
+  round.position.set((X_NUT + X_JOINT) / 2, 0, -0.0005);
+  guitar.add(round);
+
+  // Sap topuğu (heel)
+  guitar.add(box(0.038, 0.052, 0.084, X_JOINT + 0.019, 0, -0.048, matNeck));
+
+  // Perde demirleri (fret wires)
+  for (var n = 1; n <= 19; n++) {
+    guitar.add(box(0.0020, 2 * fbHalf(fretX(n)) - 0.001, 0.0015, fretX(n), 0, FB_TOP + 0.00075, matFret));
+  }
+
+  // Sedef perde işaret noktaları (ön yüzey + çalan kişinin üstten gördüğü yan kenar noktaları!)
+  var dotGeo = new THREE.CircleGeometry(0.0032, 16);
+  var sideDotGeo = new THREE.SphereGeometry(0.0020, 10, 8);
+  [3, 5, 7, 9, 12, 15, 17].forEach(function (fn) {
+    var xm = (fretX(fn - 1) + fretX(fn)) * 0.5;
+    if (fn === 12) {
+      [-0.011, 0.011].forEach(function (dy) {
+        var m = new THREE.Mesh(dotGeo, matInlay);
+        m.position.set(xm, dy, FB_TOP + 0.0002);
+        guitar.add(m);
+      });
+      [-0.005, 0.005].forEach(function (dx) {
+        var sd = new THREE.Mesh(sideDotGeo, matInlay);
+        sd.position.set(xm + dx, fbHalf(xm) - 0.0004, FB_TOP * 0.55);
+        guitar.add(sd);
+      });
+    } else {
+      var m1 = new THREE.Mesh(dotGeo, matInlay);
+      m1.position.set(xm, 0, FB_TOP + 0.0002);
+      guitar.add(m1);
+      var sd1 = new THREE.Mesh(sideDotGeo, matInlay);
+      sd1.position.set(xm, fbHalf(xm) - 0.0004, FB_TOP * 0.55);
+      guitar.add(sd1);
+    }
+  });
+
+  // Üst eşik (nut)
+  guitar.add(box(0.0052, 0.053, 0.0095, X_NUT + 0.0026, 0, 0.0044, matBone));
+
+  // Kavrama yardımcısı halkası (Serbest modda el yaklaşınca hafifçe parlar)
+  var glowMesh = new THREE.Mesh(new THREE.RingGeometry(0.036, 0.044, 32), grabGlowMat);
+  glowMesh.rotation.y = Math.PI / 2;
+  glowMesh.position.set((X_NUT + X_JOINT) * 0.5, 0, 0);
+  guitar.add(glowMesh);
+
+  // Burguluk (Headstock)
   var head = new THREE.Group(); head.position.set(X_NUT + 0.005, 0, -0.001); head.rotation.y = 0.21; guitar.add(head);
   head.add(box(0.185, 0.07, 0.017, 0.0925, 0, -0.0085, matNeck));
   var rx = [0.045, 0.085, 0.125], sgn, k;
@@ -377,55 +578,68 @@ var matDark = new THREE.MeshStandardMaterial({ color: 0x0e0907, roughness: 0.9 }
     }
   }
   head.updateMatrix();
-  buildNeck.head = head; buildNeck.rx = rx;
 })();
 
-// Strings
-var STR_R = [0.0011, 0.00095, 0.0008, 0.0007, 0.0006, 0.00055];
+// 6 Tel: VR gözlükte de net seçilecek kalınlık, kontrast ve vuruş parlaması
+var STR_R = [0.00165, 0.00148, 0.00132, 0.00118, 0.00105, 0.00095];
 var strings = [];
 (function buildStrings() {
-  // The headstock group was the last Group added to the guitar
   var head = null;
-  guitar.children.forEach(function (c) { if (c.type === 'Group') head = c; });
+  guitar.children.forEach(function (c) { if (c.type === 'Group' && c !== strapGroup) head = c; });
   var inv = new THREE.Matrix4().copy(head.matrix).invert();
   var rx = [0.045, 0.085, 0.125];
   for (var i = 0; i < 6; i++) {
     var mat = i < 3
-      ? new THREE.MeshStandardMaterial({ color: 0xd8dbde, metalness: 0.85, roughness: 0.35, transparent: true })
-      : new THREE.MeshStandardMaterial({ color: 0xf7f2e3, roughness: 0.3, transparent: true, opacity: 0.92 });
+      ? new THREE.MeshStandardMaterial({ color: 0xe5e7eb, emissive: 0x1e293b, emissiveIntensity: 0.22, metalness: 0.72, roughness: 0.28, transparent: true })
+      : new THREE.MeshStandardMaterial({ color: 0xfffbeb, emissive: 0x453214, emissiveIntensity: 0.25, roughness: 0.22, transparent: true, opacity: 0.96 });
     var a = new V3(X_NUT, stringY(i, X_NUT), stringZ(X_NUT)), b = new V3(X_BRIDGE, stringY(i, X_BRIDGE), stringZ(X_BRIDGE));
-    var m = cyl(a, b, STR_R[i], mat, 6); guitar.add(m);
+    var m = cyl(a, b, STR_R[i], mat, 8); guitar.add(m);
     guitar.add(cyl(b, new V3(X_BRIDGE - 0.012, b.y, 0.008), STR_R[i], mat, 6));
     var top = i < 3, slot = top ? i : 5 - i;
     head.add(cyl(a.clone().applyMatrix4(inv), new V3(rx[slot], (top ? 1 : -1) * 0.018, -0.0055), STR_R[i], mat, 6));
-    strings.push({ mesh: m, mat: mat, baseY: m.position.y, baseOpacity: mat.opacity, amp: 0, last: -1 });
+    strings.push({ mesh: m, mat: mat, baseY: m.position.y, baseEmissive: mat.emissive.getHex(), baseOpacity: mat.opacity, amp: 0, glow: 0, last: -1 });
   }
 })();
 
-// Finger dots that show the current left-hand shape
+// Basılı perde işaretçileri + susturulmuş (X) tel göstergeleri
 var dots = [];
+var muteSprites = [];
 (function () {
-  var geo = new THREE.SphereGeometry(0.0052, 14, 10);
-  var mat = new THREE.MeshStandardMaterial({ color: 0xf2b84b, emissive: 0x7a4a00, roughness: 0.4 });
-  for (var i = 0; i < 6; i++) { var d = new THREE.Mesh(geo, mat); d.scale.z = 0.55; d.visible = false; guitar.add(d); dots.push(d); }
+  var geo = new THREE.SphereGeometry(0.0058, 14, 10);
+  var mat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0x92400e, emissiveIntensity: 0.6, roughness: 0.35 });
+  var muteTex = canvasTex(64, 64, function (g) {
+    g.clearRect(0, 0, 64, 64);
+    g.strokeStyle = '#f87171'; g.lineWidth = 8; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(16, 16); g.lineTo(48, 48); g.moveTo(48, 16); g.lineTo(16, 48); g.stroke();
+  });
+  for (var i = 0; i < 6; i++) {
+    var d = new THREE.Mesh(geo, mat); d.scale.z = 0.6; d.visible = false; guitar.add(d); dots.push(d);
+    var ms = new THREE.Sprite(new THREE.SpriteMaterial({ map: muteTex, transparent: true, depthTest: false }));
+    ms.scale.set(0.013, 0.013, 1);
+    ms.position.set(X_NUT + 0.010, stringY(i, X_NUT), FB_TOP + 0.008);
+    ms.visible = false;
+    guitar.add(ms);
+    muteSprites.push(ms);
+  }
 })();
 
-// Chord zone labels along the neck (shown in VR chord mode)
+// Sap üzerindeki akor bölgesi etiketleri (VR akor modunda görünür)
 var zoneGroup = new THREE.Group(); zoneGroup.visible = false; guitar.add(zoneGroup);
 var zoneSprites = [];
 function zoneTexture(name) {
   return canvasTex(128, 128, function (g) {
     g.clearRect(0, 0, 128, 128);
     g.fillStyle = '#ffffff'; g.beginPath(); g.arc(64, 64, 58, 0, 7); g.fill();
-    g.fillStyle = '#101a28'; g.font = '700 54px "Bricolage Grotesque", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillText(name, 64, 68);
+    g.lineWidth = 5; g.strokeStyle = '#0f172a'; g.stroke();
+    g.fillStyle = '#0f172a'; g.font = '700 52px "Bricolage Grotesque", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(name, 64, 67);
   });
 }
 function buildZones() {
   zoneSprites.forEach(function (s) { zoneGroup.remove(s); });
   zoneSprites = ZONE_CHORDS.map(function (name, k) {
     var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: zoneTexture(name), depthTest: false, transparent: true }));
-    s.position.set(ZONE_START - (k + 0.5) * ZONE_LEN, 0.062, 0.0); s.renderOrder = 5;
+    s.position.set(ZONE_START - (k + 0.5) * ZONE_LEN, 0.056, 0.012); s.renderOrder = 5;
     zoneGroup.add(s); return s;
   });
   paintZones();
@@ -433,13 +647,13 @@ function buildZones() {
 function paintZones() {
   zoneSprites.forEach(function (s, k) {
     var on = ZONE_CHORDS[k] === chordName;
-    s.material.color.setHex(on ? 0xf2b84b : 0x8fa3b8);
-    s.material.opacity = on ? 1 : 0.75;
-    var sc = on ? 0.056 : 0.04; s.scale.set(sc, sc, 1);
+    s.material.color.setHex(on ? 0xfbbf24 : 0xcbd5e1);
+    s.material.opacity = on ? 1 : 0.82;
+    var sc = on ? 0.054 : 0.039; s.scale.set(sc, sc, 1);
   });
 }
 
-/* ---------- Left-hand state ---------- */
+/* ---------- Sol El & Akor Durumu ---------- */
 var chipEls = {};
 function applyFrets(arr, name) {
   var changed = false, i;
@@ -449,52 +663,411 @@ function applyFrets(arr, name) {
   for (i = 0; i < 6; i++) {
     var f = frets[i], d = dots[i];
     d.visible = f > 0;
-    if (f > 0) { var x = (fretX(f - 1) + fretX(f)) / 2 - 0.004; d.position.set(x, stringY(i, x), FB_TOP + 0.003); }
-    strings[i].mat.opacity = f < 0 ? 0.25 : strings[i].baseOpacity;
+    if (f > 0) { var x = (fretX(f - 1) + fretX(f)) / 2 - 0.003; d.position.set(x, stringY(i, x), FB_TOP + 0.0035); }
+    strings[i].mat.opacity = f < 0 ? 0.28 : strings[i].baseOpacity;
+    muteSprites[i].visible = f < 0;
   }
   CHORD_ORDER.forEach(function (n) { if (chipEls[n]) chipEls[n].setAttribute('aria-pressed', n === chordName ? 'true' : 'false'); });
   paintZones(); drawPanel();
+  if (previewHandsDesktop && !renderer.xr.isPresenting) poseDesktopPreviewHands();
 }
-function setChord(name) { applyFrets(CHORDS[name], name); }
+function setChord(name) { if (CHORDS[name]) applyFrets(CHORDS[name], name); }
 
 function pluck(i, vel, delay) {
   if (frets[i] < 0) return;
-  strings[i].amp = 0.0006 + 0.0014 * vel;
+  strings[i].amp = 0.0010 + 0.0020 * vel;
+  strings[i].glow = 1.0;
   playString(i, vel, delay);
 }
 function strum(down, vel) {
-  for (var k = 0; k < 6; k++) pluck(down ? k : 5 - k, vel, k * 0.028);
+  for (var k = 0; k < 6; k++) pluck(down ? k : 5 - k, vel, k * 0.026);
 }
 
-/* A moving point (fingertip or mouse) plucks a string when it crosses it. */
+/* Hareket eden parmak ucu veya imleç teli kestiğinde teli tınlatır */
 var tips = {};
-var PLUCK_MAX_X = X_JOINT + 0.02;
+var PLUCK_MAX_X = X_JOINT + 0.08;
 function processTip(id, p, t, zLo, zHi) {
   var prev = tips[id];
   tips[id] = { x: p.x, y: p.y, z: p.z, t: t };
   if (!prev) return;
   var dt = t - prev.t;
-  if (dt <= 0 || dt > 0.25) return;
+  if (dt <= 0 || dt > 0.28) return;
   var dx = p.x - prev.x, dy = p.y - prev.y, dz = p.z - prev.z;
-  if (dx * dx + dy * dy + dz * dz > 0.04) return;                 // tracking jump
+  if (dx * dx + dy * dy + dz * dz > 0.06) return;
   for (var i = 0; i < 6; i++) {
     var d0 = prev.y - stringY(i, prev.x), d1 = p.y - stringY(i, p.x);
-    if (d0 === 0 || d0 * d1 > 0 || d1 === 0 && d0 === 0) continue;
+    if (d0 === 0 || d0 * d1 > 0 || (d1 === 0 && d0 === 0)) continue;
     if (d0 * d1 === 0 && d1 === 0) continue;
     var k = d0 / (d0 - d1);
     var xc = prev.x + dx * k, zc = prev.z + dz * k - stringZ(xc);
-    if (xc < X_BRIDGE + 0.004 || xc > PLUCK_MAX_X || zc < zLo || zc > zHi) continue;
-    if (t - strings[i].last < 0.075) continue;
+    if (xc < X_BRIDGE + 0.002 || xc > PLUCK_MAX_X || zc < zLo || zc > zHi) continue;
+    if (t - strings[i].last < 0.072) continue;
     strings[i].last = t;
     var speed = Math.abs(dy) / dt;
-    pluck(i, clamp(0.25 + speed / 1.4, 0.25, 1), k * dt * 0.5);
+    pluck(i, clamp(0.28 + speed / 1.35, 0.28, 1), k * dt * 0.5);
   }
 }
 
-/* ---------- Desktop view and input ---------- */
+/* ---------- GERÇEKÇİ ANATOMİK İNSAN ELİ (İskelet Çizgileri Yok, Dolgun Avuç, Parmak Boğumları, Tırnak ve Bilek!) ---------- */
+var JOINTS = ['wrist'];
+var FINGER_LIST = ['thumb', 'index-finger', 'middle-finger', 'ring-finger', 'pinky-finger'];
+var FINGER_CHAINS = [];
+FINGER_LIST.forEach(function (f) {
+  var parts = f === 'thumb'
+    ? ['metacarpal', 'phalanx-proximal', 'phalanx-distal', 'tip']
+    : ['metacarpal', 'phalanx-proximal', 'phalanx-intermediate', 'phalanx-distal', 'tip'];
+  var chain = [];
+  parts.forEach(function (p) {
+    JOINTS.push(f + '-' + p);
+    chain.push(JOINTS.length - 1);
+  });
+  FINGER_CHAINS.push(chain);
+});
+var JI = {}; JOINTS.forEach(function (n, i) { JI[n] = i; });
+
+// Her eklemin doğal anatomik yarıçapı (metre)
+var DEFAULT_RADII = {
+  'wrist': 0.025,
+  'thumb-metacarpal': 0.0175, 'thumb-phalanx-proximal': 0.0135, 'thumb-phalanx-distal': 0.0112, 'thumb-tip': 0.0096,
+  'index-finger-metacarpal': 0.0155, 'index-finger-phalanx-proximal': 0.0118, 'index-finger-phalanx-intermediate': 0.0098, 'index-finger-phalanx-distal': 0.0085, 'index-finger-tip': 0.0076,
+  'middle-finger-metacarpal': 0.0160, 'middle-finger-phalanx-proximal': 0.0122, 'middle-finger-phalanx-intermediate': 0.0102, 'middle-finger-phalanx-distal': 0.0088, 'middle-finger-tip': 0.0078,
+  'ring-finger-metacarpal': 0.0150, 'ring-finger-phalanx-proximal': 0.0114, 'ring-finger-phalanx-intermediate': 0.0094, 'ring-finger-phalanx-distal': 0.0082, 'ring-finger-tip': 0.0073,
+  'pinky-finger-metacarpal': 0.0138, 'pinky-finger-phalanx-proximal': 0.0100, 'pinky-finger-phalanx-intermediate': 0.0083, 'pinky-finger-phalanx-distal': 0.0073, 'pinky-finger-tip': 0.0066
+};
+
+// Parmak kemikleri + avuç içi dolgu kapsülleri (iskelet görünümü yerine birleşik etli insan eli oluşturur)
+var CAPSULE_PAIRS = [];
+FINGER_CHAINS.forEach(function (ch, fi) {
+  // Bilekten tarak kemiğine
+  CAPSULE_PAIRS.push([0, ch[0], fi === 0 ? 0.020 : 0.021, DEFAULT_RADII[JOINTS[ch[0]]] * 1.05]);
+  // Parmak boğumları boyunca
+  for (var k = 0; k < ch.length - 1; k++) {
+    var a = ch[k], b = ch[k + 1];
+    CAPSULE_PAIRS.push([a, b, DEFAULT_RADII[JOINTS[a]] * 0.96, DEFAULT_RADII[JOINTS[b]] * 0.94]);
+  }
+});
+// Avuç içi yatay et köprüleri (boğum kökleri, orta avuç ve başparmak kası / tenar bölge)
+var PALM_BRIDGES = [
+  ['index-finger-phalanx-proximal', 'middle-finger-phalanx-proximal', 0.0135, 0.0135],
+  ['middle-finger-phalanx-proximal', 'ring-finger-phalanx-proximal', 0.0132, 0.0130],
+  ['ring-finger-phalanx-proximal', 'pinky-finger-phalanx-proximal', 0.0125, 0.0115],
+  ['index-finger-metacarpal', 'middle-finger-metacarpal', 0.0155, 0.0155],
+  ['middle-finger-metacarpal', 'ring-finger-metacarpal', 0.0155, 0.0150],
+  ['ring-finger-metacarpal', 'pinky-finger-metacarpal', 0.0148, 0.0138],
+  ['thumb-metacarpal', 'index-finger-metacarpal', 0.0170, 0.0155],
+  ['thumb-phalanx-proximal', 'index-finger-metacarpal', 0.0135, 0.0145],
+  ['index-finger-metacarpal', 'ring-finger-phalanx-proximal', 0.0142, 0.0132],
+  ['middle-finger-metacarpal', 'pinky-finger-phalanx-proximal', 0.0140, 0.0120],
+  ['wrist', 'index-finger-phalanx-proximal', 0.020, 0.0130],
+  ['wrist', 'middle-finger-phalanx-proximal', 0.021, 0.0135],
+  ['wrist', 'ring-finger-phalanx-proximal', 0.020, 0.0128]
+];
+PALM_BRIDGES.forEach(function (br) {
+  CAPSULE_PAIRS.push([JI[br[0]], JI[br[1]], br[2], br[3]]);
+});
+
+var TIP_INDICES = FINGER_LIST.map(function (f) { return JI[f + '-tip']; });
+var DISTAL_INDICES = FINGER_LIST.map(function (f) { return JI[f + '-phalanx-distal']; });
+var _segDir = new V3(), _segMid = new V3(), _upAxis = new V3(0, 1, 0), _nailUp = new V3();
+
+function makeHumanHand(isLeft) {
+  var h = {
+    isLeft: !!isLeft,
+    kind: null,
+    j: [],
+    jq: [],
+    jr: [],
+    ok: [],
+    q: new THREE.Quaternion(),
+    qok: false,
+    squeeze: false,
+    closed: false,
+    group: new THREE.Group(),
+    spheres: [],
+    capsules: [],
+    nails: [],
+    forearm: null,
+    palmCore: null
+  };
+
+  // Doğal sıcak insan teni dokusu (sRGB -> Linear dönüşümüyle gerçekçi sıcak ten rengi)
+  var skinColor = new THREE.Color(0xd99b78);
+  if (skinColor.convertSRGBToLinear) skinColor.convertSRGBToLinear();
+  var skinEmissive = new THREE.Color(0x2a1208);
+  if (skinEmissive.convertSRGBToLinear) skinEmissive.convertSRGBToLinear();
+  var nailColor = new THREE.Color(0xf2d3c4);
+  if (nailColor.convertSRGBToLinear) nailColor.convertSRGBToLinear();
+  var sleeveColor = new THREE.Color(0x1e293b);
+  if (sleeveColor.convertSRGBToLinear) sleeveColor.convertSRGBToLinear();
+
+  var skinMat = new THREE.MeshStandardMaterial({
+    color: skinColor,
+    roughness: 0.62,
+    metalness: 0.02,
+    emissive: skinEmissive,
+    emissiveIntensity: 0.12
+  });
+  var nailMat = new THREE.MeshStandardMaterial({
+    color: nailColor,
+    roughness: 0.30,
+    metalness: 0.03
+  });
+  var sleeveMat = new THREE.MeshStandardMaterial({
+    color: sleeveColor,
+    roughness: 0.75,
+    metalness: 0.06
+  });
+
+  var sphereGeo = new THREE.SphereGeometry(1, 16, 12);
+  for (var i = 0; i < JOINTS.length; i++) {
+    h.j.push(new V3());
+    h.jq.push(new THREE.Quaternion());
+    h.jr.push(DEFAULT_RADII[JOINTS[i]]);
+    h.ok.push(false);
+    var sp = new THREE.Mesh(sphereGeo, skinMat);
+    sp.frustumCulled = false;
+    sp.visible = false;
+    h.group.add(sp);
+    h.spheres.push(sp);
+  }
+
+  for (var c = 0; c < CAPSULE_PAIRS.length; c++) {
+    var p = CAPSULE_PAIRS[c];
+    // CylinderGeometry(radiusTop -> bitiş ucu b, radiusBottom -> başlangıç ucu a, height=1)
+    var cg = new THREE.CylinderGeometry(p[3], p[2], 1, 14, 1, false);
+    var cm = new THREE.Mesh(cg, skinMat);
+    cm.frustumCulled = false;
+    cm.visible = false;
+    h.group.add(cm);
+    h.capsules.push({ a: p[0], b: p[1], mesh: cm });
+  }
+
+  // Avuç içi merkezi yumuşak yastık
+  var palmGeo = new THREE.SphereGeometry(1, 16, 12);
+  h.palmCore = new THREE.Mesh(palmGeo, skinMat);
+  h.palmCore.frustumCulled = false;
+  h.palmCore.visible = false;
+  h.group.add(h.palmCore);
+
+  // 5 parmak tırnağı
+  var nailGeo = new THREE.SphereGeometry(1, 12, 8);
+  for (var ni = 0; ni < 5; ni++) {
+    var nm = new THREE.Mesh(nailGeo, nailMat);
+    nm.frustumCulled = false;
+    nm.visible = false;
+    h.group.add(nm);
+    h.nails.push(nm);
+  }
+
+  // Bilek & önkol uzantısı + gömlek/ceket manşeti (havada kesik el görünümünü önler)
+  var armGroup = new THREE.Group();
+  var wristSkin = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.029, 0.055, 18), skinMat);
+  wristSkin.position.y = -0.026;
+  var cuffMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.0305, 0.034, 0.048, 18), sleeveMat);
+  cuffMesh.position.y = -0.068;
+  armGroup.add(wristSkin, cuffMesh);
+  armGroup.visible = false;
+  h.forearm = armGroup;
+  h.group.add(armGroup);
+
+  h.group.visible = false;
+  scene.add(h.group);
+  return h;
+}
+
+var hands = { left: makeHumanHand(true), right: makeHumanHand(false) };
+
+// Kontrolcü kullanılırsa dahi iskelet/tek nokta yerine doğal bir insan eli pozu sentezler
+function synthesizeHandJointsFromPose(h) {
+  var sgn = h.isLeft ? 1 : -1;
+  var wPos = h.j[0], wQ = h.q;
+  var curl = h.squeeze ? 0.85 : 0.22;
+
+  function setJ(name, lx, ly, lz) {
+    var idx = JI[name];
+    h.j[idx].set(lx * sgn, ly, lz).applyQuaternion(wQ).add(wPos);
+    h.jq[idx].copy(wQ);
+    h.ok[idx] = true;
+  }
+
+  h.ok[0] = true; h.jq[0].copy(wQ);
+  // Başparmak
+  setJ('thumb-metacarpal', 0.022, -0.004, -0.022);
+  setJ('thumb-phalanx-proximal', 0.038, -0.002, -0.046);
+  setJ('thumb-phalanx-distal', 0.046 - curl * 0.012, -0.005 - curl * 0.010, -0.068);
+  setJ('thumb-tip', 0.050 - curl * 0.020, -0.008 - curl * 0.018, -0.086);
+
+  var fx = [0.022, 0.007, -0.009, -0.024];
+  var fl = [0.074, 0.080, 0.073, 0.058];
+  ['index-finger', 'middle-finger', 'ring-finger', 'pinky-finger'].forEach(function (fname, fi) {
+    var x = fx[fi], len = fl[fi];
+    setJ(fname + '-metacarpal', x * 0.78, 0.002, -0.036);
+    setJ(fname + '-phalanx-proximal', x, 0.003, -0.074);
+    var bend1 = curl * 0.9, bend2 = curl * 1.45;
+    var z1 = -0.074 - Math.cos(bend1) * (len * 0.42);
+    var y1 = 0.003 - Math.sin(bend1) * (len * 0.42);
+    setJ(fname + '-phalanx-intermediate', x, y1, z1);
+    var z2 = z1 - Math.cos(bend2) * (len * 0.32);
+    var y2 = y1 - Math.sin(bend2) * (len * 0.32);
+    setJ(fname + '-phalanx-distal', x, y2, z2);
+    var z3 = z2 - Math.cos(bend2 + curl * 0.4) * (len * 0.26);
+    var y3 = y2 - Math.sin(bend2 + curl * 0.4) * (len * 0.26);
+    setJ(fname + '-tip', x, y3, z3);
+  });
+}
+
+function drawHand(h) {
+  h.group.visible = !!h.kind;
+  if (!h.kind) return;
+  if (h.kind === 'ctrl' && h.ok[0] && h.qok) {
+    synthesizeHandJointsFromPose(h);
+  }
+
+  var i;
+  for (i = 0; i < JOINTS.length; i++) {
+    var sp = h.spheres[i];
+    sp.visible = h.ok[i];
+    if (h.ok[i]) {
+      sp.position.copy(h.j[i]);
+      var r = DEFAULT_RADII[JOINTS[i]];
+      // El sırtı/avuç yönünde hafif yassı doğal parmak kesiti
+      sp.scale.set(r, r * 0.88, r);
+      if (h.jq[i]) sp.quaternion.copy(h.jq[i]);
+    }
+  }
+
+  for (i = 0; i < h.capsules.length; i++) {
+    var cap = h.capsules[i], m = cap.mesh;
+    if (h.ok[cap.a] && h.ok[cap.b]) {
+      var pa = h.j[cap.a], pb = h.j[cap.b];
+      _segDir.subVectors(pb, pa);
+      var dist = _segDir.length();
+      if (dist > 0.002 && dist < 0.20) {
+        m.position.copy(_segMid.addVectors(pa, pb).multiplyScalar(0.5));
+        m.quaternion.setFromUnitVectors(_upAxis, _segDir.divideScalar(dist));
+        m.scale.set(1, dist, 0.88);
+        m.visible = true;
+        continue;
+      }
+    }
+    m.visible = false;
+  }
+
+  // Avuç içi dolgun merkez yastığı
+  var iW = 0, iIdxP = JI['index-finger-phalanx-proximal'], iMidP = JI['middle-finger-phalanx-proximal'], iRingP = JI['ring-finger-phalanx-proximal'], iPinkyP = JI['pinky-finger-phalanx-proximal'];
+  if (h.ok[iW] && h.ok[iMidP] && h.ok[iIdxP] && h.ok[iPinkyP]) {
+    _segMid.copy(h.j[iW]).multiplyScalar(0.38)
+      .addScaledVector(h.j[iMidP], 0.32)
+      .addScaledVector(h.j[iIdxP], 0.15)
+      .addScaledVector(h.j[iRingP], 0.15);
+    h.palmCore.position.copy(_segMid);
+    _segDir.subVectors(h.j[iMidP], h.j[iW]).normalize();
+    h.palmCore.quaternion.setFromUnitVectors(_upAxis, _segDir);
+    h.palmCore.scale.set(0.036, 0.044, 0.0155);
+    h.palmCore.visible = true;
+
+    // Önkol / bilek hizası
+    h.forearm.position.copy(h.j[iW]);
+    h.forearm.quaternion.setFromUnitVectors(_upAxis, _segDir);
+    h.forearm.visible = true;
+  } else {
+    h.palmCore.visible = false;
+    h.forearm.visible = false;
+  }
+
+  // Tırnaklar
+  for (i = 0; i < 5; i++) {
+    var ti = TIP_INDICES[i], di = DISTAL_INDICES[i], nail = h.nails[i];
+    if (h.ok[ti] && h.ok[di]) {
+      _segDir.subVectors(h.j[ti], h.j[di]);
+      var dLen = _segDir.length();
+      if (dLen > 0.003) {
+        _segDir.divideScalar(dLen);
+        var tr = DEFAULT_RADII[JOINTS[ti]];
+        _nailUp.set(0, 1, 0).applyQuaternion(h.jq[ti]);
+        nail.position.copy(h.j[di]).addScaledVector(_segDir, dLen * 0.72).addScaledVector(_nailUp, tr * 0.72);
+        nail.quaternion.copy(h.jq[ti]);
+        nail.scale.set(tr * 0.78, tr * 0.22, tr * 0.92);
+        nail.visible = true;
+        continue;
+      }
+    }
+    nail.visible = false;
+  }
+}
+
+/* ---------- Masaüstünde 3D İnsan Eli Önizlemesi ("✋ Elleri Göster") ---------- */
+function poseDesktopPreviewHands() {
+  if (renderer.xr.isPresenting) return;
+  if (!previewHandsDesktop) {
+    hands.left.kind = null; hands.right.kind = null;
+    drawHand(hands.left); drawHand(hands.right);
+    return;
+  }
+  guitar.updateMatrixWorld(true);
+
+  // Sol el sap arkasından kavrar, parmaklar aktif akora veya açık pozisyona yerleşir
+  var lh = hands.left;
+  lh.kind = 'hand';
+  var activeFrets = [];
+  for (var s = 0; s < 6; s++) if (frets[s] > 0) activeFrets.push({ s: s, f: frets[s] });
+  var avgX = activeFrets.length ? ((fretX(activeFrets[0].f - 1) + fretX(activeFrets[0].f)) * 0.5) : (X_NUT - 0.065);
+
+  function setLocalJoint(h, name, lx, ly, lz) {
+    var idx = JI[name];
+    h.j[idx].set(lx, ly, lz).applyMatrix4(guitar.matrixWorld);
+    h.jq[idx].copy(guitar.quaternion);
+    h.ok[idx] = true;
+  }
+
+  setLocalJoint(lh, 'wrist', avgX + 0.015, -0.062, -0.048);
+  setLocalJoint(lh, 'thumb-metacarpal', avgX + 0.018, -0.025, -0.036);
+  setLocalJoint(lh, 'thumb-phalanx-proximal', avgX + 0.012, 0.008, -0.028);
+  setLocalJoint(lh, 'thumb-phalanx-distal', avgX + 0.008, 0.024, -0.018);
+  setLocalJoint(lh, 'thumb-tip', avgX + 0.005, 0.031, -0.006);
+
+  ['index-finger', 'middle-finger', 'ring-finger', 'pinky-finger'].forEach(function (fname, fi) {
+    var target = activeFrets[fi] || null;
+    var fx = target ? ((fretX(target.f - 1) + fretX(target.f)) * 0.5 - 0.003) : (avgX + (1.5 - fi) * 0.020);
+    var fy = target ? stringY(target.s, fx) : (-0.018 + fi * 0.006);
+    var fz = target ? (FB_TOP + 0.008) : (FB_TOP + 0.022);
+
+    setLocalJoint(lh, fname + '-metacarpal', fx + 0.006, -0.048, -0.026);
+    setLocalJoint(lh, fname + '-phalanx-proximal', fx + 0.004, -0.038, 0.002);
+    setLocalJoint(lh, fname + '-phalanx-intermediate', fx + 0.002, fy - 0.016, fz + 0.018);
+    setLocalJoint(lh, fname + '-phalanx-distal', fx + 0.001, fy - 0.006, fz + 0.010);
+    setLocalJoint(lh, fname + '-tip', fx, fy, fz);
+  });
+
+  // Sağ el ses deliğinin üzerinde pena/parmak vuruş pozisyonunda
+  var rh = hands.right;
+  rh.kind = 'hand';
+  setLocalJoint(rh, 'wrist', -0.085, 0.095, 0.058);
+  setLocalJoint(rh, 'thumb-metacarpal', -0.055, 0.068, 0.048);
+  setLocalJoint(rh, 'thumb-phalanx-proximal', -0.028, 0.046, 0.038);
+  setLocalJoint(rh, 'thumb-phalanx-distal', -0.008, 0.032, 0.028);
+  setLocalJoint(rh, 'thumb-tip', 0.008, 0.024, 0.019);
+
+  ['index-finger', 'middle-finger', 'ring-finger', 'pinky-finger'].forEach(function (fname, fi) {
+    var rx = -0.005 - fi * 0.015;
+    var ry = 0.008 - fi * 0.010;
+    setLocalJoint(rh, fname + '-metacarpal', -0.052 - fi * 0.010, 0.062 - fi * 0.008, 0.052);
+    setLocalJoint(rh, fname + '-phalanx-proximal', -0.026 - fi * 0.012, 0.035 - fi * 0.009, 0.044);
+    setLocalJoint(rh, fname + '-phalanx-intermediate', rx - 0.006, ry + 0.008, 0.032);
+    setLocalJoint(rh, fname + '-phalanx-distal', rx - 0.002, ry + 0.002, 0.023);
+    setLocalJoint(rh, fname + '-tip', rx, ry - 0.004, 0.017);
+  });
+
+  drawHand(lh);
+  drawHand(rh);
+}
+
+/* ---------- Masaüstü Kamera (Karşıdan & Çalan Kişinin Bakış Açısı + Sağ-Tık/Tekerlek Orbit) ---------- */
 var deskX = new V3(0.975, 0.22, 0).normalize();
 var basis = new THREE.Matrix4(), bx = new V3(), by = new V3(), bz = new V3();
 var qT = new THREE.Quaternion();
+var camOrbitYaw = 0, camOrbitPitch = 0, camZoom = 1.0;
+
 function orientGuitar(xDir, zRef, k) {
   bx.copy(xDir).normalize();
   by.crossVectors(zRef, bx).normalize();
@@ -503,24 +1076,55 @@ function orientGuitar(xDir, zRef, k) {
   if (k) { qT.setFromRotationMatrix(basis); guitar.quaternion.slerp(qT, k); }
   else guitar.quaternion.setFromRotationMatrix(basis);
 }
+
 function desktopPose() {
-  orientGuitar(deskX, new V3(-0.28, 0.14, 1));
-  guitar.position.set(0, 1.0, 0).addScaledVector(bx, -0.19);
+  strapGroup.visible = (holdMode === 'strap');
+  if (desktopPOV) {
+    // VR'daki ergonomik çalan kişi tutuş açısının birebir önizlemesi (teller ve perdeler net görünür!)
+    var pDir = new V3(-0.90, 0.24, -0.22).normalize();
+    var pZRef = new V3(0, 1.08, 0.62);
+    orientGuitar(pDir, pZRef);
+    guitar.position.set(0.20, 0.83, -0.02);
+  } else {
+    orientGuitar(deskX, new V3(-0.22, 0.22, 1));
+    guitar.position.set(0, 1.0, 0).addScaledVector(bx, -0.19);
+  }
   guitar.updateMatrixWorld(true);
-  zoneGroup.visible = false;
+  zoneGroup.visible = desktopPOV && vrMode === 'chord';
+  if (previewHandsDesktop) poseDesktopPreviewHands();
 }
+
+function updateDesktopCamera() {
+  if (renderer.xr.isPresenting) return;
+  var target = desktopPOV ? new V3(0.01, 0.90, -0.04) : new V3(0, 0.96, 0);
+  var baseDist = desktopPOV ? Math.max(0.92 / Math.min(camera.aspect, 1.18), 0.78) : Math.max(1.24 / camera.aspect, 0.88);
+  var dist = baseDist * camZoom;
+  var basePitch = desktopPOV ? 0.82 : 0.05;
+  var baseYaw = desktopPOV ? 0.08 : 0.0;
+  var pitch = clamp(basePitch + camOrbitPitch, -0.45, 1.35);
+  var yaw = baseYaw + camOrbitYaw;
+
+  camera.position.set(
+    target.x + dist * Math.cos(pitch) * Math.sin(yaw),
+    target.y + dist * Math.sin(pitch),
+    target.z + dist * Math.cos(pitch) * Math.cos(yaw)
+  );
+  camera.lookAt(target);
+}
+
 function resize() {
   if (renderer.xr.isPresenting) return;
   var w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
-  var dist = Math.max(1.22 / camera.aspect, 0.86);
-  camera.position.set(0, 1.0, dist); camera.lookAt(0, 0.96, 0);
   camera.updateProjectionMatrix();
+  updateDesktopCamera();
 }
 window.addEventListener('resize', resize);
 
 var ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), invM = new THREE.Matrix4(), lo = new V3(), ld = new V3();
+var orbiting = false, orbitLastX = 0, orbitLastY = 0;
+
 function pointerLocal(e) {
   var r = canvas.getBoundingClientRect();
   ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
@@ -533,39 +1137,73 @@ function pointerLocal(e) {
   if (t < 0) return null;
   return new V3().copy(lo).addScaledVector(ld, t);
 }
+
+canvas.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+canvas.addEventListener('wheel', function (e) {
+  if (renderer.xr.isPresenting) return;
+  e.preventDefault();
+  camZoom = clamp(camZoom * (e.deltaY > 0 ? 1.07 : 0.93), 0.55, 1.85);
+  updateDesktopCamera();
+}, { passive: false });
+
 canvas.addEventListener('pointermove', function (e) {
   if (renderer.xr.isPresenting) return;
+  if (orbiting) {
+    camOrbitYaw -= (e.clientX - orbitLastX) * 0.006;
+    camOrbitPitch = clamp(camOrbitPitch + (e.clientY - orbitLastY) * 0.006, -0.7, 0.7);
+    orbitLastX = e.clientX; orbitLastY = e.clientY;
+    updateDesktopCamera();
+    return;
+  }
   var p = pointerLocal(e);
   if (!p) { tips.mouse = null; return; }
   processTip('mouse', p, performance.now() / 1000, -1, 1);
 });
-canvas.addEventListener('pointerleave', function () { tips.mouse = null; });
-canvas.addEventListener('pointerup', function (e) { if (e.pointerType !== 'mouse') tips.mouse = null; });
+
+canvas.addEventListener('pointerleave', function () { tips.mouse = null; orbiting = false; });
+window.addEventListener('pointerup', function (e) {
+  orbiting = false;
+  if (e.pointerType !== 'mouse') tips.mouse = null;
+});
+
 canvas.addEventListener('pointerdown', function (e) {
   initAudio();
   if (renderer.xr.isPresenting) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) {
+    orbiting = true; orbitLastX = e.clientX; orbitLastY = e.clientY;
+    return;
+  }
   var p = pointerLocal(e);
-  if (!p) return;
+  if (!p) {
+    orbiting = true; orbitLastX = e.clientX; orbitLastY = e.clientY;
+    return;
+  }
+  var onGuitarArea = (p.x > -0.34 && p.x < X_NUT + 0.04 && Math.abs(p.y) < 0.22);
+  if (!onGuitarArea) {
+    orbiting = true; orbitLastX = e.clientX; orbitLastY = e.clientY;
+    return;
+  }
   tips.mouse = { x: p.x, y: p.y, z: p.z, t: performance.now() / 1000 };
-  if (p.x > X_FB_END && p.x < X_NUT && Math.abs(p.y) < fbHalf(p.x) + 0.003) {
+  if (p.x > X_FB_END && p.x < X_NUT && Math.abs(p.y) < fbHalf(p.x) + 0.004) {
     var i = clamp(Math.round(2.5 - p.y / spacing(p.x)), 0, 5), n = fretAt(p.x);
     var next = frets.slice(); next[i] = next[i] === n ? 0 : n;
     applyFrets(next, 'özel');
-    pluck(i, 0.6, 0);
+    pluck(i, 0.65, 0);
   }
 });
+
 window.addEventListener('keydown', function (e) {
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   var tag = document.activeElement && document.activeElement.tagName;
   initAudio();
   var di = '1234567890'.indexOf(e.key);
   if (di >= 0) { setChord(CHORD_ORDER[di]); return; }
-  if (e.code === 'Space') { if (tag === 'BUTTON') document.activeElement.blur(); e.preventDefault(); strum(!e.shiftKey, 0.75); return; }
+  if (e.code === 'Space') { if (tag === 'BUTTON') document.activeElement.blur(); e.preventDefault(); strum(!e.shiftKey, 0.78); return; }
   var si = 'asdfgh'.indexOf(e.key.toLowerCase());
-  if (si >= 0) pluck(si, 0.7, 0);
+  if (si >= 0) pluck(si, 0.72, 0);
 });
 
-/* ---------- Dock ---------- */
+/* ---------- 2D Kontrol Paneli ---------- */
 (function () {
   var wrap = document.getElementById('chords');
   CHORD_ORDER.forEach(function (n, k) {
@@ -574,7 +1212,7 @@ window.addEventListener('keydown', function (e) {
     b.setAttribute('aria-pressed', n === chordName ? 'true' : 'false');
     b.innerHTML = '<span></span><kbd></kbd>';
     b.firstChild.textContent = n; b.lastChild.textContent = '1234567890'[k];
-    b.addEventListener('click', function () { initAudio(); setChord(n); strum(true, 0.6); });
+    b.addEventListener('click', function () { initAudio(); setChord(n); strum(true, 0.62); });
     wrap.appendChild(b); chipEls[n] = b;
   });
   document.getElementById('modeChord').addEventListener('click', function () { setMode('chord'); });
@@ -582,122 +1220,135 @@ window.addEventListener('keydown', function (e) {
   document.getElementById('holdFree').addEventListener('click', function () { setHold('free'); });
   document.getElementById('holdStrap').addEventListener('click', function () { setHold('strap'); });
   document.getElementById('demoBtn').addEventListener('click', function () { initAudio(); toggleDemo(); });
+  document.getElementById('strumBtn').addEventListener('click', function () { initAudio(); strum(true, 0.78); });
+
+  var povBtn = document.getElementById('povBtn');
+  povBtn.addEventListener('click', function () {
+    desktopPOV = !desktopPOV;
+    camOrbitYaw = 0; camOrbitPitch = 0; camZoom = 1.0;
+    povBtn.setAttribute('aria-pressed', desktopPOV ? 'true' : 'false');
+    povBtn.textContent = desktopPOV ? '👁️ Karşıdan Bak' : '👁️ Çalan Açısı';
+    desktopPose();
+    updateDesktopCamera();
+  });
+
+  var hpBtn = document.getElementById('handsPreviewBtn');
+  hpBtn.addEventListener('click', function () {
+    previewHandsDesktop = !previewHandsDesktop;
+    hpBtn.setAttribute('aria-pressed', previewHandsDesktop ? 'true' : 'false');
+    poseDesktopPreviewHands();
+  });
 })();
+
 function setMode(m) {
   vrMode = m;
   document.getElementById('modeChord').setAttribute('aria-pressed', m === 'chord' ? 'true' : 'false');
   document.getElementById('modeFree').setAttribute('aria-pressed', m === 'free' ? 'true' : 'false');
+  if (!renderer.xr.isPresenting) zoneGroup.visible = desktopPOV && vrMode === 'chord';
   drawPanel();
 }
 function setHold(m) {
   holdMode = m;
+  strapGroup.visible = (m === 'strap');
   document.getElementById('holdFree').setAttribute('aria-pressed', m === 'free' ? 'true' : 'false');
   document.getElementById('holdStrap').setAttribute('aria-pressed', m === 'strap' ? 'true' : 'false');
-  if (renderer.xr.isPresenting && m === 'free' && standReady) toStand();
+  if (renderer.xr.isPresenting) {
+    if (m === 'strap') { stand.visible = false; enterPlay(); }
+    else { if (!standReady) placeStand(); else toStand(); }
+  }
   drawPanel();
 }
 
 var demoTimer = null;
 function toggleDemo() {
   var btn = document.getElementById('demoBtn');
-  if (demoTimer) { clearInterval(demoTimer); demoTimer = null; btn.setAttribute('aria-pressed', 'false'); btn.textContent = 'Örnek çal'; return; }
-  var prog = [['Am', 1], ['C', 1], ['G', 0], ['Em', 0]], step = 0;
-  btn.setAttribute('aria-pressed', 'true'); btn.textContent = 'Durdur';
+  if (demoTimer) {
+    clearInterval(demoTimer); demoTimer = null;
+    btn.setAttribute('aria-pressed', 'false'); btn.textContent = '🎵 Örnek çal';
+    drawPanel();
+    return;
+  }
+  var prog = [['Am', 1], ['Dm', 2], ['G', 0], ['C', 1], ['F', 0], ['E', 0]], step = 0;
+  btn.setAttribute('aria-pressed', 'true'); btn.textContent = '⏹ Durdur';
   function tick() {
-    var bar = Math.floor(step / 12) % prog.length, k = step % 6;
-    if (step % 12 === 0) setChord(prog[bar][0]);
-    pluck([prog[bar][1], 3, 4, 5, 4, 3][k], k === 0 ? 0.8 : 0.55, 0);
+    var bar = Math.floor(step / 8) % prog.length, k = step % 8;
+    if (k === 0) setChord(prog[bar][0]);
+    var pattern = [prog[bar][1], 3, 4, 5, 4, 3, 4, 5];
+    pluck(pattern[k], k === 0 ? 0.85 : 0.56, 0);
     step++;
   }
-  tick(); demoTimer = setInterval(tick, 240);
+  tick(); demoTimer = setInterval(tick, 220);
+  drawPanel();
 }
 
-/* ---------- VR: hands, anchor, floating panel ---------- */
-var JOINTS = ['wrist'];
-var BONES = [];
-['thumb', 'index-finger', 'middle-finger', 'ring-finger', 'pinky-finger'].forEach(function (f) {
-  var parts = f === 'thumb' ? ['metacarpal', 'phalanx-proximal', 'phalanx-distal', 'tip']
-                            : ['metacarpal', 'phalanx-proximal', 'phalanx-intermediate', 'phalanx-distal', 'tip'];
-  var prev = 0;
-  parts.forEach(function (p) { JOINTS.push(f + '-' + p); BONES.push([prev, JOINTS.length - 1]); prev = JOINTS.length - 1; });
-});
-var JI = {}; JOINTS.forEach(function (n, i) { JI[n] = i; });
-
-function makeHand(color) {
-  var h = { kind: null, j: [], ok: [], q: new THREE.Quaternion(), qok: false, squeeze: false, closed: false, group: new THREE.Group(), balls: [], lines: null };
-  var geo = new THREE.SphereGeometry(0.0065, 10, 8);
-  var mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.5 });
-  for (var i = 0; i < JOINTS.length; i++) {
-    h.j.push(new V3()); h.ok.push(false);
-    var b = new THREE.Mesh(geo, mat); b.frustumCulled = false; h.group.add(b); h.balls.push(b);
-  }
-  var lg = new THREE.BufferGeometry();
-  lg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(BONES.length * 6), 3));
-  h.lines = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: color }));
-  h.lines.frustumCulled = false; h.group.add(h.lines);
-  h.group.visible = false; scene.add(h.group);
-  return h;
-}
-var hands = { left: makeHand(0xbcd0e6), right: makeHand(0xf4dcc0) };
-
-function drawHand(h) {
-  h.group.visible = !!h.kind;
-  if (!h.kind) return;
-  var i, pos = h.lines.geometry.attributes.position;
-  for (i = 0; i < JOINTS.length; i++) {
-    h.balls[i].visible = h.ok[i];
-    if (h.ok[i]) h.balls[i].position.copy(h.j[i]);
-  }
-  h.lines.visible = h.kind === 'hand';
-  if (h.kind !== 'hand') return;
-  for (i = 0; i < BONES.length; i++) {
-    var a = BONES[i][0], b = BONES[i][1], good = h.ok[a] && h.ok[b];
-    var pa = good ? h.j[a] : h.j[0], pb = good ? h.j[b] : h.j[0];
-    pos.setXYZ(i * 2, pa.x, pa.y, pa.z); pos.setXYZ(i * 2 + 1, pb.x, pb.y, pb.z);
-  }
-  pos.needsUpdate = true;
-}
-
-// Floating panel
-var panelCanvas = document.createElement('canvas'); panelCanvas.width = 560; panelCanvas.height = 400;
+/* ---------- VR 3D Kontrol Paneli (Sol El Modu, Tutuş Modu, Gitarı Bana Hizala, Örnek Çal) ---------- */
+var panelCanvas = document.createElement('canvas'); panelCanvas.width = 600; panelCanvas.height = 520;
 var panelTex = new THREE.CanvasTexture(panelCanvas); panelTex.encoding = THREE.sRGBEncoding;
-var panel = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.20), new THREE.MeshBasicMaterial({ map: panelTex, transparent: true }));
+var panel = new THREE.Mesh(new THREE.PlaneGeometry(0.32, 0.275), new THREE.MeshBasicMaterial({ map: panelTex, transparent: true }));
 panel.visible = false; scene.add(panel);
+
 function rr(g, x, y, w, h, r) {
   g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
   g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h);
   g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath();
 }
+
 function drawPanel() {
   var g = panelCanvas.getContext('2d');
-  g.clearRect(0, 0, 560, 400);
-  g.fillStyle = 'rgba(14,24,38,0.9)'; rr(g, 0, 0, 560, 400, 28); g.fill();
+  g.clearRect(0, 0, 600, 520);
+  g.fillStyle = 'rgba(12, 21, 35, 0.93)'; rr(g, 4, 4, 592, 512, 30); g.fill();
+  g.lineWidth = 3; g.strokeStyle = 'rgba(242, 184, 75, 0.45)'; g.stroke();
+
   g.textBaseline = 'middle'; g.textAlign = 'left';
-  g.fillStyle = '#a3b3c4'; g.font = '500 23px "Figtree", sans-serif';
-  var tip = state === 'rest' ? 'Gitarı sapından ya da gövdesinden kavra'
-          : state === 'carry' ? 'Çalmak için gövdeyi karnına getir'
-          : (holdMode === 'free' ? 'Çıkarmak için sapı kavrayıp uzağa çek' : 'Sol el sapta, sağ el tellerde');
-  g.fillText(tip, 36, 42);
-  g.fillStyle = '#eef2f6'; g.font = '700 56px "Bricolage Grotesque", sans-serif';
-  g.fillText(chordName === 'özel' ? 'Serbest' : chordName, 36, 106);
+  g.fillStyle = '#9fb1c4'; g.font = '600 21px "Figtree", sans-serif';
+  var tip = state === 'rest' ? 'Gitarı sapından veya gövdesinden elinizle kavrayın'
+          : state === 'carry' ? 'Gövdeyi karnınıza yaklaştırın (otomatik yerleşir)'
+          : 'Sol el sapta yönlendirir • Sağ el tellere vurur';
+  g.fillText(tip, 32, 38, 536);
+
+  g.fillStyle = '#fbbf24'; g.font = '700 48px "Bricolage Grotesque", sans-serif';
+  g.fillText('Akor: ' + (chordName === 'özel' ? 'Serbest' : chordName), 32, 94);
+
   g.textAlign = 'center';
-  var rows = [[170, vrMode === 'chord' ? 'Sol el: akor bölgeleri' : 'Sol el: serbest parmak'],
-              [285, holdMode === 'free' ? 'Tutuş: serbest' : 'Tutuş: askılı']];
-  rows.forEach(function (r) {
-    g.fillStyle = '#f2b84b'; rr(g, 40, r[0], 480, 100, 20); g.fill();
-    g.fillStyle = '#1d1503'; g.font = '600 34px "Figtree", sans-serif'; g.fillText(r[1], 280, r[0] + 52);
+  var btns = [
+    { y: 145, text: vrMode === 'chord' ? '🎸 Sol El: Akor Bölgeleri' : '🖐️ Sol El: Serbest Parmak', active: true },
+    { y: 235, text: holdMode === 'strap' ? '🔒 Tutuş: Askılı (Kolay)' : '🤲 Tutuş: Standdan Al', active: holdMode === 'strap' },
+    { y: 325, text: '🎯 Gitarı Bana Hizala', active: false },
+    { y: 415, text: demoTimer ? '⏹ Örnek Çalmayı Durdur' : '🎵 Örnek Çal / Dinle', active: !!demoTimer }
+  ];
+  btns.forEach(function (b) {
+    g.fillStyle = b.active ? '#f2b84b' : '#1e2f47';
+    rr(g, 34, b.y, 532, 74, 18); g.fill();
+    g.lineWidth = 2.5; g.strokeStyle = b.active ? '#fde68a' : '#475569'; g.stroke();
+    g.fillStyle = b.active ? '#1d1503' : '#f1f5f9';
+    g.font = '700 28px "Figtree", sans-serif';
+    g.fillText(b.text, 300, b.y + 38, 500);
   });
   panelTex.needsUpdate = true;
 }
 
+/* ---------- VR El Takibi, Ergonomik Tutuş Açısı ve Kolay Kavrama Fiziği ---------- */
 var anchorPos = new V3(), anchorYaw = 0, anchorReady = false, yawFollowing = false, lastYaw = 0;
 var headPos = new V3(), headQ = new THREE.Quaternion(), fwd = new V3();
 var aF = new V3(), aR = new V3(), UP = new V3(0, 1, 0);
 function fromAnchor(out, r, u, f) { return out.set(0, 0, 0).addScaledVector(aR, r).addScaledVector(UP, u).addScaledVector(aF, f); }
-var neckDir = new V3(), defDir = new V3(), tgtDir = new V3(), zRef = new V3(), pivot = new V3();
+
+var neckDir = new V3(), defDir = new V3(), tgtDir = new V3(), zRef = new V3();
 var held = false, grip = new V3(), tmp = new V3(), tmp2 = new V3();
-var panelInside = [false, false], panelLast = -9, zoneIdx = -1;
-var floorDropped = false;
+var panelInside = [false, false, false, false], panelLast = -9, zoneIdx = 2; // Am başlangıç
+var floorDropped = false, isAR = false;
+var carryReleaseGrace = 0;
+
+function recenterGuitarAnchor() {
+  anchorPos.copy(headPos);
+  anchorYaw = lastYaw;
+  yawFollowing = false;
+  aF.set(-Math.sin(anchorYaw), 0, -Math.cos(anchorYaw));
+  aR.set(Math.cos(anchorYaw), 0, -Math.sin(anchorYaw));
+  if (holdMode === 'free') placeStand();
+  else enterPlay();
+  playUiTick(740);
+}
 
 function readInputs(frame, session, ref) {
   hands.left.kind = null; hands.right.kind = null;
@@ -712,8 +1363,14 @@ function readInputs(frame, session, ref) {
         var sp = src.hand.get(JOINTS[i]);
         pose = sp ? frame.getJointPose(sp, ref) : null;
         h.ok[i] = !!pose;
-        if (pose) { var q = pose.transform.position; h.j[i].set(q.x, q.y, q.z); any = true; }
-        if (i === 0) { h.qok = !!pose; if (pose) { var o = pose.transform.orientation; h.q.set(o.x, o.y, o.z, o.w); } }
+        if (pose) {
+          var q = pose.transform.position, o = pose.transform.orientation;
+          h.j[i].set(q.x, q.y, q.z);
+          h.jq[i].set(o.x, o.y, o.z, o.w);
+          if (pose.radius) h.jr[i] = pose.radius;
+          any = true;
+        }
+        if (i === 0) { h.qok = !!pose; if (pose) h.q.copy(h.jq[0]); }
       }
       if (any) h.kind = 'hand';
     } else if (src.gripSpace || src.targetRaySpace) {
@@ -729,36 +1386,45 @@ function readInputs(frame, session, ref) {
     }
   }
 }
+
+// Sol el sap kavrama yuvası: başparmak kökü ile işaret parmağı kökü arasındaki doğal C-yuvası
 function gripPoint(h, out) {
   if (h.kind === 'ctrl') return out.copy(h.j[0]);
   if (h.kind !== 'hand') return null;
-  var a = JI['thumb-tip'], b = JI['index-finger-phalanx-proximal'], c = JI['middle-finger-phalanx-proximal'];
-  if (!(h.ok[a] && h.ok[b] && h.ok[c])) return null;
-  return out.copy(h.j[a]).add(h.j[b]).add(h.j[c]).multiplyScalar(1 / 3);
+  var a = JI['thumb-phalanx-proximal'], b = JI['index-finger-phalanx-proximal'], c = JI['middle-finger-phalanx-proximal'];
+  if (!(h.ok[a] && h.ok[b] && h.ok[c])) return h.ok[0] ? out.copy(h.j[0]) : null;
+  return out.copy(h.j[a]).multiplyScalar(0.45).addScaledVector(h.j[b], 0.35).addScaledVector(h.j[c], 0.20);
 }
-// A hand counts as closed when its fingertips curl in toward the wrist (or the controller grip is squeezed).
+
+// Kolay kavrama algılama: tam yumruk şart değil; doğal kavrama eğimi veya başparmak-işaret yakınsaması yeterli!
 var CURL_TIPS = ['index-finger-tip', 'middle-finger-tip', 'ring-finger-tip', 'pinky-finger-tip'];
 function gripClosed(h) {
   if (h.kind === 'ctrl') return h.squeeze;
   if (h.kind !== 'hand') return false;
+  var tTip = JI['thumb-tip'], iTip = JI['index-finger-tip'];
+  if (h.ok[tTip] && h.ok[iTip]) {
+    var pinchDist = h.j[tTip].distanceTo(h.j[iTip]);
+    if (pinchDist < (h.closed ? 0.062 : 0.042)) return true;
+  }
   var m = JI['middle-finger-phalanx-proximal'];
   if (!h.ok[0] || !h.ok[m]) return h.closed;
   var palm = h.j[0].distanceTo(h.j[m]), sum = 0, n = 0;
   for (var i = 0; i < 4; i++) { var k = JI[CURL_TIPS[i]]; if (h.ok[k]) { sum += h.j[k].distanceTo(h.j[0]); n++; } }
-  if (n < 3 || palm < 0.03) return h.closed;
+  if (n < 2 || palm < 0.03) return h.closed;
   var r = sum / n / palm;
-  return h.closed ? r < 1.72 : r < 1.42;
+  return h.closed ? r < 1.92 : r < 1.68;
 }
+
+// Çok daha geniş ve kolay kavrama menzili (sap veya gövde çevresi 18 cm)
 function nearGuitar(h) {
   var p = gripPoint(h, tmp2) || (h.ok[0] ? tmp2.copy(h.j[0]) : null);
   if (!p) return false;
   guitar.worldToLocal(p);
-  if (p.x > 0.16 && p.x < 0.70 && Math.hypot(p.y, p.z) < 0.09) return true;
-  return p.x > -0.36 && p.x <= 0.2 && Math.abs(p.y) < 0.22 && p.z > -0.16 && p.z < 0.08;
+  if (p.x > 0.08 && p.x < 0.74 && Math.hypot(p.y, p.z) < 0.17) return true;
+  return p.x > -0.38 && p.x <= 0.22 && Math.abs(p.y) < 0.26 && p.z > -0.20 && p.z < 0.14;
 }
 
-/* Free hold: the guitar waits on a stand, a closed hand picks it up and carries it,
-   and it settles against the body once its soundbox reaches the belly. */
+/* Gitar Standı */
 var stand = new THREE.Group(); stand.visible = false; scene.add(stand);
 (function () {
   var m = new THREE.MeshStandardMaterial({ color: 0x20262e, roughness: 0.5, metalness: 0.6 });
@@ -771,19 +1437,20 @@ var stand = new THREE.Group(); stand.visible = false; scene.add(stand);
 var standPivot = new V3(), standQ = new THREE.Quaternion();
 var playSpot = new V3(), pivotCur = new V3(), blockPlay = false;
 var carryHand = null, carryOff = new THREE.Matrix4(), handM = new THREE.Matrix4(), gM = new THREE.Matrix4();
-var ONE = new V3(1, 1, 1), scl = new V3();
+var ONE = new V3(1, 1, 1), scl = new V3(), neckPalmOffset = new V3();
+
 function setState(s) { if (state !== s) { state = s; drawPanel(); } }
 function placeStand() {
-  fromAnchor(standPivot, 0.4, 0, 0.6).add(anchorPos);
+  fromAnchor(standPivot, 0.34, 0, 0.52).add(anchorPos);
   var fy = floor.position.y;
   stand.position.set(standPivot.x, fy, standPivot.z);
   tmp.set(headPos.x - standPivot.x, 0, headPos.z - standPivot.z).normalize();
   stand.rotation.set(0, Math.atan2(tmp.x, tmp.z), 0);
-  standPivot.y = fy + 0.6;
+  standPivot.y = fy + 0.60;
   tmp2.copy(UP).addScaledVector(tmp, -0.1);
   orientGuitar(tmp2, tmp);
   standQ.copy(guitar.quaternion);
-  stand.visible = true; standReady = true;
+  stand.visible = !isAR; standReady = true;
   toStand();
 }
 function toStand() { guitar.position.copy(standPivot); guitar.quaternion.copy(standQ); held = false; setState('rest'); }
@@ -791,12 +1458,16 @@ function startCarry(h) {
   if (!h.ok[0] || !h.qok) return;
   handM.compose(h.j[0], h.q, ONE);
   carryOff.copy(handM).invert().multiply(guitar.matrixWorld);
-  carryHand = h; held = false; setState('carry');
+  carryHand = h; carryReleaseGrace = 0.32; held = false; setState('carry');
+  playUiTick(540);
 }
 function enterPlay() {
-  pivotCur.copy(guitar.position);
-  neckDir.set(1, 0, 0).applyQuaternion(guitar.quaternion);
-  held = false; zoneIdx = -1; setState('play');
+  fromAnchor(playSpot, 0.05, -0.36, 0.33).add(anchorPos);
+  fromAnchor(defDir, -0.88, 0.34, 0.24).normalize();
+  pivotCur.copy(state === 'play' ? guitar.position : playSpot);
+  neckDir.copy(defDir);
+  held = false; setState('play');
+  playUiTick(680);
 }
 
 function updateXR(frame, now, dt) {
@@ -807,105 +1478,138 @@ function updateXR(frame, now, dt) {
   var tp = vp.transform.position, to = vp.transform.orientation;
   headPos.set(tp.x, tp.y, tp.z); headQ.set(to.x, to.y, to.z, to.w);
   fwd.set(0, 0, -1).applyQuaternion(headQ);
-  if (Math.hypot(fwd.x, fwd.z) > 0.3) lastYaw = Math.atan2(-fwd.x, -fwd.z);
+  if (Math.hypot(fwd.x, fwd.z) > 0.28) lastYaw = Math.atan2(-fwd.x, -fwd.z);
 
-  // Body anchor: follows the head position, turns only after a clear turn of the head
   if (!anchorReady) { anchorPos.copy(headPos); anchorYaw = lastYaw; anchorReady = true; }
-  anchorPos.lerp(headPos, 1 - Math.exp(-dt * 2.5));
+  anchorPos.lerp(headPos, 1 - Math.exp(-dt * 2.8));
   var dy = Math.atan2(Math.sin(lastYaw - anchorYaw), Math.cos(lastYaw - anchorYaw));
-  if (Math.abs(dy) > 0.75) yawFollowing = true;
-  if (yawFollowing) { anchorYaw += dy * (1 - Math.exp(-dt * 3)); if (Math.abs(dy) < 0.08) yawFollowing = false; }
+  if (Math.abs(dy) > 0.65) yawFollowing = true;
+  if (yawFollowing) { anchorYaw += dy * (1 - Math.exp(-dt * 3.2)); if (Math.abs(dy) < 0.07) yawFollowing = false; }
   aF.set(-Math.sin(anchorYaw), 0, -Math.cos(anchorYaw));
   aR.set(Math.cos(anchorYaw), 0, -Math.sin(anchorYaw));
 
   readInputs(frame, session, ref);
   drawHand(hands.left); drawHand(hands.right);
 
-  fromAnchor(playSpot, 0.08, -0.42, 0.22).add(anchorPos);
-  fromAnchor(defDir, -0.86, 0.38, 0.2).normalize();
-  fromAnchor(zRef, 0, 0.6, 1);
+  /* DÜZELTİLMİŞ ERGONOMETRİK GİTAR KONUMU VE BAKIŞ AÇISI:
+     - playSpot: göğsün 33 cm önünde (gitar arkası gövdeye oturur, göğüs içine gömülmez) ve gözden 36 cm aşağıda.
+     - zRef: (0, 1.08, 0.62) -> Gitar ses tahtası ve klavyesi çalan kişinin gözlerine ~30° doğal eğimle bakar!
+       Böylece 6 telin tamamı ve tüm perdeler kullanıcının bakış açısından net şekilde görünür! */
+  fromAnchor(playSpot, 0.05, -0.36, 0.33).add(anchorPos);
+  fromAnchor(defDir, -0.88, 0.34, 0.24).normalize();
+  fromAnchor(zRef, 0, 1.08, 0.62);
+
   var LH = hands.left, RH = hands.right;
   var cl = gripClosed(LH), cr = gripClosed(RH);
+  var nearL = nearGuitar(LH), nearR = nearGuitar(RH);
   var riseL = cl && !LH.closed, riseR = cr && !RH.closed;
   LH.closed = cl; RH.closed = cr;
 
-  if (holdMode === 'strap') { if (state !== 'play') enterPlay(); }
-  else {
+  // Serbest modda el gitara yaklaşınca kavrama halkasını parlat
+  var targetGlow = (holdMode === 'free' && state === 'rest' && (nearL || nearR)) ? 0.55 : 0.0;
+  grabGlowMat.opacity += (targetGlow - grabGlowMat.opacity) * Math.min(1, dt * 10);
+
+  if (holdMode === 'strap') {
+    stand.visible = false;
+    if (state !== 'play') enterPlay();
+  } else {
     if (!standReady) placeStand();
     var dSpot = guitar.position.distanceTo(playSpot);
-    if (blockPlay && dSpot > 0.32) blockPlay = false;
+    if (blockPlay && dSpot > 0.42) blockPlay = false;
+
     if (state === 'rest') {
-      if (riseL && nearGuitar(LH)) startCarry(LH);
-      else if (riseR && nearGuitar(RH)) startCarry(RH);
+      // El zaten kapalı yaklaşsa da, gitar yanında kapatılsa da kolayca yakalar
+      if ((riseL || cl) && nearL) startCarry(LH);
+      else if ((riseR || cr) && nearR) startCarry(RH);
     } else if (state === 'carry') {
       var ch = carryHand;
-      if (!ch.kind) setState('rest');
-      else {
+      if (!ch || !ch.kind) {
+        carryReleaseGrace -= dt;
+        if (carryReleaseGrace <= 0) toStand();
+      } else {
         if (ch.ok[0] && ch.qok) {
           handM.compose(ch.j[0], ch.q, ONE); gM.multiplyMatrices(handM, carryOff);
           gM.decompose(guitar.position, guitar.quaternion, scl);
         }
         dSpot = guitar.position.distanceTo(playSpot);
-        if (!blockPlay && dSpot < 0.2) enterPlay();
-        else if (!ch.closed) {
-          if (dSpot < 0.28) enterPlay();
-          else if (guitar.position.distanceTo(standPivot) < 0.3) toStand();
-          else setState('rest');
+        if (!blockPlay && dSpot < 0.34) {
+          enterPlay();
+        } else if (ch.closed) {
+          carryReleaseGrace = 0.28;
+        } else {
+          carryReleaseGrace -= dt;
+          if (carryReleaseGrace <= 0) {
+            if (dSpot < 0.42) enterPlay();
+            else toStand(); // Havada asılı kalmaz, yumuşakça standa döner
+          }
         }
       }
     }
   }
 
-  // Playing position: soundbox rests at the belly, neck aims at the left hand while it holds the neck
+  // Çalma modunda sol el sapı zahmetsizce yönlendirir (geniş mıknatıslı yakalama alanı + akor basarken kopmaz!)
   var g = null;
   if (state === 'play') {
     pivotCur.lerp(playSpot, 1 - Math.exp(-dt * 12));
     g = gripPoint(LH, grip);
     if (g) {
-      tmp.copy(g).sub(pivotCur);
+      // Sap merkezi avuç içinin ~2.2 cm önünde/üstünde durur, böylece sap elin içinden geçmez, avuca oturur
+      neckPalmOffset.copy(zRef).normalize().multiplyScalar(0.020);
+      tmp.copy(g).add(neckPalmOffset).sub(pivotCur);
       var dist = tmp.length(), ang = tmp.angleTo(defDir);
       if (!held) {
         tmp2.copy(g); guitar.worldToLocal(tmp2);
-        held = ang < 0.87 && tmp2.x > 0.16 && tmp2.x < 0.62 && Math.hypot(tmp2.y, tmp2.z) < 0.09;
-      } else if (dist < 0.14 || dist > 0.68 || ang > 0.96) {
+        held = (ang < 1.05 && tmp2.x > 0.06 && tmp2.x < 0.72 && Math.hypot(tmp2.y, tmp2.z) < 0.19);
+      } else if (dist < 0.12 || dist > 0.80 || ang > 1.18) {
         held = false;
-        // Pulling the neck far away with a closed hand lifts the guitar off the body
-        if (holdMode === 'free' && cl) { blockPlay = true; startCarry(LH); }
+        // Yalnızca Serbest modda gitarı gövdeden bilinçli olarak ileri/uzağa iterseniz taşınır (akor basarken ASLA kopmaz)
+        if (holdMode === 'free' && cl && dist > 0.76 && ang > 1.15) {
+          blockPlay = true; startCarry(LH);
+        }
       }
     } else held = false;
   }
+
   if (state === 'play') {
     if (held) {
-      tgtDir.copy(g).sub(pivotCur).normalize();
+      tgtDir.copy(g).add(neckPalmOffset).sub(pivotCur).normalize();
       var a = tgtDir.angleTo(defDir);
-      if (a > 0.87) tgtDir.lerp(defDir, 1 - 0.87 / a).normalize();
+      if (a > 0.82) tgtDir.lerp(defDir, 1 - 0.82 / a).normalize();
     } else tgtDir.copy(defDir);
-    neckDir.lerp(tgtDir, 1 - Math.exp(-dt * (held ? 18 : 6))).normalize();
-    orientGuitar(neckDir, zRef, 1 - Math.exp(-dt * 25));
+    neckDir.lerp(tgtDir, 1 - Math.exp(-dt * (held ? 16 : 6))).normalize();
+    orientGuitar(neckDir, zRef, 1 - Math.exp(-dt * 22));
     guitar.position.copy(pivotCur);
   }
   guitar.updateMatrixWorld(true);
   zoneGroup.visible = vrMode === 'chord' && state === 'play';
 
-  // Left hand: chord zones or free fretting
-  var lh = hands.left, i;
+  // Sol El: Akor Bölgeleri (hafızalı — el hafif oynayınca Açık'a sıfırlanmaz!) veya Serbest Parmak
+  var lh = hands.left;
   if (vrMode === 'chord') {
-    var name = 'Açık';
-    if (state === 'play' && held) {
+    if (state === 'play' && held && g) {
       tmp2.copy(g); guitar.worldToLocal(tmp2);
-      var u = (ZONE_START - tmp2.x) / ZONE_LEN;
-      if (zoneIdx < 0 || Math.abs(u - (zoneIdx + 0.5)) > 0.64) zoneIdx = clamp(Math.floor(u), 0, ZONE_CHORDS.length - 1);
-      name = ZONE_CHORDS[zoneIdx];
-    } else zoneIdx = -1;
-    setChord(name);
+      if (tmp2.x > ZONE_START + 0.045) {
+        setChord('Açık');
+      } else {
+        var u = (ZONE_START - tmp2.x) / ZONE_LEN;
+        if (zoneIdx < 0 || Math.abs(u - (zoneIdx + 0.5)) > 0.62) {
+          zoneIdx = clamp(Math.floor(u), 0, ZONE_CHORDS.length - 1);
+        }
+        setChord(ZONE_CHORDS[zoneIdx]);
+      }
+    } else if (state === 'play' && lh.kind && lh.ok[0]) {
+      // El saptan tamamen (>28 cm) uzaklaştırılırsa Açık tellere dön
+      tmp2.copy(lh.j[0]); guitar.worldToLocal(tmp2);
+      if (Math.hypot(tmp2.y, tmp2.z) > 0.28 || tmp2.x < -0.1) setChord('Açık');
+    }
   } else {
     var next = [0, 0, 0, 0, 0, 0];
-    if (state === 'play' && lh.kind === 'hand') {
+    if (state === 'play' && (lh.kind === 'hand' || lh.kind === 'ctrl')) {
       ['index-finger-tip', 'middle-finger-tip', 'ring-finger-tip', 'pinky-finger-tip'].forEach(function (n) {
         var k = JI[n]; if (!lh.ok[k]) return;
         tmp2.copy(lh.j[k]); guitar.worldToLocal(tmp2);
         var z = tmp2.z - FB_TOP;
-        if (tmp2.x < X_FB_END || tmp2.x > X_NUT || Math.abs(tmp2.y) > fbHalf(tmp2.x) + 0.006 || z < -0.02 || z > 0.03) return;
+        if (tmp2.x < X_FB_END || tmp2.x > X_NUT || Math.abs(tmp2.y) > fbHalf(tmp2.x) + 0.010 || z < -0.025 || z > 0.036) return;
         var si = clamp(Math.round(2.5 - tmp2.y / spacing(tmp2.x)), 0, 5);
         next[si] = Math.max(next[si], fretAt(tmp2.x));
       });
@@ -913,49 +1617,63 @@ function updateXR(frame, now, dt) {
     applyFrets(next, 'özel');
   }
 
-  // Right hand: fingertips pluck
+  // Sağ El: Klasik gitar p-i-m-a (baş, işaret, orta ve yüzük parmakları) ile geniş toleranslı tel vuruşu
   var rh = hands.right;
-  var rightTips = rh.kind === 'hand' ? ['thumb-tip', 'index-finger-tip', 'middle-finger-tip'] : (rh.kind === 'ctrl' ? ['wrist'] : []);
-  ['thumb-tip', 'index-finger-tip', 'middle-finger-tip', 'wrist'].forEach(function (n) {
+  var rightTips = rh.kind ? ['thumb-tip', 'index-finger-tip', 'middle-finger-tip', 'ring-finger-tip'] : [];
+  ['thumb-tip', 'index-finger-tip', 'middle-finger-tip', 'ring-finger-tip'].forEach(function (n) {
     var k = JI[n];
     if (state === 'carry' || rightTips.indexOf(n) < 0 || !rh.ok[k]) { tips['r-' + n] = null; return; }
     tmp2.copy(rh.j[k]); guitar.worldToLocal(tmp2);
-    processTip('r-' + n, tmp2, now, -0.022, 0.035);
+    processTip('r-' + n, tmp2, now, -0.030, 0.055);
   });
 
-  // Panel: up and to the right, poke the button with an index finger to switch mode
-  fromAnchor(panel.position, 0.44, -0.16, 0.5).add(anchorPos);
+  // 3D VR Panel (sağ üstte, işaret parmağıyla dokunmatik 4 düğme)
+  fromAnchor(panel.position, 0.44, -0.10, 0.52).add(anchorPos);
   panel.lookAt(headPos);
   panel.updateMatrixWorld(true);
-  var inside = [false, false];
+  var inside = [false, false, false, false];
   [hands.left, hands.right].forEach(function (h) {
-    var k = h.kind === 'hand' ? JI['index-finger-tip'] : 0;
+    var k = JI['index-finger-tip'];
     if (!h.kind || !h.ok[k] || (state === 'carry' && h === carryHand)) return;
     tmp2.copy(h.j[k]); panel.worldToLocal(tmp2);
-    if (Math.abs(tmp2.x) > 0.12 || Math.abs(tmp2.z) > 0.025) return;
-    if (tmp2.y < 0.015 && tmp2.y > -0.035) inside[0] = true;
-    else if (tmp2.y < -0.0425 && tmp2.y > -0.0925) inside[1] = true;
+    if (Math.abs(tmp2.x) > 0.142 || Math.abs(tmp2.z) > 0.028) return;
+    // Panel yüksekliği 0.275 m (-0.1375 .. +0.1375); canvas 520px
+    var py = (0.5 - (tmp2.y / 0.275)) * 520;
+    if (py >= 145 && py <= 219) inside[0] = true;
+    else if (py >= 235 && py <= 309) inside[1] = true;
+    else if (py >= 325 && py <= 399) inside[2] = true;
+    else if (py >= 415 && py <= 489) inside[3] = true;
   });
-  for (var b = 0; b < 2; b++) {
-    if (inside[b] && !panelInside[b] && now - panelLast > 0.7) {
+  for (var b = 0; b < 4; b++) {
+    if (inside[b] && !panelInside[b] && now - panelLast > 0.55) {
       panelLast = now;
-      if (b === 0) setMode(vrMode === 'chord' ? 'free' : 'chord'); else setHold(holdMode === 'free' ? 'strap' : 'free');
+      playUiTick(700);
+      if (b === 0) setMode(vrMode === 'chord' ? 'free' : 'chord');
+      else if (b === 1) setHold(holdMode === 'free' ? 'strap' : 'free');
+      else if (b === 2) recenterGuitarAnchor();
+      else if (b === 3) toggleDemo();
     }
     panelInside[b] = inside[b];
   }
 }
 
-/* ---------- VR session ---------- */
-var vrBtn = document.getElementById('vrBtn'), statusEl = document.getElementById('status');
+/* ---------- WebXR Oturumu (VR 360 Sahne + Quest 3 Karma Gerçeklik AR) ---------- */
+var vrBtn = document.getElementById('vrBtn'), arBtn = document.getElementById('arBtn'), statusEl = document.getElementById('status');
 var xrSession = null;
+
 function vrUnavailable(msg) { vrBtn.disabled = true; vrBtn.textContent = 'VR kullanılamıyor'; statusEl.textContent = msg; }
-var NO_VR = 'Bu pencerede VR oturumu açılamıyor. Masaüstü önizlemesi çalışır; VR için sayfayı gözlüğün tarayıcısında açın.';
+var NO_VR = 'Masaüstü önizlemesi aktif • VR el takibi için sayfayı Meta Quest tarayıcısında açın.';
+
 if (navigator.xr && navigator.xr.isSessionSupported) {
   navigator.xr.isSessionSupported('immersive-vr').then(function (ok) {
     if (!ok) { vrUnavailable(NO_VR); return; }
     vrBtn.disabled = false;
-    statusEl.textContent = 'VR hazır. Kumandaları bırakıp ellerinizi kullanın; gitar sağ önünüzdeki standda bekler.';
+    statusEl.textContent = 'VR hazır • Kontrolcüleri bırakıp gerçek ellerinizle çalabilirsiniz (Askılı kolay tutuş aktif).';
   }).catch(function () { vrUnavailable(NO_VR); });
+
+  navigator.xr.isSessionSupported('immersive-ar').then(function (arOk) {
+    if (arOk && arBtn) arBtn.style.display = 'inline-block';
+  }).catch(function () {});
 } else vrUnavailable(NO_VR);
 
 function startSession(session, floorSpace) {
@@ -963,47 +1681,80 @@ function startSession(session, floorSpace) {
   renderer.xr.setReferenceSpaceType(floorSpace ? 'local-floor' : 'local');
   return renderer.xr.setSession(session);
 }
-vrBtn.addEventListener('click', function () {
+
+function launchXRMode(mode) {
   initAudio();
   if (xrSession) { xrSession.end(); return; }
   if (demoTimer) toggleDemo();
-  navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'hand-tracking'] }).then(function (session) {
+  isAR = (mode === 'immersive-ar');
+  navigator.xr.requestSession(mode, { optionalFeatures: ['hand-tracking', 'local-floor', 'bounded-floor'] }).then(function (session) {
     session.addEventListener('end', function () {
-      xrSession = null; vrBtn.textContent = "VR'a gir";
-      hands.left.group.visible = hands.right.group.visible = false; panel.visible = false; stand.visible = false;
+      xrSession = null; isAR = false;
+      vrBtn.textContent = "🥽 VR'a Gir";
+      if (arBtn) arBtn.textContent = '🌐 Karma Gerçeklik';
+      envGroup.visible = true;
+      scene.background = new THREE.Color(0x09101a);
+      hands.left.kind = hands.right.kind = null;
+      hands.left.group.visible = hands.right.group.visible = false;
+      panel.visible = false; stand.visible = false;
       if (floorDropped) { floor.position.y = 0; floorDropped = false; }
       setChord('Açık'); desktopPose(); resize();
     });
+    envGroup.visible = !isAR;
+    scene.background = isAR ? null : new THREE.Color(0x09101a);
     anchorReady = false; held = false; tips = {}; state = 'rest'; standReady = false; blockPlay = false;
     hands.left.closed = hands.right.closed = false;
-    vrBtn.textContent = "VR'dan çık";
+    vrBtn.textContent = "VR'dan Çık";
+    if (arBtn && isAR) arBtn.textContent = "AR'dan Çık";
     panel.visible = true; drawPanel();
     return startSession(session, true).catch(function () {
       floor.position.y = -1.5; floorDropped = true;
       return startSession(session, false);
     });
   }).catch(function (err) {
-    statusEl.textContent = 'VR oturumu başlatılamadı: ' + (err && err.message ? err.message : 'bilinmeyen hata') + '.';
+    statusEl.textContent = 'XR oturumu başlatılamadı: ' + (err && err.message ? err.message : 'bilinmeyen hata') + '.';
   });
-});
+}
 
-/* ---------- Loop ---------- */
+vrBtn.addEventListener('click', function () { launchXRMode('immersive-vr'); });
+if (arBtn) arBtn.addEventListener('click', function () { launchXRMode('immersive-ar'); });
+
+/* ---------- Ana Render Döngüsü ---------- */
 var lastT = 0;
 renderer.setAnimationLoop(function (ms, frame) {
   var now = ms / 1000, dt = Math.min(0.05, Math.max(0.001, now - lastT)); lastT = now;
   if (renderer.xr.isPresenting && frame) updateXR(frame, performance.now() / 1000, dt);
+
   for (var i = 0; i < 6; i++) {
     var s = strings[i];
-    if (s.amp > 0.00002) { s.amp *= Math.exp(-dt * 2.4); s.mesh.position.y = s.baseY + s.amp * Math.sin(now * (150 + i * 23)); }
-    else if (s.amp !== 0) { s.amp = 0; s.mesh.position.y = s.baseY; }
+    if (s.amp > 0.00002) {
+      s.amp *= Math.exp(-dt * 2.5);
+      s.mesh.position.y = s.baseY + s.amp * Math.sin(now * (155 + i * 24));
+    } else if (s.amp !== 0) {
+      s.amp = 0; s.mesh.position.y = s.baseY;
+    }
+    if (s.glow > 0.01) {
+      s.glow *= Math.exp(-dt * 4.5);
+      s.mat.emissive.setHex(0xfbbf24);
+      s.mat.emissiveIntensity = 0.25 + s.glow * 0.85;
+    } else if (s.glow !== 0) {
+      s.glow = 0;
+      s.mat.emissive.setHex(s.baseEmissive);
+      s.mat.emissiveIntensity = i < 3 ? 0.22 : 0.25;
+    }
   }
   renderer.render(scene, camera);
 });
 
 buildZones(); drawPanel(); desktopPose(); resize();
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { buildZones(); drawPanel(); });
-window.__guitar = { renderer: renderer, updateXR: updateXR, guitar: guitar, hands: hands, getState: function () { return state + '/' + chordName + '/' + held; }, strum: strum, setChord: setChord, frets: frets, tips: tips, processTip: processTip, strings: strings };
-})();
+
+window.__guitar = {
+  renderer: renderer, updateXR: updateXR, guitar: guitar, hands: hands,
+  getState: function () { return state + '/' + chordName + '/' + held; },
+  strum: strum, setChord: setChord, frets: frets, tips: tips, processTip: processTip, strings: strings
+};
+}
 </script>
 </body>
 </html>
